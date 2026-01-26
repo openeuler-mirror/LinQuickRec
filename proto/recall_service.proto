@@ -1,0 +1,17 @@
+syntax="proto3";
+package LinQuickRec;
+
+option cc_generic_services = true;
+
+message KuaiRandRecallRequest {
+  uint64 user_id = 1;
+  repeated uint32 user_logs = 2;
+};
+
+message KuaiRandRecallResponse {
+  repeated int32 results = 1;
+};
+
+service RecallService {
+  rpc KuaiRandRecall(KuaiRandRecallRequest) returns (KuaiRandRecallResponse);
+};

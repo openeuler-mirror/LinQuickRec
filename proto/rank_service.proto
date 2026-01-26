@@ -1,0 +1,22 @@
+syntax="proto3";
+package LinQuickRec;
+
+option cc_generic_services = true;
+
+message KRRankRequest {
+  uint64 user_id = 1;
+  repeated uint64 candidates = 2;
+};
+
+message KRRankResult {
+  uint64 video_id = 1;
+  float score = 2;
+}
+
+message KRRankResponse {
+  repeated KRRankResult results = 1;
+};
+
+service RankService {
+  rpc KuaiRandRank(KRRankRequest) returns (KRRankResponse);
+};

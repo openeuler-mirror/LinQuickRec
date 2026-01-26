@@ -1,0 +1,16 @@
+syntax="proto3";
+package LinQuickRec;
+
+option cc_generic_services = true;
+
+message RecommendRequest {
+  string message = 1;
+};
+
+message RecommendResponse {
+  string message = 1;
+};
+
+service Proxy {
+  rpc Recommend(RecommendRequest) returns (RecommendResponse);
+};
