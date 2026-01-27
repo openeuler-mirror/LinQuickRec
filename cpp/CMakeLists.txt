@@ -7,7 +7,7 @@ function(add_service_executable SERVICE_NAME)
     )
 
     add_executable(${SERVICE_NAME}
-            ${SERVICE_DIR}/${SERVICE_NAME}.cpp
+            ${SERVICE_DIR}/${SERVICE_NAME}_main.cpp
             ${MODULE_SOURCES}
     )
 
@@ -17,9 +17,9 @@ function(add_service_executable SERVICE_NAME)
     )
 
     target_link_libraries(${SERVICE_NAME} PRIVATE
-            proto_lib        # 包含 protobuf 和自动传递的 Abseil
+            proto_lib
             ${BRPC_LIB}
-            linquickrec_deps # 其他第三方依赖
+            linquickrec_deps
     )
 
     # feature_service 额外需要 hiredis
@@ -31,5 +31,5 @@ endfunction()
 
 add_service_executable(feature_service)
 #add_service_executable(rank_service)
-#add_service_executable(recall_service)
+add_service_executable(recall_service)
 #add_service_executable(proxy)

@@ -3,15 +3,15 @@ package LinQuickRec;
 
 option cc_generic_services = true;
 
-message KuaiRandRecallRequest {
+message KRRecallRequest {
   uint64 user_id = 1;
   repeated uint32 user_logs = 2;
 };
 
-message KuaiRandRecallResponse {
+message KRRecallResponse {
   repeated int32 results = 1;
 };
 
 service RecallService {
-  rpc KuaiRandRecall(KuaiRandRecallRequest) returns (KuaiRandRecallResponse);
+  rpc KRRecall(KRRecallRequest) returns (KRRecallResponse);
 };
