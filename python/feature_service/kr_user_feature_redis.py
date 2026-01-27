@@ -107,5 +107,4 @@ if __name__ == "__main__":
 
     feat = uf.get(0)
     print(f"[User with id 0] user_active_degree: {feat["user_active_degree"]}, fans_user_num: {feat["fans_user_num"]}")
-
     print(f"[User with id 1] is_live_streamer: {uf.get_field(25621, 'is_live_streamer')}")

@@ -3,7 +3,7 @@ import redis
 import argparse
 
 from kr_user_log_redis import UserLogRedis
-from kr_user_redis import UserFeatureRedis
+from kr_user_feature_redis import UserFeatureRedis
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Insert data into redis database')
