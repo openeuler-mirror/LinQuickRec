@@ -18,7 +18,7 @@
 //vLLM 服务地址(第一阶段硬编码)
 const char* VLLM_BASE_URL = "http://127.0.0.1:8000";
 const char* VLLM_CHAT_ENDPOINT = "/v1/chat/completions";
-const char* MODEL_NAME = "/workspace/share/Qwen3-8B";
+const char* MODEL_NAME = "/workspace/share/Qwen3-0.6B";
 
 // 简单的JOSN转义辅助函数（仅处理双引号和反斜杠，生产环境请用专业库）
 std::string escape_json_string(const std::string& input) {
