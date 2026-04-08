@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-DEFINE_string(server, "127.0.0.1:8080", "服务器地址 (ip:port)");
+DEFINE_string(server, "127.0.0.1:8001", "服务器地址 (ip:port)");
 DEFINE_string(prompt, "你好,请介绍一下你自己", "Prompt to send");
 
 int main(int argc, char* argv[]) {
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 
     // 9. 打印结果
     std::cout << "=== Response ===" << std::endl;
-    std::cout << "Text: " << response.generate_text() << std::endl;
+    std::cout << "Text: " << response.generated_text() << std::endl;
     std::cout << "Reason: " << response.finish_reason() << std::endl;
     std::cout << "Tokens (Total/Prompt/Comp): " 
               << response.total_tokens() << "/"

@@ -23,9 +23,9 @@ message GenerateRequest {
 
 message GenerateResponse {
     //生成的文本内容
-    required string text = 1;
+    string generated_text = 1;
 
-    //finish reason (如“stop”,"length")
+    //finish reason (如"stop","length")
     string finish_reason = 2;
 
     //消耗的token数量(输入+输出)
