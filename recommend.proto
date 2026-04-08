@@ -9,13 +9,13 @@ message GenerateRequest {
     string prompt = 1;
 
     //最大生成token数
-    int32 max_tokens = 2 [default = 256];
+    int32 max_tokens = 2;
 
     //温度参数（控制随机性），默认0.7
-    float temperature = 3 [default = 0.7];
+    float temperature = 3;
 
     //顶部采样概率(top-p)
-    float top_p = 4 [default = 0.9];
+    float top_p = 4;
 
     //可选：用户ID(用于日志或个性化)
     string user_id=5;
