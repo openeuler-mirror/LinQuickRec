@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package recommend;
+
+//启用C++通用服务代码生成
+option cc_generic_services = true;
+
+message GenerateRequest {
+    string prompt = 1;
+
+    //最大生成token数
+    int32 max_tokens = 2 [default = 256];
+
+    //温度参数（控制随机性），默认0.7
+    float temperature = 3 [default = 0.7];
+
+    //顶部采样概率(top-p)
+    float top_p = 4 [default = 0.9];
+
+    //可选：用户ID(用于日志或个性化)
+    string user_id=5;
+};
+
+message GenerateResponse {
+    //生成的文本内容
+    required string text = 1;
+
+    //finish reason (如“stop”,"length")
+    string finish_reason = 2;
+
+    //消耗的token数量(输入+输出)
+    int32 total_tokens = 3;
+    int32 prompt_tokens = 4;
+    int32 completion_tokens = 5;
+
+    //错误码(0表示成功)
+    int32 error_code = 6;
+
+    //错误信息(如果出错)
+    string error_message = 7;
+
+    //处理耗时(毫秒)
+    int64 latency_ms = 8;
+};
+
+//服务定义
+service RecommendService {
+    //生成推荐内容/文本
+    rpc Generate(GenerateRequest) returns (GenerateResponse);
+};
