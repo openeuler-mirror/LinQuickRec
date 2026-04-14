@@ -148,9 +148,9 @@ public:
         http_cntl.http_request().uri() = VLLM_CHAT_ENDPOINT;
         http_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         http_cntl.http_request().set_content_type("application/json");
-        http_cntl.http_request().SetHeader("Host", "127.0.0.1:8000");
-        http_cntl.http_request().SetHeader("User-Agent", "curl/8.4.0");
-        http_cntl.http_request().SetHeader("Connection", "close");
+        http_cntl.http_request().set_header("Host", "127.0.0.1:8000");
+        http_cntl.http_request().set_header("User-Agent", "curl/8.4.0");
+        http_cntl.http_request().set_header("Connection", "close");
         http_cntl.request_attachment().append(json_body.str());
 
         // 3. 同步调用 vLLM

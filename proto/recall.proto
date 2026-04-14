@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package recall;
+
+// 启用 C++ 通用服务代码生成（添加 RpcController 参数）
+option cc_generic_services = true;
+
+// 快推用户日志（与特征服务共享定义）
+message KRUserLog {
+    repeated uint32 vec = 1;
+}
+
+// 召回服务 - 请求
+message RecallRequest {
+    uint64 user_id = 1;
+    repeated KRUserLog user_logs = 2;
+    string other = 3;
+}
+
+// 召回服务 - 响应
+message RecallResponse {
+    repeated uint64 sku_ids = 1;
+}
+
+// 召回服务定义
+service RecallService {
+    rpc Recall(RecallRequest) returns (RecallResponse);
+}

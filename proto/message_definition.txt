@@ -1,0 +1,104 @@
+// 网关服务接口/消息定义
+message RecommendRequest {
+    uint64 user_id = 1;
+};
+
+message RecommendResponse {
+    repeated uint64 candidates = 1;
+};
+
+service Proxy {
+    rpc Recommend(RecommendRequest) returns (RecommendResponse);
+};
+
+// 特征服务接口/消息定义
+enum FeatureType {
+    KuaiRand = 0;
+    UNKNOWN = 1;
+};
+
+message KRUserFeatureRequest {
+    uint64 user_id = 1;
+    string req_data = 2;
+};
+
+message KRUserLog {
+    repeated uint32 vec = 1;
+};
+
+message KRUserFeatureResponse {
+    repeated KRUserLog user_logs =1;
+    string other = 2;
+};
+
+message UserFeatureRequest {
+    FeatureType feature_type = 1;
+    optional KRUserFeatureRequest kr_feat_req = 2;
+};
+
+message UserFeatureResponse {
+    FeatureType feature_type = 1;
+    optional KRUserFeatureResponse kr_feat_rsp = 2;
+};
+
+message SKUFeatureRequest {
+    FeatureType feature_type = 1;
+    repeated uint64_t sku_ids = 2;
+};
+
+message KRSKUFeature {
+    uint64_t sku_id;
+    string feat;
+};
+
+message SKUFeatureResponse {
+    FeatureType feature_type = 1;
+    optional repeated KRSKUFeature kr_sku_feats = 2;
+};
+
+service FeatureService {
+    rpc GetUserFeatures(UserFeatureRequest) returns (UserFeatureResponse);
+    rpc GetSKUFeatures(SKUFeatureRequest) returns (SKUFeatureResponse);
+};
+
+// 召回服务接口/消息定义
+message RecallRequest {
+    uint64_t user_id = 1;
+    repeated KRUserLog user_logs = 2;
+    string other = 3;
+};
+
+message RecallResponse {
+    repeated uint64_t sku_ids = 1;
+};
+
+service RecallService {
+    rpc Recall(RecallRequest) returns (RecallResponse);
+};
+
+// 前置计算服务接口/消息定义
+message PrecalcRequest {
+    string user_feat = 1;
+};
+
+message PrecalcResponse {
+    string result = 1;
+};
+
+service PrecalcService {
+    rpc Precalculate(PrecalcRequest) returns (PrecalcResponse);
+};
+
+// 精排服务接口/消息定义
+message RankRequest {
+    string user_feat = 1;
+    string skus = 2;
+};
+
+message PrecalcResponse {
+    string result = 1;
+};
+
+service RankService {
+    rpc Rand(RankRequest) returns (RankResponse);
+};

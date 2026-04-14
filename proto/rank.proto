@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package rank;
+
+// 精排服务 - 请求
+message RankRequest {
+    string user_feat = 1;
+    string skus = 2;
+}
+
+// 精排服务 - 响应
+message RankResponse {
+    repeated uint64 ranked_sku_ids = 1;
+    repeated double scores = 2;
+}
+
+// 精排服务定义
+service RankService {
+    rpc Rank(RankRequest) returns (RankResponse);
+}

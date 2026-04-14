@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package feature;
+
+// 特征类型枚举
+enum FeatureType {
+    KuaiRand = 0;
+    UNKNOWN = 1;
+}
+
+// 快推用户特征请求
+message KRUserFeatureRequest {
+    uint64 user_id = 1;
+    string req_data = 2;
+}
+
+// 快推用户日志
+message KRUserLog {
+    repeated uint32 vec = 1;
+}
+
+// 快推用户特征响应
+message KRUserFeatureResponse {
+    repeated KRUserLog user_logs = 1;
+    string other = 2;
+}
+
+// 用户特征请求
+message UserFeatureRequest {
+    FeatureType feature_type = 1;
+    optional KRUserFeatureRequest kr_feat_req = 2;
+}
+
+// 用户特征响应
+message UserFeatureResponse {
+    FeatureType feature_type = 1;
+    optional KRUserFeatureResponse kr_feat_rsp = 2;
+}
+
+// SKU 特征请求
+message SKUFeatureRequest {
+    FeatureType feature_type = 1;
+    repeated uint64 sku_ids = 2;
+}
+
+// 快推 SKU 特征
+message KRSKUFeature {
+    uint64 sku_id = 1;
+    string feat = 2;
+}
+
+// SKU 特征响应
+message SKUFeatureResponse {
+    FeatureType feature_type = 1;
+    repeated KRSKUFeature kr_sku_feats = 2;
+}
+
+// 特征服务定义
+service FeatureService {
+    rpc GetUserFeatures(UserFeatureRequest) returns (UserFeatureResponse);
+    rpc GetSKUFeatures(SKUFeatureRequest) returns (SKUFeatureResponse);
+}

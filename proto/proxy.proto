@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package proxy;
+
+// 网关服务 - 推荐请求
+message RecommendRequest {
+    uint64 user_id = 1;
+}
+
+// 网关服务 - 推荐响应
+message RecommendResponse {
+    repeated uint64 candidates = 1;
+}
+
+// 网关服务定义
+service Proxy {
+    rpc Recommend(RecommendRequest) returns (RecommendResponse);
+}

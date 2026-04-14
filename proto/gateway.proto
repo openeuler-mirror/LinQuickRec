@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package gateway;
+
+// 网关服务定义
+service GatewayService {
+    // 推荐请求
+    rpc Recommend(RecommendRequest) returns (RecommendResponse);
+}
+
+// 推荐请求
+message RecommendRequest {
+    string user_id = 1;
+    repeated string context = 2;
+    int32 top_k = 3;
+    string trace_id = 4;
+}
+
+// 推荐响应
+message RecommendResponse {
+    int32 status_code = 1;
+    string message = 2;
+    repeated Item items = 3;
+    string trace_id = 4;
+}
+
+// 商品项
+message Item {
+    string item_id = 1;
+    double score = 2;
+    map<string, string> features = 3;
+}

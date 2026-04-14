@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package precalc;
+
+// 前置计算服务 - 请求
+message PrecalcRequest {
+    string user_feat = 1;
+}
+
+// 前置计算服务 - 响应
+message PrecalcResponse {
+    string result = 1;
+}
+
+// 前置计算服务定义
+service PrecalcService {
+    rpc Precalculate(PrecalcRequest) returns (PrecalcResponse);
+}
