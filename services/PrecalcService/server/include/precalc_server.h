@@ -76,6 +76,16 @@ public:
     void Precalculate(const PrecalcRequest* request,
                       PrecalcResponse* response,
                       google::protobuf::Closure* done) override;
+
+private:
+    /**
+     * @brief 实际处理前置计算请求的内部方法
+     * 
+     * @param request 请求对象
+     * @param response 响应对象
+     */
+    void process_precalc_request(const PrecalcRequest* request,
+                                  PrecalcResponse* response);
 };
 
 } // namespace precalc

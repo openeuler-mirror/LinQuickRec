@@ -17,7 +17,8 @@
 **服务名称**: `Proxy`  
 **包名**: `proxy`  
 **端口**: 未指定（网关入口）  
-**Proto 文件**: `proxy.proto`
+**Proto 文件**: `proxy.proto`  
+**实现状态**: 规划中
 
 ### 接口定义
 
@@ -46,31 +47,6 @@ service Proxy {
 |------|------|------|------|
 | `candidates` | `repeated uint64` | 1 | 候选商品 ID 列表 |
 
-### 使用示例
-
-```cpp
-// 客户端调用示例
-proxy::RecommendRequest request;
-request.set_user_id(12345);
-request.set_payload("test_payload");
-
-proxy::RecommendResponse response;
-brpc::Controller cntl;
-
-proxy::Proxy_Stub stub(&channel);
-stub.Recall(&cntl, &request, &response, nullptr);
-
-if (cntl.Failed()) {
-    LOG(ERROR) << "RPC failed: " << cntl.ErrorText();
-    return;
-}
-
-// 处理响应
-for (int i = 0; i < response.candidates_size(); ++i) {
-    LOG(INFO) << "Candidate " << i << ": " << response.candidates(i);
-}
-```
-
 ---
 
 ## FeatureService（特征服务）
@@ -78,7 +54,8 @@ for (int i = 0; i < response.candidates_size(); ++i) {
 **服务名称**: `FeatureService`  
 **包名**: `feature`  
 **端口**: 8003  
-**Proto 文件**: `feature.proto`
+**Proto 文件**: `feature.proto`  
+**实现状态**: 规划中
 
 ### 接口定义
 
@@ -208,7 +185,8 @@ for (int i = 0; i < kr_rsp.user_logs_size(); ++i) {
 **服务名称**: `RecallService`  
 **包名**: `recall`  
 **端口**: 8001  
-**Proto 文件**: `recall.proto`
+**Proto 文件**: `recall.proto`  
+**实现状态**: ✅ 已完成
 
 ### 接口定义
 
@@ -311,7 +289,8 @@ for (int i = 0; i < response.sku_ids_size(); ++i) {
 **服务名称**: `PrecalcService`  
 **包名**: `precalc`  
 **端口**: 8004  
-**Proto 文件**: `precalc.proto`
+**Proto 文件**: `precalc.proto`  
+**实现状态**: ✅ 已完成
 
 ### 接口定义
 
@@ -402,7 +381,8 @@ LOG(INFO) << "  Payload size: " << response.payload().size() << " bytes";
 **服务名称**: `RankService`  
 **包名**: `rank`  
 **端口**: 8005  
-**Proto 文件**: `rank.proto`
+**Proto 文件**: `rank.proto`  
+**实现状态**: 规划中
 
 ### 接口定义
 
@@ -437,42 +417,6 @@ service RankService {
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--server_port` | 8005 | 服务器监听端口 |
-
-### 使用示例
-
-```cpp
-// 客户端调用示例
-rank::RankRequest request;
-request.set_user_feat_key("12345_1234567890");
-request.set_skus("sku_data...");
-request.set_payload("additional_payload...");
-
-rank::RankResponse response;
-brpc::Controller cntl;
-
-rank::RankService_Stub stub(&channel);
-stub.Rank(&cntl, &request, &response, nullptr);
-
-if (cntl.Failed()) {
-    LOG(ERROR) << "RPC failed: " << cntl.ErrorText();
-    return;
-}
-
-// 处理响应 - 获取排序后的候选列表
-LOG(INFO) << "Ranked " << response.candidates_size() << " candidates";
-for (int i = 0; i < response.candidates_size(); ++i) {
-    LOG(INFO) << "Rank " << i << ": SKU " << response.candidates(i);
-}
-```
-
-### 服务端配置
-
-```bash
-# 启动 Rank 服务
-./rank_server \
-    --server_port=8005 \
-    --logtostderr
-```
 
 ---
 
