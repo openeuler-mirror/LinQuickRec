@@ -1,0 +1,31 @@
+# Trae AI 配置和文档
+.trae/
+
+# 任务完成后生成的说明文件
+*_SUMMARY.md
+*_FIX.md
+
+# 构建目录
+build/
+cmake-build-*/
+
+# 编译产物
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+
+# 临时文件
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.vscode/
+.idea/
+*.iml

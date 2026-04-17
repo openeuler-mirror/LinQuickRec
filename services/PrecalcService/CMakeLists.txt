@@ -53,9 +53,9 @@ add_custom_command(
 
 # 添加可执行文件（Server）
 add_executable(precalc_server
-    server/precalc_server.cpp
+    server/src/precalc_server.cpp
+    server/src/main.cpp
     ${PROTO_OUT_DIR}/precalc.pb.cc
-    ${PROTO_OUT_DIR}/precalc.pb.h
 )
 
 target_include_directories(precalc_server PRIVATE
@@ -64,12 +64,15 @@ target_include_directories(precalc_server PRIVATE
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
     ${YR_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 target_link_libraries(precalc_server PRIVATE
     brpc::brpc
     protobuf::libprotobuf
     gflags
+    common_lib
     ${YR_LIBRARY}
 )
 
@@ -83,7 +86,6 @@ set_target_properties(precalc_server PROPERTIES
 add_executable(precalc_test_client 
     client/precalc_test_client.cpp
     ${PROTO_OUT_DIR}/precalc.pb.cc
-    ${PROTO_OUT_DIR}/precalc.pb.h
 )
 
 target_include_directories(precalc_test_client PRIVATE
@@ -109,5 +111,6 @@ message(STATUS "=== PrecalcService Build Configuration ===")
 message(STATUS "Yuanrong SDK Path: ${YR_SDK_PATH}")
 message(STATUS "Yuanrong Include: ${YR_INCLUDE_DIR}")
 message(STATUS "Yuanrong Library: ${YR_LIBRARY}")
+message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "==========================================")
 message(STATUS "")

@@ -29,18 +29,28 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+# 添加公共库子目录
+add_subdirectory(common)
+
 # 添加子目录
 add_subdirectory(services/recall)
-add_subdirectory(services/gateway)
-add_subdirectory(services/feature)
-add_subdirectory(services/ranking)
-add_subdirectory(services/precompute)
+add_subdirectory(services/PrecalcService)
+add_subdirectory(services/RankService)
+add_subdirectory(services/Proxy)
+add_subdirectory(services/FeatureService)
 
-# 公共库
-add_subdirectory(common)
+# 其他子目录
 add_subdirectory(kvworker)
-add_subdirectory(monitoring)
 
 # 打印配置信息
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "===========================================")
+message(STATUS "Project Structure:")
+message(STATUS "  - common/ (ThreadPool, utilities)")
+message(STATUS "  - services/recall/")
+message(STATUS "  - services/PrecalcService/")
+message(STATUS "  - services/RankService/")
+message(STATUS "  - services/Proxy/")
+message(STATUS "  - services/FeatureService/")
+message(STATUS "===========================================")

@@ -1,0 +1,105 @@
+#ifndef RECALL_SERVER_H
+#define RECALL_SERVER_H
+
+#include "recall.pb.h"
+#include <brpc/server.h>
+#include <brpc/channel.h>
+#include <brpc/controller.h>
+#include <butil/logging.h>
+#include <butil/time.h>
+#include <gflags/gflags.h>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/prettywriter.h>
+
+#include <string>
+#include <atomic>
+
+#include "common/include/global_thread_pool.h"
+
+DECLARE_string(vllm_base_url);
+DECLARE_string(vllm_endpoint);
+DECLARE_string(model_name);
+DECLARE_int32(server_port);
+DECLARE_int32(vllm_timeout_ms);
+DECLARE_int32(sku_count);
+
+namespace recall {
+
+/**
+ * @brief 将 Proto 请求转换为 JSON 格式
+ * 
+ * @param request Recall 请求
+ * @return std::string JSON 字符串
+ */
+std::string proto_to_json(const RecallRequest* request);
+
+/**
+ * @brief 构建符合 Qwen3-0.6B 的完整 API 请求
+ * 
+ * @param request_json Recall 请求的 JSON 表示
+ * @return std::string 完整的 vLLM API 请求 JSON
+ */
+std::string build_vllm_request(const std::string& request_json);
+
+/**
+ * @brief 将大模型响应转换为 Proto 格式
+ * 
+ * @param response_body vLLM 的 JSON 响应
+ * @param response Recall 响应对象
+ * @param max_sku_count 最大 SKU 数量
+ * @return true 解析成功
+ * @return false 解析失败
+ */
+bool parse_vllm_response(const std::string& response_body, 
+                        RecallResponse* response,
+                        int max_sku_count);
+
+/**
+ * @brief 召回服务实现类
+ */
+class RecallServiceImpl : public RecallService {
+public:
+    /**
+     * @brief 构造函数
+     */
+    RecallServiceImpl();
+
+    /**
+     * @brief 处理召回请求
+     * 
+     * @param request 请求对象
+     * @param response 响应对象
+     * @param done 完成回调
+     */
+    void Recall(const RecallRequest* request,
+                RecallResponse* response,
+                google::protobuf::Closure* done) override;
+
+private:
+    /**
+     * @brief 召回请求处理结果
+     */
+    struct RecallResult {
+        bool success = false;
+        RecallResponse response;
+        std::string error_message;
+    };
+
+    /**
+     * @brief 处理召回请求（在线程池中执行）
+     * 
+     * @param request 请求对象
+     * @return RecallResult 处理结果
+     */
+    RecallResult process_recall_request(const RecallRequest* request);
+
+    // 使用全局线程池
+    common::ThreadPool& thread_pool_;
+};
+
+} // namespace recall
+
+#endif // RECALL_SERVER_H

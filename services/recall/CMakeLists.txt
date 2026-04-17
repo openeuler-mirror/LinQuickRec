@@ -70,20 +70,25 @@ include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
     ${BRPC_INCLUDE_DIR}
     ${RAPIDJSON_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 # ============================================================================
 # 编译 Server（使用 RapidJSON 和线程池优化）
 # ============================================================================
 add_executable(recall_server 
-    server/recall_server.cpp
+    server/src/recall_server.cpp
+    server/src/main.cpp
 )
 target_include_directories(recall_server PRIVATE 
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
 )
 target_link_libraries(recall_server PRIVATE
     recall_proto
+    common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
@@ -106,6 +111,7 @@ target_include_directories(recall_test_client PRIVATE
 )
 target_link_libraries(recall_test_client PRIVATE
     recall_proto
+    common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
@@ -120,8 +126,8 @@ set_target_properties(recall_test_client PROPERTIES
 # 编译选项
 # ============================================================================
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(vllm_server PRIVATE -Wall -Wextra -O2)
-    target_compile_options(vllm_client PRIVATE -Wall -Wextra -O2)
+    target_compile_options(recall_server PRIVATE -Wall -Wextra -O2)
+    target_compile_options(recall_test_client PRIVATE -Wall -Wextra -O2)
 endif()
 
 # ============================================================================
@@ -131,7 +137,8 @@ message(STATUS "===========================================")
 message(STATUS "Recall Service Build Configuration")
 message(STATUS "===========================================")
 message(STATUS "Build targets:")
-message(STATUS "  - recall_server (with RapidJSON + ThreadPool)")
+message(STATUS "  - recall_server (with RapidJSON + Global ThreadPool)")
 message(STATUS "  - recall_test_client")
 message(STATUS "RapidJSON include dirs: ${RAPIDJSON_INCLUDE_DIRS}")
+message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
