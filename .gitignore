@@ -4,6 +4,15 @@
 # 任务完成后生成的说明文件
 *_SUMMARY.md
 *_FIX.md
+CHANGES_SUMMARY.md
+DEPLOYMENT.md
+TASK_COMPLETION_SUMMARY.md
+
+# Docker 相关文件
+**/Dockerfile
+**/docker-compose*
+Dockerfile.*
+docker-compose.*
 
 # 构建目录
 build/
