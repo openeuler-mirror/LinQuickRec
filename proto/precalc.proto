@@ -2,14 +2,18 @@ syntax = "proto3";
 
 package precalc;
 
+// 启用 C++ 通用服务代码生成
+option cc_generic_services = true;
+
 // 前置计算服务 - 请求
 message PrecalcRequest {
-    string user_feat = 1;
+    string user_feat = 1; // 100KB
 }
 
 // 前置计算服务 - 响应
 message PrecalcResponse {
-    string result = 1;
+    string user_feat_key = 1;
+    string payload = 2; // 100KB
 }
 
 // 前置计算服务定义

@@ -39,6 +39,7 @@ DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
 DEFINE_int32(server_port, 8001, "服务器监听端口");
 DEFINE_int32(thread_pool_size, 128, "线程池大小（默认 128，根据 CPU 核心数动态调整）");
 DEFINE_int32(vllm_timeout_ms, 5000, "vLLM 请求超时时间（毫秒）");
+DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
 
 // ============================================================================
 // 线程池实现
@@ -245,7 +246,7 @@ std::string build_vllm_request(const std::string& request_json) {
     Document::AllocatorType& allocator = d.GetAllocator();
     
     // 添加 model 字段
-    d.AddMember("model", Value(FLAGS_model_name, allocator).Move(), allocator);
+    d.AddMember("model", Value(FLAGS_model_name.c_str(), allocator).Move(), allocator);
     
     // 添加 messages 数组
     Value messages(kArrayType);
@@ -253,9 +254,11 @@ std::string build_vllm_request(const std::string& request_json) {
     // System message - few-shot prompt
     Value system_msg(kObjectType);
     system_msg.AddMember("role", "system", allocator);
-    system_msg.AddMember("content", 
-        "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。", 
-        allocator);
+    std::ostringstream system_prompt_ss;
+    system_prompt_ss << "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。\n"
+                     << "请恰好生成 " << FLAGS_sku_count << " 个 SKU ID，不要多也不要少。\n"
+                     << "返回格式：用逗号分隔的数字，例如：12345,67890,11111,...";
+    system_msg.AddMember("content", Value(system_prompt_ss.str().c_str(), allocator).Move(), allocator);
     messages.PushBack(system_msg, allocator);
     
     // User message - 包含请求数据
@@ -289,11 +292,13 @@ std::string build_vllm_request(const std::string& request_json) {
  * 
  * @param response_body vLLM 的 JSON 响应
  * @param response Recall 响应对象
+ * @param max_sku_count 最大 SKU 数量
  * @return true 解析成功
  * @return false 解析失败
  */
 bool parse_vllm_response(const std::string& response_body, 
-                        recall::RecallResponse* response) {
+                        recall::RecallResponse* response,
+                        int max_sku_count = FLAGS_sku_count) {
     using namespace rapidjson;
     
     Document d;
@@ -351,8 +356,9 @@ bool parse_vllm_response(const std::string& response_body,
         return false;
     }
     
+    // 记录实际解析出的 SKU 数量（大模型应该已经返回了正确数量）
     LOG(INFO) << "Successfully parsed " << response->sku_ids_size() 
-              << " SKU IDs from response";
+              << " SKU IDs from response (target: " << max_sku_count << ")";
     
     return true;
 }
@@ -377,18 +383,15 @@ public:
     /**
      * @brief 处理召回请求
      * 
-     * @param cntl_base BRPC 控制器
      * @param request 请求对象
      * @param response 响应对象
      * @param done 完成回调
      */
-    void Recall(google::protobuf::RpcController* cntl_base,
-                const recall::RecallRequest* request,
+    void Recall(const recall::RecallRequest* request,
                 recall::RecallResponse* response,
                 google::protobuf::Closure* done) override {
         
         brpc::ClosureGuard done_guard(done);
-        brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_base);
 
         LOG(INFO) << "Recall request received, user_id: " << request->user_id();
 
@@ -462,9 +465,9 @@ private:
         http_cntl.http_request().uri() = FLAGS_vllm_endpoint;
         http_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
         http_cntl.http_request().set_content_type("application/json");
-        http_cntl.http_request().set_header("Host", "127.0.0.1:8000");
-        http_cntl.http_request().set_header("User-Agent", "RecallService/1.0");
-        http_cntl.http_request().set_header("Connection", "close");
+        http_cntl.http_request().SetHeader("Host", "127.0.0.1:8000");
+        http_cntl.http_request().SetHeader("User-Agent", "RecallService/1.0");
+        http_cntl.http_request().SetHeader("Connection", "close");
         http_cntl.request_attachment().append(vllm_json);
 
         // 5. 同步调用 vLLM
@@ -480,7 +483,7 @@ private:
         const std::string& resp_body = http_cntl.response_attachment().to_string();
         LOG(INFO) << "vLLM response: " << resp_body;
 
-        if (!parse_vllm_response(resp_body, &result.response)) {
+        if (!parse_vllm_response(resp_body, &result.response, FLAGS_sku_count)) {
             result.success = false;
             result.error_message = "Failed to parse vLLM response";
             return result;
@@ -541,6 +544,7 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "vLLM Endpoint: " << FLAGS_vllm_endpoint;
     LOG(INFO) << "Model Name: " << FLAGS_model_name;
     LOG(INFO) << "Thread Pool Size: " << FLAGS_thread_pool_size;
+    LOG(INFO) << "SKU Count: " << FLAGS_sku_count << " (default: 1000)";
     LOG(INFO) << "vLLM Timeout: " << FLAGS_vllm_timeout_ms << "ms";
     LOG(INFO) << "===========================================";
 

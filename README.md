@@ -7,50 +7,47 @@
 ## 系统架构
 
 ```
-用户请求 (8080)
+用户请求
     ↓
 ┌─────────────────┐
-│  Gateway 容器   │
+│  Proxy 容器     │
 │  (网关服务)     │
 └─────────────────┘
     ↓
 ┌─────────────────┐
 │  Feature 容器   │←──→ Redis 容器 (6379)
 │  (特征服务)     │
+│  端口：8003     │
 └─────────────────┘
     ↓
-┌─────────────────┬─────────────────┐
-│  Recall 容器    │  Precompute 容器│
-│  (召回服务)     │  (前置计算)     │
-│  Qwen-0.6B      │  8MB tensor     │
-│  KVWorker1      │  KVWorker2      │
-└─────────────────┴─────────────────┘
-              ↓
-         ┌─────────────────┐
-         │  KVWorker 容器   │
-         │  (元戎 + KVCache)│
-         │  8002           │
-         └─────────────────┘
-              ↓
-┌─────────────────┐
-│  Ranking 容器   │
-│  (排序服务)     │
-└─────────────────┘
-    ↓
-返回结果
+┌─────────────────┬─────────────────┬─────────────────┐
+│  Recall 容器    │  Precalc 容器   │  Rank 容器      │
+│  (召回服务)     │  (前置计算)     │  (精排服务)     │
+│  端口：8001     │  端口：8004     │  端口：8005     │
+│  RecallKVWorker │  8.5MB tensor   │  RankKVWorker   │
+│  端口：8002     │                 │  端口：8006     │
+└─────────────────┴─────────────────┴─────────────────┘
+              ↓                           ↓
+    ┌─────────────────┐         ┌─────────────────┐
+    │ RecallKVWorker  │         │  RankKVWorker   │
+    │ (元戎 KVCache)  │         │ (元戎 KVCache)  │
+    │ 不依赖 Redis    │         │ 不依赖 Redis    │
+    └─────────────────┘         └─────────────────┘
 ```
 
 ## 容器列表
 
-| 容器名 | 服务 | 端口 | 依赖 |
-|--------|------|------|------|
-| gateway | 网关服务 | 8080 | feature, recall, ranking, precompute |
-| feature | 特征服务 | 8003 | redis |
-| recall | 召回服务 | 8001 | kvworker |
-| ranking | 排序服务 | 8005 | kvworker, recall, precompute |
-| precompute | 前置计算 | 8004 | kvworker |
-| kvworker | KVWorker(元戎) | 8002 | redis |
-| redis | Redis 缓存 | 6379 | - |
+| 容器名 | 服务 | 端口 | Proto Service 名 | 依赖 |
+|--------|------|------|-----------------|------|
+| proxy | 网关服务 | - | Proxy | feature(8003), recall(8001), precalc(8004), rank(8005) |
+| feature | 特征服务 | 8003 | FeatureService | redis(6379) |
+| recall | 召回服务 | 8001 | RecallService | recall_kvworker(8002) |
+| precalc | 前置计算服务 | 8004 | PrecalcService | recall_kvworker(8002) |
+| rank | 精排服务 | 8005 | RankService | rank_kvworker(8006), precalc(8004) |
+| recall_kvworker | RecallKVWorker(元戎) | 8002 | KVWorkerService | 无 |
+| rank_kvworker | RankKVWorker(元戎) | 8006 | KVWorkerService | 无 |
+| redis | Redis 缓存 | 6379 | - | - |
+| vllm | vLLM 模型服务 | 8000 | - | - |
 
 ## 目录结构
 
@@ -60,50 +57,49 @@ Vllm-brpc-Gateway/
 ├── Dockerfile.base             # 基础镜像
 ├── README.md
 ├── proto/                      # 所有服务的 proto 文件
-│   ├── gateway.proto
-│   ├── feature.proto
-│   ├── recall.proto
-│   ├── ranking.proto
-│   └── precompute.proto
-├── services/                   # 5 个业务服务
-│   ├── gateway/
+│   ├── proxy.proto             # 网关服务（Proxy）
+│   ├── feature.proto           # 特征服务（FeatureService）
+│   ├── recall.proto            # 召回服务（RecallService）
+│   ├── precalc.proto           # 前置计算服务（PrecalcService）
+│   └── rank.proto              # 精排服务（RankService）
+├── services/                   # 5 个业务服务（文件夹名与 proto 中 service 名对应）
+│   ├── Proxy/                  # 网关服务
+│   │   ├── CMakeLists.txt
+│   │   └── Dockerfile
+│   ├── FeatureService/         # 特征服务
+│   │   ├── CMakeLists.txt
+│   │   └── Dockerfile
+│   ├── RankService/            # 精排服务
+│   │   ├── CMakeLists.txt
+│   │   └── Dockerfile
+│   ├── PrecalcService/         # 前置计算服务
+│   │   ├── CMakeLists.txt
+│   │   └── Dockerfile
+│   └── recall/                 # 召回服务（已实现）
+│       ├── server/
+│       │   └── recall_server.cpp       # 服务端代码
+│       ├── client/
+│       │   └── recall_test_client.cpp  # 客户端测试代码
+│       ├── include/                    # 工具头文件（线程池等）
+│       ├── backup/                     # 备份代码
+│       ├── CMakeLists.txt
+│       └── Dockerfile
+├── kvworker/                   # KVWorker 服务（元戎）
+│   ├── recall_kvworker/        # Recall 专用 KVWorker
 │   │   ├── Dockerfile
 │   │   ├── CMakeLists.txt
-│   │   ├── proto/
-│   │   └── src/
-│   ├── feature/
-│   │   ├── Dockerfile
-│   │   ├── CMakeLists.txt
-│   │   ├── proto/
-│   │   └── src/
-│   ├── recall/
-│   │   ├── Dockerfile
-│   │   ├── CMakeLists.txt
-│   │   ├── client/
-│   │   │   └── brpc_client.cpp
-│   │   ├── server/
-│   │   │   └── brpc_server.cpp
-│   │   └── proto/
-│   │       └── recommend.proto
-│   ├── ranking/
-│   │   ├── Dockerfile
-│   │   ├── CMakeLists.txt
-│   │   ├── proto/
-│   │   └── src/
-│   └── precompute/
+│   │   └── config.yaml
+│   └── rank_kvworker/          # Rank 专用 KVWorker
 │       ├── Dockerfile
 │       ├── CMakeLists.txt
-│       ├── proto/
-│       └── src/
-├── kvworker/                   # KVWorker 服务（元戎）
-│   ├── Dockerfile
-│   ├── CMakeLists.txt
-│   ├── config.yaml
-│   ├── proto/
-│   │   └── kvworker.proto
-│   └── src/
-└── redis/
-    └── redis.conf
+│       └── config.yaml
+├── docs/                       # 文档目录
+│   ├── API.md                  # API 接口文档
+│   └── ports.md                # 端口配置文档
+├── redis/
+│   └── redis.conf
+└── vllm/                       # vLLM 模型服务
+    └── Dockerfile
 ```
 
 ## 快速开始
@@ -158,6 +154,10 @@ docker-compose down -v
 // 示例：网关服务访问特征服务
 std::string feature_host = "feature";  // 容器名
 int feature_port = 8003;
+
+// 示例：Precalc 服务访问 RecallKVWorker
+std::string kvworker_host = "recall_kvworker";  // 容器名
+int kvworker_port = 8002;
 ```
 
 ## 环境变量配置
@@ -211,22 +211,29 @@ docker-compose ps
 - **通信框架**: BRPC
 - **序列化**: Protocol Buffers
 - **缓存**: Redis
-- **AI 框架**: 元戎 (OneDNN)
-- **模型**: Qwen-0.6B
+- **AI 框架**: 元戎 (openYuanrong)
+- **模型**: Qwen3-0.6B
+- **JSON 处理**: RapidJSON
 
 ## 注意事项
 
-1. **GPU 支持**: KVWorker 容器需要 GPU 支持，确保安装了 NVIDIA Docker
+1. **GPU 支持**: RecallKVWorker 和 RankKVWorker 需要 GPU 支持，确保安装了 NVIDIA Docker
 2. **网络配置**: 所有容器在同一 Docker 网络中，通过容器名通信
 3. **数据持久化**: Redis 和 KVWorker 的数据可以通过 volume 持久化
 4. **资源限制**: 可以在 docker-compose.yml 中为每个容器设置资源限制
+5. **KVWorker 独立性**: RecallKVWorker 和 RankKVWorker 是两个独立的容器，都不依赖 Redis
 
 ## 后续开发
 
-- [ ] 实现各服务的 BRPC 客户端/服务端
+- [x] RecallService 服务端和客户端实现（已完成）
+- [x] API 接口文档创建（已完成）
+- [ ] PrecalcService 服务端和客户端实现（进行中）
+- [ ] ProxyService 服务端和客户端实现
+- [ ] FeatureService 服务端和客户端实现
+- [ ] RankService 服务端和客户端实现
 - [ ] 集成 Redis 进行特征存储
 - [ ] 实现 KVWorker 内存管理
-- [ ] 集成 Qwen-0.6B 模型推理
+- [ ] 集成 Qwen3-0.6B 模型推理
 - [ ] 实现轻量级探针和数据采集
 - [ ] 构建监控可视化界面
 - [ ] 添加健康检查

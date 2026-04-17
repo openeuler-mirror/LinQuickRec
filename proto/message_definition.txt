@@ -1,6 +1,7 @@
 // 网关服务接口/消息定义
 message RecommendRequest {
     uint64 user_id = 1;
+    string payload = 2;
 };
 
 message RecommendResponse {
@@ -95,8 +96,8 @@ message RankRequest {
     string skus = 2;
 };
 
-message PrecalcResponse {
-    string result = 1;
+message RankResponse {
+    repeat uint64 candidates = 1;
 };
 
 service RankService {

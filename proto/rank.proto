@@ -2,16 +2,19 @@ syntax = "proto3";
 
 package rank;
 
+// 启用 C++ 通用服务代码生成
+option cc_generic_services = true;
+
 // 精排服务 - 请求
 message RankRequest {
-    string user_feat = 1;
-    string skus = 2;
+    string user_feat_key = 1;
+    string skus = 2; // 100KB
+    string payload = 3; // 100KB
 }
 
 // 精排服务 - 响应
 message RankResponse {
-    repeated uint64 ranked_sku_ids = 1;
-    repeated double scores = 2;
+    repeated uint64 candidates = 1;
 }
 
 // 精排服务定义

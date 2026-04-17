@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package recall;
 
-// 启用 C++ 通用服务代码生成（添加 RpcController 参数）
+// 启用 C++ 通用服务代码生成
 option cc_generic_services = true;
 
 // 快推用户日志（与特征服务共享定义）

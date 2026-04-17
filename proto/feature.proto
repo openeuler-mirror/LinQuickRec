@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package feature;
 
+// 启用 C++ 通用服务代码生成
+option cc_generic_services = true;
+
 // 特征类型枚举
 enum FeatureType {
     KuaiRand = 0;
@@ -28,13 +31,13 @@ message KRUserFeatureResponse {
 // 用户特征请求
 message UserFeatureRequest {
     FeatureType feature_type = 1;
-    optional KRUserFeatureRequest kr_feat_req = 2;
+    KRUserFeatureRequest kr_feat_req = 2;
 }
 
 // 用户特征响应
 message UserFeatureResponse {
     FeatureType feature_type = 1;
-    optional KRUserFeatureResponse kr_feat_rsp = 2;
+    KRUserFeatureResponse kr_feat_rsp = 2;
 }
 
 // SKU 特征请求

@@ -2,9 +2,13 @@ syntax = "proto3";
 
 package proxy;
 
+// 启用 C++ 通用服务代码生成
+option cc_generic_services = true;
+
 // 网关服务 - 推荐请求
 message RecommendRequest {
     uint64 user_id = 1;
+    string payload = 2;
 }
 
 // 网关服务 - 推荐响应

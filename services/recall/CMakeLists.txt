@@ -22,7 +22,9 @@ link_directories(/usr/local/lib64)
 # ============================================================================
 find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(RapidJSON REQUIRED)
+
+# RapidJSON 路径设置
+set(RAPIDJSON_INCLUDE_DIRS "/usr/local/include")
 
 # ============================================================================
 # Protobuf 代码生成
@@ -73,38 +75,45 @@ include_directories(
 # ============================================================================
 # 编译 Server（使用 RapidJSON 和线程池优化）
 # ============================================================================
-add_executable(vllm_server 
-    server/brpc_server.cpp
+add_executable(recall_server 
+    server/recall_server.cpp
 )
-target_include_directories(vllm_server PRIVATE 
+target_include_directories(recall_server PRIVATE 
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
 )
-target_link_libraries(vllm_server PRIVATE
+target_link_libraries(recall_server PRIVATE
     recall_proto
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
-    ${RAPIDJSON_LIBRARIES}
+)
+
+set_target_properties(recall_server PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ============================================================================
 # 编译 Client
 # ============================================================================
-add_executable(vllm_client 
-    client/brpc_client.cpp
+add_executable(recall_test_client 
+    client/recall_test_client.cpp
 )
-target_include_directories(vllm_client PRIVATE 
+target_include_directories(recall_test_client PRIVATE 
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
 )
-target_link_libraries(vllm_client PRIVATE
+target_link_libraries(recall_test_client PRIVATE
     recall_proto
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
+)
+
+set_target_properties(recall_test_client PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ============================================================================
@@ -122,7 +131,7 @@ message(STATUS "===========================================")
 message(STATUS "Recall Service Build Configuration")
 message(STATUS "===========================================")
 message(STATUS "Build targets:")
-message(STATUS "  - vllm_server (with RapidJSON + ThreadPool)")
-message(STATUS "  - vllm_client")
+message(STATUS "  - recall_server (with RapidJSON + ThreadPool)")
+message(STATUS "  - recall_test_client")
 message(STATUS "RapidJSON include dirs: ${RAPIDJSON_INCLUDE_DIRS}")
 message(STATUS "===========================================")
