@@ -9,13 +9,14 @@ find_package(Protobuf REQUIRED)
 find_package(gRPC REQUIRED)
 find_package(brpc REQUIRED)
 find_package(absl REQUIRED)
+find_package(Threads REQUIRED)
 
 # 生成 protobuf 文件
-set(PROTO_FILE "${CMAKE_SOURCE_DIR}/proto/ranking.proto")
+set(PROTO_FILE "${CMAKE_SOURCE_DIR}/proto/rank.proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_custom_command(
-    OUTPUT ${PROTO_OUT_DIR}/ranking.pb.cc ${PROTO_OUT_DIR}/ranking.pb.h
+    OUTPUT ${PROTO_OUT_DIR}/rank.pb.cc ${PROTO_OUT_DIR}/rank.pb.h
     COMMAND protobuf::protoc
     ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${CMAKE_SOURCE_DIR}/proto ${PROTO_FILE}
     DEPENDS ${PROTO_FILE}
@@ -23,15 +24,17 @@ add_custom_command(
 
 # 添加可执行文件
 add_executable(ranking_server
-    server/ranking_server.cpp
-    ${PROTO_OUT_DIR}/ranking.pb.cc
-    ${PROTO_OUT_DIR}/ranking.pb.h
+    server/src/ranking_server.cpp
+    server/src/main.cpp
+    ${PROTO_OUT_DIR}/rank.pb.cc
 )
 
 target_include_directories(ranking_server PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${PROTO_OUT_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 target_link_libraries(ranking_server PRIVATE
@@ -39,8 +42,15 @@ target_link_libraries(ranking_server PRIVATE
     protobuf::libprotobuf
     absl::strings
     gRPC::grpc++
+    Threads::Threads
 )
 
 set_target_properties(ranking_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+message(STATUS "")
+message(STATUS "=== Ranking Service Configuration ===")
+message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
+message(STATUS "======================================")
+message(STATUS "")
