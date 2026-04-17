@@ -7,9 +7,11 @@
 #include <cstring>
 #include <memory>
 
+#include "common/global_thread_pool.h"
+
 DEFINE_int32(server_port, 8004, "服务器监听端口");
 DEFINE_string(kvworker_host, "127.0.0.1", "元戎 KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31501, "元戎 KVWorker 端口");
+DEFINE_int32(kvworker_port, 8006, "元戎 KVWorker 端口");
 DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
 DEFINE_int32(response_total_size_kb, 100, "响应总大小（key+payload），默认 100KB");
@@ -80,7 +82,36 @@ void PrecalcServiceImpl::Precalculate(const PrecalcRequest* request,
                                       PrecalcResponse* response,
                                       google::protobuf::Closure* done) {
     
+    // 使用线程池异步处理请求
+    auto& pool = common::get_global_thread_pool();
+    
+    // 提交任务到线程池
+    auto future = pool.submit([this, request]() {
+        // 创建响应对象
+        PrecalcResponse local_response;
+        
+        // 处理请求
+        process_precalc_request(request, &local_response);
+        
+        return local_response;
+    });
+    
+    // 等待任务完成
+    try {
+        PrecalcResponse result = future.get();
+        response->CopyFrom(result);
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Thread pool task failed: " << e.what();
+        response->set_user_feat_key("");
+        response->set_payload("");
+    }
+    
+    // 使用 ClosureGuard 确保 done 被正确调用
     brpc::ClosureGuard done_guard(done);
+}
+
+void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
+                                                  PrecalcResponse* response) {
     
     int64_t server_receive_us = butil::gettimeofday_us();
     
