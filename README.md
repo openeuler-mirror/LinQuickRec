@@ -1,8 +1,8 @@
-# LingQuickRec - 搜推广时延模拟系统（容器化版本）
+# LingQuickRec - 搜推广时延模拟系统
 
 ## 项目简介
 
-本项目是一个用于模拟搜推广过程时延并验证通信优化效果的实验系统。系统采用容器化部署，包含 8 个独立容器，关注平均时延和 P99 时延两项主要指标。
+本项目是一个用于模拟搜推广过程时延并验证通信优化效果的实验系统。系统关注平均时延和 P99 时延两项主要指标。
 
 ## 系统架构
 
@@ -10,18 +10,18 @@
 用户请求
     ↓
 ┌─────────────────┐
-│  Proxy 容器     │
-│  (网关服务)     │
+│  Proxy 服务     │
+│  (网关)         │
 └─────────────────┘
     ↓
 ┌─────────────────┐
-│  Feature 容器   │←──→ Redis 容器 (6379)
+│  Feature 服务   │←──→ Redis (6379)
 │  (特征服务)     │
 │  端口：8003     │
 └─────────────────┘
     ↓
 ┌─────────────────┬─────────────────┬─────────────────┐
-│  Recall 容器    │  Precalc 容器   │  Rank 容器      │
+│  Recall 服务    │  Precalc 服务   │  Rank 服务      │
 │  (召回服务)     │  (前置计算)     │  (精排服务)     │
 │  端口：8001     │  端口：8004     │  端口：8005     │
 │  RecallKVWorker │  8.5MB tensor   │  RankKVWorker   │
@@ -35,19 +35,19 @@
     └─────────────────┘         └─────────────────┘
 ```
 
-## 容器列表
+## 服务列表
 
-| 容器名 | 服务 | 端口 | Proto Service 名 | 依赖 |
-|--------|------|------|-----------------|------|
-| proxy | 网关服务 | - | Proxy | feature(8003), recall(8001), precalc(8004), rank(8005) |
-| feature | 特征服务 | 8003 | FeatureService | redis(6379) |
-| recall | 召回服务 | 8001 | RecallService | recall_kvworker(8002) |
-| precalc | 前置计算服务 | 8004 | PrecalcService | recall_kvworker(8002) |
-| rank | 精排服务 | 8005 | RankService | rank_kvworker(8006), precalc(8004) |
-| recall_kvworker | RecallKVWorker(元戎) | 8002 | KVWorkerService | 无 |
-| rank_kvworker | RankKVWorker(元戎) | 8006 | KVWorkerService | 无 |
-| redis | Redis 缓存 | 6379 | - | - |
-| vllm | vLLM 模型服务 | 8000 | - | - |
+| 服务名            | 端口   | Proto Service 名 | 状态    | 依赖                                                     |
+| -------------- | ---- | --------------- | ----- | ------------------------------------------------------ |
+| Proxy          | -    | Proxy           | 规划中   | feature(8003), recall(8001), precalc(8004), rank(8005) |
+| FeatureService | 8003 | FeatureService  | 规划中   | redis(6379)                                            |
+| RecallService  | 8001 | RecallService   | ✅ 已完成 | recall\_kvworker(8002)                                 |
+| PrecalcService | 8004 | PrecalcService  | 进行中   | recall\_kvworker(8002)                                 |
+| RankService    | 8005 | RankService     | 规划中   | rank\_kvworker(8006), precalc(8004)                    |
+| RecallKVWorker | 8002 | KVWorkerService | 元戎提供  | 无                                                      |
+| RankKVWorker   | 8006 | KVWorkerService | 元戎提供  | 无                                                      |
+| Redis          | 6379 | -               | 基础设施  | -                                                      |
+| vLLM           | 8000 | -               | 模型服务  | -                                                      |
 
 ## 目录结构
 
@@ -179,7 +179,7 @@ environment:
 - **端到端时延**：网关服务统计（平均、P99）
 - **服务间通信时延**：每个 BRPC 客户端统计
 - **计算时延**：每个服务端统计
-- **trace_id 全链路追踪**：所有服务传递 trace_id
+- **trace\_id 全链路追踪**：所有服务传递 trace\_id
 
 ## 开发指南
 
@@ -238,3 +238,4 @@ docker-compose ps
 - [ ] 构建监控可视化界面
 - [ ] 添加健康检查
 - [ ] 添加自动扩缩容支持
+
