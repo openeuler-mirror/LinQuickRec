@@ -132,7 +132,6 @@ void PrecalcServiceImpl::Precalculate(const PrecalcRequest* request,
     } catch (const std::exception& e) {
         LOG(ERROR) << "Thread pool task failed: " << e.what();
         response->set_user_feat_key("");
-        response->set_payload("");
     }
     
     // 使用 ClosureGuard 确保 done 被正确调用
@@ -149,7 +148,6 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     if (request->user_feat().empty()) {
         LOG(ERROR) << "Empty user_feat in request";
         response->set_user_feat_key("");
-        response->set_payload("");
         return;
     }
     
@@ -190,7 +188,6 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     if (!status.IsOk()) {
         LOG(ERROR) << "KVClient Create failed: " << status.ToString();
         response->set_user_feat_key("");
-        response->set_payload("");
         return;
     }
     
@@ -200,7 +197,6 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     if (!status.IsOk()) {
         LOG(ERROR) << "KVClient Set failed: " << status.ToString();
         response->set_user_feat_key("");
-        response->set_payload("");
         return;
     }
     
