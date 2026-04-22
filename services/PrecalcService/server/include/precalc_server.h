@@ -18,6 +18,7 @@ using namespace datasystem;
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
 DECLARE_int32(kvworker_port);
+DECLARE_string(etcd_address);
 DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
 DECLARE_int32(response_total_size_kb);

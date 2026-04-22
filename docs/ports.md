@@ -12,8 +12,9 @@
 | RecallKVWorker | 8002 | 元戎数据系统 Worker（Recall 专用），负责 KV 缓存读写 | 元戎提供 | 元戎默认配置 |
 | FeatureService | 8003 | 特征服务，负责处理用户特征数据 | 规划中 | `services/FeatureService/` |
 | PrecalcService | 8004 | 前置计算服务，负责生成前置计算结果并写入 KVWorker | ✅ 已完成 | `services/PrecalcService/server/precalc_server.cpp` |
-| RankService | 8005 | 精排服务，负责对召回的 SKU 进行排序 | 规划中 | `services/RankService/` |
-| RankKVWorker | 8006 | 元戎数据系统 Worker（Rank 专用），负责 KV 缓存读写 | 元戎提供 | 元戎默认配置 |
+| RankMaster | 8005 | 精排主图服务，负责接收请求、分发任务、汇总结果 | ✅ 已完成 | `services/RankServiceMaster/server/src/rank_master_server.cpp` |
+| RankSub | 8006 | 精排子图服务，负责对商品进行打分 | ✅ 已完成 | `services/RankServiceSub/server/src/rank_sub_server.cpp` |
+| RankKVWorker | 8007 | 元戎数据系统 Worker（Rank 专用），负责 KV 缓存读写 | 元戎提供 | 元戎默认配置 |
 | Redis | 6379 | Redis 缓存服务，用于特征存储 | 基础设施 | - |
 
 ## 端口分配原则
@@ -24,8 +25,9 @@
    - 8002: RecallKVWorker
    - 8003: FeatureService
    - 8004: PrecalcService
-   - 8005: RankService
-   - 8006: RankKVWorker
+   - 8005: RankMaster
+   - 8006: RankSub
+   - 8007: RankKVWorker
 
 2. **6379**: 基础设施服务端口
    - 6379: Redis
@@ -68,7 +70,10 @@ Proxy (网关，规划中)
 ├─→ RecallService (8001) ──→ RecallKVWorker (8002)
 ├─→ FeatureService (8003) ──→ Redis (6379)
 ├─→ PrecalcService (8004) ──→ RecallKVWorker (8002)
-└─→ RankService (8005) ──→ RankKVWorker (8006)
+└─→ RankMaster (8005) ──┬─→ RankSub (8006) ──→ RankKVWorker (8007)
+                        ├─→ RankSub (8006) ──→ RankKVWorker (8007)
+                        └─→ RankSub (8006) ──→ RankKVWorker (8007)
+                        (N 个子图，默认 10 个)
 ```
 
 ## 端口修改指南
