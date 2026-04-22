@@ -13,7 +13,7 @@
 #include <string>
 #include <memory>
 
-#include "common/include/global_thread_pool.h"
+#include "global_thread_pool.h"
 
 using namespace datasystem;
 
@@ -23,7 +23,7 @@ DECLARE_int32(kvworker_port);
 DECLARE_string(etcd_address);
 DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
-DECLARE_int32(response_total_size_kb);
+DECLARE_int32(user_feat_key_size_kb);
 DECLARE_bool(enable_timing_stats);
 
 namespace precalc {
