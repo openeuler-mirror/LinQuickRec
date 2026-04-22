@@ -13,6 +13,8 @@
 #include <string>
 #include <memory>
 
+#include "common/include/global_thread_pool.h"
+
 using namespace datasystem;
 
 DECLARE_int32(server_port);
