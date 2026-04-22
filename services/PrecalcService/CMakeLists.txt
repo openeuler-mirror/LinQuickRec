@@ -16,9 +16,36 @@ message(STATUS "=== PrecalcService Build Configuration ===")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 
-# 查找必要的包
+# ============================================================================
+# BRPC 路径设置（参考 Recall 服务）
+# ============================================================================
+set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
+set(BRPC_LIBRARIES
+    brpc
+    gflags
+    ssl
+    crypto
+    z
+    pthread
+)
+link_directories(/usr/local/lib64)
+
+# ============================================================================
+# 查找依赖
+# ============================================================================
 find_package(Protobuf REQUIRED)
-find_package(brpc REQUIRED)
+find_package(Threads REQUIRED)
+
+# Abseil 库（BRPC 依赖）
+set(ABSL_LIBS
+    absl_log_internal_check_op
+    absl_log_internal_message
+    absl_raw_logging_internal
+    absl_strings
+    absl_base
+    absl_time
+    absl_synchronization
+)
 
 # 设置 proto 文件路径
 set(PROTO_DIR "${CMAKE_SOURCE_DIR}/../../proto")
@@ -77,16 +104,18 @@ target_include_directories(precalc_server PRIVATE
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
+    ${BRPC_INCLUDE_DIR}
     ${YR_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 target_link_libraries(precalc_server PRIVATE
-    brpc::brpc
-    protobuf::libprotobuf
-    gflags
     common_lib
+    ${BRPC_LIBRARIES}
+    ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
+    Threads::Threads
     ${YR_LIBRARY}
 )
 
@@ -107,19 +136,31 @@ target_include_directories(precalc_test_client PRIVATE
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
+    ${BRPC_INCLUDE_DIR}
 )
 
 target_link_libraries(precalc_test_client PRIVATE
-    brpc::brpc
-    protobuf::libprotobuf
-    gflags
+    common_lib
+    ${BRPC_LIBRARIES}
+    ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
+    Threads::Threads
 )
 
 set_target_properties(precalc_test_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 提示信息
+# ============================================================================
+# 输出信息
+# ============================================================================
+message(STATUS "===========================================")
+message(STATUS "Precalc Service Build Configuration")
+message(STATUS "===========================================")
+message(STATUS "Build targets:")
+message(STATUS "  - precalc_server (with Yuanrong SDK)")
+message(STATUS "  - precalc_test_client")
+message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
-message(STATUS "==========================================")
-message(STATUS "")
+message(STATUS "===========================================")
