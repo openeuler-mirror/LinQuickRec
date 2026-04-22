@@ -58,7 +58,7 @@ if(DEFINED ENV{YR_SDK_PATH})
     message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
 else()
     # 方法 2: 默认安装路径
-    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr" CACHE PATH "Yuanrong SDK path")
+    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
     message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
 endif()
 

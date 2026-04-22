@@ -21,7 +21,7 @@
 #include <datasystem/kv_client.h>
 
 // 5. 本项目内其他头文件
-#include "common/global_thread_pool.h"
+#include "common/include/global_thread_pool.h"
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
