@@ -177,13 +177,15 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_payload("");
         return;
     }
+    LOG(INFO) << "KVClient init success";
     
     SetParam param;
     param.ttlSecond = FLAGS_ttl_seconds;
     param.writeMode = WriteMode::NONE_L2_CACHE;
     param.existence = ExistenceOpt::NONE;
     param.cacheType = CacheType::MEMORY;
-    
+    LOG(INFO) << "set param success";
+
     int64_t kvwrite_start_us = butil::gettimeofday_us();
     
     std::shared_ptr<Buffer> buffer;
@@ -193,6 +195,7 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_user_feat_key("");
         return;
     }
+    LOG(INFO) << "KVClient Create success";
     
     std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
     
@@ -202,6 +205,7 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_user_feat_key("");
         return;
     }
+    LOG(INFO) << "KVClient Set success";
     
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
