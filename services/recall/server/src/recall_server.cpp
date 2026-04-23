@@ -183,7 +183,8 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
                               google::protobuf::Closure* done) {
     
     brpc::ClosureGuard done_guard(done);
-
+    (void)controller;  // 显式忽略未使用的参数，消除警告
+    
     LOG(INFO) << "Recall request received, user_id: " << request->user_id();
 
     try {
