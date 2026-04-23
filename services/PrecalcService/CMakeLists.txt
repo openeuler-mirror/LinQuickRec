@@ -118,9 +118,13 @@ target_link_libraries(precalc_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
-    ${ABSL_LIBS}
     Threads::Threads
     ${YR_LIBRARY}
+    
+    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
+    -Wl,--no-as-needed
+    ${ABSL_LIBS}
+    -Wl,--as-needed
 )
 
 set_target_properties(precalc_server PROPERTIES
