@@ -41,6 +41,7 @@ find_package(Threads REQUIRED)
 
 # Abseil 库（与 Recall 服务保持一致）
 set(ABSL_LIBS
+    absl_log_internal_nullguard
     absl_log_internal_check_op
     absl_log_internal_message
     absl_raw_logging_internal
@@ -48,6 +49,8 @@ set(ABSL_LIBS
     absl_base
     absl_time
     absl_synchronization
+    absl_status
+    absl_hash
 )
 
 # 设置 proto 文件路径
