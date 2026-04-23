@@ -28,7 +28,7 @@ common/
 ## 编译
 
 ```bash
-# 从项目根目录
+# 从 common 目录运行
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 cmake --build .
@@ -46,13 +46,13 @@ cmake --build . --target logger_example
 ## 运行测试
 
 ```bash
-./build/common/tests/test_error
-./build/common/tests/test_thread_pool
+./tests/test_error
+./tests/test_thread_pool
 ```
 
 ## 运行示例
 
 ```bash
-./build/common/examples/error_example
-./build/common/examples/logger_example
+./examples/error_example
+./examples/logger_example
 ```
