@@ -3,6 +3,7 @@
 
 #include <string>
 #include <memory>
+#include "../config.h"
 
 namespace common {
 namespace logger {

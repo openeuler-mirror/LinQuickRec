@@ -1,5 +1,5 @@
 #include "recall_server.h"
-#include "common/include/global_thread_pool.h"
+#include "common/global_thread_pool.h"
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include <butil/logging.h>
