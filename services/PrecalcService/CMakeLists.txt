@@ -39,27 +39,13 @@ link_directories(/usr/local/lib64)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
-# Abseil 库（BRPC 依赖）
+# Abseil 库（与 Recall 服务保持一致）
 set(ABSL_LIBS
-    absl_hash
-    absl_city
-    absl_low_level_hash
-    absl_raw_hash_set
-    absl_status
-    absl_statusor
-    absl_cord
-    absl_cordz_info
-    absl_cord_internal
-    absl_cordz_functions
-    absl_cordz_handle
     absl_log_internal_check_op
     absl_log_internal_message
-    absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
-    absl_strings_internal
     absl_base
-    absl_spinlock_wait
     absl_time
     absl_synchronization
 )
@@ -133,11 +119,7 @@ target_link_libraries(precalc_server PRIVATE
     ${Protobuf_LIBRARIES}
     Threads::Threads
     ${YR_LIBRARY}
-    
-    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
-    -Wl,--no-as-needed
     ${ABSL_LIBS}
-    -Wl,--as-needed
 )
 
 set_target_properties(precalc_server PROPERTIES
