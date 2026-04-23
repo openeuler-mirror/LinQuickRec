@@ -72,11 +72,13 @@ public:
     /**
      * @brief 处理前置计算请求
      * 
+     * @param controller RPC 控制器
      * @param request 请求对象
      * @param response 响应对象
      * @param done 完成回调
      */
-    void Precalculate(const PrecalcRequest* request,
+    void Precalculate(google::protobuf::RpcController* controller,
+                      const PrecalcRequest* request,
                       PrecalcResponse* response,
                       google::protobuf::Closure* done) override;
 

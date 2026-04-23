@@ -70,11 +70,13 @@ public:
     /**
      * @brief 处理召回请求
      * 
+     * @param controller RPC 控制器
      * @param request 请求对象
      * @param response 响应对象
      * @param done 完成回调
      */
-    void Recall(const RecallRequest* request,
+    void Recall(google::protobuf::RpcController* controller,
+                const RecallRequest* request,
                 RecallResponse* response,
                 google::protobuf::Closure* done) override;
 

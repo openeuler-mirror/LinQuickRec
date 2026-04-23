@@ -177,7 +177,8 @@ RecallServiceImpl::RecallServiceImpl()
               << thread_pool_.size();
 }
 
-void RecallServiceImpl::Recall(const RecallRequest* request,
+void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
+                              const RecallRequest* request,
                               RecallResponse* response,
                               google::protobuf::Closure* done) {
     
