@@ -192,7 +192,7 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         return;
     }
     
-    std::memcpy(buffer->data(), precalc_result.data(), precalc_result.size());
+    std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
     
     status = kv_client.Set(buffer);
     if (!status.IsOk()) {

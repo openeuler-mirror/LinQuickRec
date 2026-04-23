@@ -43,6 +43,7 @@ find_package(Threads REQUIRED)
 set(ABSL_LIBS
     absl_log_internal_check_op
     absl_log_internal_message
+    absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
     absl_base
