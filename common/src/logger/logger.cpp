@@ -1,6 +1,6 @@
-#include "logger/logger.h"
-#include "logger/sink/console_sink.h"
-#include "logger/sink/file_sink.h"
+#include "common/internal/logger/logger_core.h"
+#include "common/internal/logger/sink/console_sink.h"
+#include "common/internal/logger/sink/file_sink.h"
 #include <chrono>
 #include <ctime>
 #include <iomanip>

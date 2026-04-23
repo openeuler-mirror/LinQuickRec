@@ -1,4 +1,4 @@
-#include "logger/sink/console_sink.h"
+#include "common/internal/logger/sink/console_sink.h"
 
 namespace common {
 namespace logger {

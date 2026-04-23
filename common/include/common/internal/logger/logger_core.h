@@ -1,8 +1,8 @@
 #ifndef COMMON_LOGGER_LOGGER_H
 #define COMMON_LOGGER_LOGGER_H
 
-#include "logger/config.h"
-#include "logger/sink/sink.h"
+#include "config.h"
+#include "sink/sink.h"
 #include <memory>
 #include <vector>
 #include <mutex>

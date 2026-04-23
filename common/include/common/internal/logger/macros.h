@@ -1,7 +1,7 @@
 #ifndef COMMON_LOGGER_MACROS_H
 #define COMMON_LOGGER_MACROS_H
 
-#include "logger/logger.h"
+#include "logger_core.h"
 
 // 流式日志宏（兼容现有 LOG(LEVEL) << message 风格）
 #define LOG_STREAM(level) \

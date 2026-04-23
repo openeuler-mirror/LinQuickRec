@@ -1,7 +1,7 @@
 #ifndef COMMON_ERROR_STATUS_H
 #define COMMON_ERROR_STATUS_H
 
-#include "error/error_code.h"
+#include "error_code.h"
 #include <string>
 #include <utility>
 
