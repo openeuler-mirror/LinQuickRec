@@ -3,6 +3,9 @@ project(vllm-brpc-gateway LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# 添加 common 库
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 # ============================================================================
 # BRPC 路径设置（根据您的实际安装路径调整）
 # ============================================================================
