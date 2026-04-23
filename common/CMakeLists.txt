@@ -20,8 +20,8 @@ endif()
 
 # 添加源文件
 add_library(common_lib STATIC
-    src/thread_pool.cpp
-    src/global_thread_pool.cpp
+    src/thread_pool/thread_pool.cpp
+    src/thread_pool/global_thread_pool.cpp
     # 错误码体系
     src/error/error_code.cpp
     # 日志系统

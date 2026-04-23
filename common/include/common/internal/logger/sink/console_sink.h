@@ -1,8 +1,8 @@
 #ifndef COMMON_LOGGER_SINK_CONSOLE_SINK_H
 #define COMMON_LOGGER_SINK_CONSOLE_SINK_H
 
-#include "logger/sink/sink.h"
-#include "logger/config.h"
+#include "sink.h"
+#include "../config.h"
 #include <iostream>
 #include <mutex>
 

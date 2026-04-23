@@ -2,8 +2,8 @@
 #define COMMON_ERROR_H
 
 // 错误码体系头文件
-#include "error/error_code.h"
-#include "error/status.h"
+#include "internal/error/error_code.h"
+#include "internal/error/status.h"
 
 // 常用错误码别名
 namespace common {
