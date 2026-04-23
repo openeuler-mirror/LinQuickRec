@@ -45,12 +45,21 @@ set(ABSL_LIBS
     absl_city
     absl_low_level_hash
     absl_raw_hash_set
+    absl_status
+    absl_statusor
+    absl_cord
+    absl_cordz_info
+    absl_cord_internal
+    absl_cordz_functions
+    absl_cordz_handle
     absl_log_internal_check_op
     absl_log_internal_message
     absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
+    absl_Strings_internal
     absl_base
+    absl_spinlock_wait
     absl_time
     absl_synchronization
 )
