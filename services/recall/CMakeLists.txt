@@ -90,6 +90,7 @@ target_link_libraries(recall_server PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
@@ -113,6 +114,7 @@ target_link_libraries(recall_test_client PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
