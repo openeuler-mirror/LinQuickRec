@@ -41,6 +41,10 @@ find_package(Threads REQUIRED)
 
 # Abseil 库（BRPC 依赖）
 set(ABSL_LIBS
+    absl_hash
+    absl_city
+    absl_low_level_hash
+    absl_raw_hash_set
     absl_log_internal_check_op
     absl_log_internal_message
     absl_log_internal_nullguard
