@@ -74,7 +74,7 @@ include_directories(
     ${BRPC_INCLUDE_DIR}
     ${RAPIDJSON_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
 )
 
 # ============================================================================
@@ -88,6 +88,7 @@ target_include_directories(recall_server PRIVATE
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
 )
 target_link_libraries(recall_server PRIVATE
     recall_proto
