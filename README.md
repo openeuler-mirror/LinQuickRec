@@ -23,14 +23,16 @@
 ┌─────────────────┬─────────────────┬─────────────────┐
 │  Recall 服务    │  Precalc 服务   │  Rank 服务      │
 │  (召回服务)     │  (前置计算)     │  (精排服务)     │
-│  端口：8001     │  端口：8004     │  端口：8005     │
-│  RecallKVWorker │  8.5MB tensor   │  RankKVWorker   │
-│  端口：8002     │                 │  端口：8006     │
+│  端口：8001     │  端口：8004     │  Master:8005    │
+│  RecallKVWorker │  8.5MB tensor   │  Sub:8006       │
+│  端口：31501    │                 │  RankKVWorker   │
+│  (远程)         │                 │  端口：31502    │
 └─────────────────┴─────────────────┴─────────────────┘
               ↓                           ↓
     ┌─────────────────┐         ┌─────────────────┐
     │ RecallKVWorker  │         │  RankKVWorker   │
     │ (元戎 KVCache)  │         │ (元戎 KVCache)  │
+    │ 141.61.84.245   │         │ 141.61.84.245   │
     │ 不依赖 Redis    │         │ 不依赖 Redis    │
     └─────────────────┘         └─────────────────┘
 ```
@@ -41,11 +43,12 @@
 | -------------- | ---- | --------------- | ----- | ------------------------------------------------------ |
 | Proxy          | -    | Proxy           | 规划中   | feature(8003), recall(8001), precalc(8004), rank(8005) |
 | FeatureService | 8003 | FeatureService  | 规划中   | redis(6379)                                            |
-| RecallService  | 8001 | RecallService   | ✅ 已完成 | recall\_kvworker(8002)                                 |
-| PrecalcService | 8004 | PrecalcService  | 进行中   | recall\_kvworker(8002)                                 |
-| RankService    | 8005 | RankService     | 规划中   | rank\_kvworker(8006), precalc(8004)                    |
-| RecallKVWorker | 8002 | KVWorkerService | 元戎提供  | 无                                                      |
-| RankKVWorker   | 8006 | KVWorkerService | 元戎提供  | 无                                                      |
+| RecallService  | 8001 | RecallService   | ✅ 已完成 | recall\_kvworker(31501)                                |
+| PrecalcService | 8004 | PrecalcService  | 进行中   | recall\_kvworker(31501)                                |
+| RankMaster     | 8005 | RankMasterService | ✅ 已完成 | rank\_kvworker(31502), precalc(8004)                   |
+| RankSub        | 8006 | RankSubService  | ✅ 已完成 | rank\_kvworker(31502)                                  |
+| RecallKVWorker | 31501 | KVWorkerService | 元戎提供 (远程) | 无                                                      |
+| RankKVWorker   | 31502 | KVWorkerService | 元戎提供 (远程) | 无                                                      |
 | Redis          | 6379 | -               | 基础设施  | -                                                      |
 | vLLM           | 8000 | -               | 模型服务  | -                                                      |
 

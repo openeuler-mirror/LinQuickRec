@@ -5,20 +5,30 @@
  * 用于测试前置计算服务的功能
  */
 
+// 1. 对应的头文件
 #include "precalc.pb.h"
-#include <brpc/channel.h>
-#include <brpc/controller.h>
-#include <butil/logging.h>
-#include <gflags/gflags.h>
+
+// 2. 标准库头文件
 #include <iostream>
 #include <string>
 #include <vector>
 #include <random>
 
+// 3. 系统库头文件
+
+// 4. 其他库头文件
+#include <brpc/channel.h>
+#include <brpc/controller.h>
+#include <butil/logging.h>
+#include <butil/time.h>
+#include <gflags/gflags.h>
+
+// 5. 本项目内其他头文件
+
 DEFINE_string(server, "127.0.0.1:8004", "服务器地址 (ip:port)");
 DEFINE_int32(user_feat_size_kb, 100, "用户特征数据大小（KB）");
 DEFINE_double(precalc_result_size_mb, 8.5, "期望的前置计算结果大小（MB）");
-DEFINE_int32(response_total_size_kb, 100, "期望的响应总大小（key+payload，KB）");
+DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB）");
 
 /**
  * @brief 生成指定大小的随机数据
@@ -96,17 +106,12 @@ int main(int argc, char* argv[]) {
     std::cout << "Response:" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "user_feat_key: " << response.user_feat_key() << std::endl;
-    std::cout << "key size: " << response.user_feat_key().size() << " bytes" << std::endl;
-    double payload_kb = response.payload().size() / 1024.0;
-    std::cout << "payload size: " << response.payload().size() << " bytes (" 
-              << payload_kb << " KB)" << std::endl;
-    size_t total_size = response.user_feat_key().size() + response.payload().size();
-    std::cout << "total response size (key + payload): " << total_size << " bytes (" 
-              << total_size / 1024.0 << " KB)" << std::endl;
-    std::cout << "expected response size: " << FLAGS_response_total_size_kb << " KB" << std::endl;
+    std::cout << "key size: " << response.user_feat_key().size() << " bytes ("
+              << response.user_feat_key().size() / 1024.0 << " KB)" << std::endl;
+    std::cout << "expected key size: " << FLAGS_user_feat_key_size_kb << " KB" << std::endl;
     std::cout << "========================================" << std::endl;
-    std::cout << "Note: Precalc result (8.5 MB) is stored in KVWorker, not in response payload" << std::endl;
-    std::cout << "Response payload is just for simulating load (" << payload_kb << " KB)" << std::endl;
+    std::cout << "Note: Precalc result (8.5 MB) is stored in KVWorker" << std::endl;
+    std::cout << "Response only contains user_feat_key" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "Test completed successfully!" << std::endl;
     std::cout << "========================================" << std::endl;

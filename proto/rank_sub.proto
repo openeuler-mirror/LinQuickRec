@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package rank;
+
+// 启用 C++ 通用服务代码生成
+option cc_generic_services = true;
+
+// 精排子图服务 - 请求
+message RankSubRequest {
+    string user_feat_key = 1;
+    string skus_sub = 2; 
+    string payload = 3; 
+}
+
+// 精排子图服务 - 响应
+message RankSubResponse {
+    repeated uint64 skus_score = 1;
+}
+
+// 精排子图服务定义
+service RankSubService {
+    rpc Rank(RankSubRequest) returns (RankSubResponse);
+}
