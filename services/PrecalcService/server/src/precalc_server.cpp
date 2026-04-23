@@ -107,7 +107,8 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG(INFO) << "TTL: " << FLAGS_ttl_seconds << " seconds";
 }
 
-void PrecalcServiceImpl::Precalculate(const PrecalcRequest* request,
+void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controller,
+                                      const PrecalcRequest* request,
                                       PrecalcResponse* response,
                                       google::protobuf::Closure* done) {
     

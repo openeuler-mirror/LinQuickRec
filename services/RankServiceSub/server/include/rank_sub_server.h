@@ -54,11 +54,13 @@ public:
     /**
      * @brief 处理精排请求
      * 
+     * @param controller RPC 控制器
      * @param request 请求对象
      * @param response 响应对象
      * @param done 完成回调
      */
-    void Rank(const RankSubRequest* request,
+    void Rank(google::protobuf::RpcController* controller,
+              const RankSubRequest* request,
               RankSubResponse* response,
               google::protobuf::Closure* done) override;
 

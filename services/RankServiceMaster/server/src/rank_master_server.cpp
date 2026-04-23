@@ -155,7 +155,8 @@ RankMasterServiceImpl::~RankMasterServiceImpl() {
     LOG(INFO) << "RankMasterServiceImpl destroyed";
 }
 
-void RankMasterServiceImpl::Rank(const RankMasterRequest* request,
+void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
+                                 const RankMasterRequest* request,
                                  RankMasterResponse* response,
                                  google::protobuf::Closure* done) {
     
