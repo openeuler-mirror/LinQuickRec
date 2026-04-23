@@ -1,6 +1,6 @@
-# Precalc 服务 CMakeLists.txt
+# RankServiceSub 服务 CMakeLists.txt
 cmake_minimum_required(VERSION 3.14)
-project(precalc_service)
+project(rank_sub_service)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 message(STATUS "")
-message(STATUS "=== PrecalcService Build Configuration ===")
+message(STATUS "=== RankServiceSub Build Configuration ===")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 
@@ -82,24 +82,24 @@ else()
     message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 endif()
 
-# 生成 precalc protobuf 文件
+# 生成 rank_sub protobuf 文件
 add_custom_command(
-    OUTPUT ${PROTO_OUT_DIR}/precalc.pb.cc ${PROTO_OUT_DIR}/precalc.pb.h
+    OUTPUT ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/rank_sub.pb.h
     COMMAND protobuf::protoc
-    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/precalc.proto
-    DEPENDS ${PROTO_DIR}/precalc.proto
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
+    DEPENDS ${PROTO_DIR}/rank_sub.proto
 )
 
 # ============================================================================
 # 编译 Server
 # ============================================================================
-add_executable(precalc_server
-    server/src/precalc_server.cpp
+add_executable(rank_sub_server
+    server/src/rank_sub_server.cpp
     server/src/main.cpp
-    ${PROTO_OUT_DIR}/precalc.pb.cc
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc
 )
 
-target_include_directories(precalc_server PRIVATE
+target_include_directories(rank_sub_server PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
@@ -110,7 +110,7 @@ target_include_directories(precalc_server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
-target_link_libraries(precalc_server PRIVATE
+target_link_libraries(rank_sub_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
@@ -119,19 +119,19 @@ target_link_libraries(precalc_server PRIVATE
     ${YR_LIBRARY}
 )
 
-set_target_properties(precalc_server PROPERTIES
+set_target_properties(rank_sub_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ============================================================================
 # 编译 Client
 # ============================================================================
-add_executable(precalc_test_client 
-    client/precalc_test_client.cpp
-    ${PROTO_OUT_DIR}/precalc.pb.cc
+add_executable(rank_sub_client 
+    client/rank_sub_client.cpp
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc
 )
 
-target_include_directories(precalc_test_client PRIVATE
+target_include_directories(rank_sub_client PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
@@ -139,15 +139,14 @@ target_include_directories(precalc_test_client PRIVATE
     ${BRPC_INCLUDE_DIR}
 )
 
-target_link_libraries(precalc_test_client PRIVATE
+target_link_libraries(rank_sub_client PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
-    Threads::Threads
 )
 
-set_target_properties(precalc_test_client PROPERTIES
+set_target_properties(rank_sub_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
@@ -155,12 +154,13 @@ set_target_properties(precalc_test_client PROPERTIES
 # 输出信息
 # ============================================================================
 message(STATUS "===========================================")
-message(STATUS "Precalc Service Build Configuration")
+message(STATUS "RankServiceSub Build Configuration")
 message(STATUS "===========================================")
 message(STATUS "Build targets:")
-message(STATUS "  - precalc_server (with Yuanrong SDK)")
-message(STATUS "  - precalc_test_client")
-message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+message(STATUS "  - rank_sub_server (with Yuanrong SDK)")
+message(STATUS "  - rank_sub_client")
+message(STATUS "Yuanrong SDK Path: ${YR_SDK_PATH}")
+message(STATUS "Yuanrong SDK Include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK Library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
