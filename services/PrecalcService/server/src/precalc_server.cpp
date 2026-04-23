@@ -35,15 +35,15 @@ DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 namespace precalc {
 
 /**
- * @brief 生成指定大小的随机字符串
+ * @brief 生成指定大小的随机字符串（有效 UTF-8）
  * 
  * @param size_bytes 数据大小（字节）
- * @return std::string 生成的随机字符串
+ * @return std::string 生成的随机字符串（只包含 ASCII 可打印字符）
  */
 std::string generate_random_string(size_t size_bytes) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis('a', 'z');
+    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
     
     std::string result;
     result.resize(size_bytes);
@@ -84,7 +84,7 @@ uint64_t extract_user_id(const std::string& user_feat) {
 std::string generate_precalc_result(double size_mb) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 255);
+    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
     
     size_t total_bytes = static_cast<size_t>(size_mb * 1024 * 1024);
     std::string precalc_result;

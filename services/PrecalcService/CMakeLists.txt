@@ -119,6 +119,7 @@ target_include_directories(precalc_server PRIVATE
 target_link_libraries(precalc_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
     ${YR_LIBRARY}
@@ -148,6 +149,7 @@ target_include_directories(precalc_test_client PRIVATE
 target_link_libraries(precalc_test_client PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
