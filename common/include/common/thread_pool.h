@@ -83,8 +83,6 @@ private:
     std::atomic<bool> stop_;
 };
 
-} // namespace common
-
 // 模板实现必须放在头文件中
 template<typename F, typename... Args>
 auto ThreadPool::submit(F&& f, Args&&... args) 
@@ -113,5 +111,7 @@ auto ThreadPool::submit(F&& f, Args&&... args)
     condition_.notify_one();
     return result;
 }
+
+} // namespace common
 
 #endif // COMMON_THREAD_POOL_H
