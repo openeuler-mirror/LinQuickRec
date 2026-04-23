@@ -12,7 +12,7 @@
 #include <butil/logging.h>
 
 // 5. 本项目内其他头文件
-#include "common/include/global_thread_pool.h"
+#include "common/global_thread_pool.h"
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);

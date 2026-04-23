@@ -1,4 +1,4 @@
-#include "global_thread_pool.h"
+#include "common/global_thread_pool.h"
 #include <thread>
 
 DEFINE_int32(global_thread_pool_size, 128, "全局线程池大小（默认 128）");

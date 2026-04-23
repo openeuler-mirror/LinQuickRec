@@ -2,14 +2,14 @@
 #define COMMON_LOGGER_H
 
 // 日志系统头文件
-#include "logger/config.h"
-#include "logger/logger.h"
-#include "logger/macros.h"
+#include "internal/logger/config.h"
+#include "internal/logger/logger_core.h"
+#include "internal/logger/macros.h"
 
 // 可选：包含 sink 头文件
-#include "logger/sink/sink.h"
-#include "logger/sink/console_sink.h"
-#include "logger/sink/file_sink.h"
+#include "internal/logger/sink/sink.h"
+#include "internal/logger/sink/console_sink.h"
+#include "internal/logger/sink/file_sink.h"
 
 // 日志系统初始化辅助函数
 namespace common {
