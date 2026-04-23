@@ -112,6 +112,9 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
                                       PrecalcResponse* response,
                                       google::protobuf::Closure* done) {
     
+    brpc::ClosureGuard done_guard(done);
+    (void)controller;  // 显式忽略未使用的参数，消除警告
+    
     // 使用线程池异步处理请求
     auto& pool = common::get_global_thread_pool();
     
@@ -134,9 +137,6 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
         LOG(ERROR) << "Thread pool task failed: " << e.what();
         response->set_user_feat_key("");
     }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
-    brpc::ClosureGuard done_guard(done);
 }
 
 void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
