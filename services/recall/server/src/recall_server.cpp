@@ -209,7 +209,7 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
 }
 
 RecallServiceImpl::RecallResult process_recall_request(const RecallRequest* request) {
-    RecallResult result;
+    RecallServiceImpl::RecallResult result;
 
     std::string request_json = proto_to_json(request);
     LOG(INFO) << "Converted request to JSON: " << request_json;
