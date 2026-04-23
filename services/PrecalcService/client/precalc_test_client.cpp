@@ -31,15 +31,15 @@ DEFINE_double(precalc_result_size_mb, 8.5, "期望的前置计算结果大小（
 DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB）");
 
 /**
- * @brief 生成指定大小的随机数据
+ * @brief 生成指定大小的随机数据（有效 UTF-8 字符串）
  * 
  * @param size_kb 数据大小（KB）
- * @return std::string 生成的随机数据
+ * @return std::string 生成的随机字符串（只包含 ASCII 可打印字符）
  */
 std::string generate_random_data(int size_kb) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 255);
+    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
     
     size_t total_bytes = static_cast<size_t>(size_kb) * 1024;
     std::string data;
