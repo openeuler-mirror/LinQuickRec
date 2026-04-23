@@ -165,9 +165,11 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     ConnectOptions connectOptions;
     connectOptions.host = FLAGS_kvworker_host;
     connectOptions.port = FLAGS_kvworker_port;
-    
+    LOG(INFO) << "ConnectionOptions";
+
     KVClient kv_client(connectOptions);
-    
+    LOG(INFO) << "kv_client";
+
     Status status = kv_client.Init();
     if (!status.IsOk()) {
         LOG(ERROR) << "KVClient init failed: " << status.ToString();
