@@ -57,7 +57,7 @@ set(ABSL_LIBS
     absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
-    absl_Strings_internal
+    absl_strings_internal
     absl_base
     absl_spinlock_wait
     absl_time
