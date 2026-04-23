@@ -74,7 +74,7 @@ include_directories(
     ${BRPC_INCLUDE_DIR}
     ${RAPIDJSON_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 # ============================================================================
