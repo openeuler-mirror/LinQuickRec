@@ -7,7 +7,6 @@
 #include <vector>
 #include <mutex>
 #include <string>
-#include <functional>
 #include <sstream>
 
 namespace common {
