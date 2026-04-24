@@ -25,6 +25,7 @@ DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
 DECLARE_bool(enable_timing_stats);
+DECLARE_int32(payload_size_kb);
 
 namespace precalc {
 
@@ -36,28 +37,12 @@ namespace precalc {
 std::string generate_timestamp();
 
 /**
- * @brief 从用户特征数据中提取 user_id
- * 
- * @param user_feat 用户特征数据
- * @return uint64_t 用户 ID
- */
-uint64_t extract_user_id(const std::string& user_feat);
-
-/**
  * @brief 生成指定大小的前置计算结果（随机 tensor 数据）
  * 
  * @param size_mb 数据大小（MB）
  * @return std::string 生成的前置计算结果
  */
 std::string generate_precalc_result(double size_mb);
-
-/**
- * @brief 生成指定大小的随机 payload 数据（乱码），用于模拟负载
- * 
- * @param size_kb 数据大小（KB）
- * @return std::string 生成的 payload 数据
- */
-std::string generate_payload(size_t size_kb);
 
 /**
  * @brief 前置计算服务实现类
