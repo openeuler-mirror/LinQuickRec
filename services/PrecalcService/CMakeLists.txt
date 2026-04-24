@@ -51,6 +51,9 @@ set(ABSL_LIBS
     absl_synchronization
     absl_status
     absl_hash
+    absl_spinlock_wait
+    absl_base_internal
+    absl_throw_delegate
 )
 
 # 设置 proto 文件路径
