@@ -23,7 +23,7 @@ public:
     
 private:
     LogLevel level_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
 };
 
 } // namespace logger
