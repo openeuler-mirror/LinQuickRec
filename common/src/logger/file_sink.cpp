@@ -3,6 +3,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <vector>
+#include <algorithm>
 
 namespace common {
 namespace logger {
