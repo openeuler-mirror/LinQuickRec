@@ -52,7 +52,6 @@ set(ABSL_LIBS
     absl_status
     absl_hash
     absl_spinlock_wait
-    absl_base_internal
     absl_throw_delegate
 )
 
