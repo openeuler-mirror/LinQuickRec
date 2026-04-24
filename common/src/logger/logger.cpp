@@ -119,7 +119,7 @@ void Logger::Log(LogLevel level,
     
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& sink : sinks_) {
-        if (ShouldLog(level, sink->GetLevel())) {
+        if (logger::ShouldLog(level, sink->GetLevel())) {
             sink->Write(formatted);
         }
     }
