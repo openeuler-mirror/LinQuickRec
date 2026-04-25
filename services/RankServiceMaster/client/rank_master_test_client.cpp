@@ -34,7 +34,7 @@ DEFINE_int32(timeout_ms, 30000, "超时时间（毫秒）");
 DEFINE_string(user_feat_key, "", "前置计算结果 key（可选，为空则自动生成）");
 DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB），默认 100KB");
 DEFINE_int32(sku_count, 1000, "模拟的商品数量");
-DEFINE_int32(kvworker_port, 31502, "KVWorker 端口 (Rank)");
+DEFINE_int32(kvworker_port, 31501, "KVWorker 端口 (Rank)");
 DEFINE_string(kvworker_host, "141.61.84.245", "KVWorker 主机地址");
 DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");
 DEFINE_double(tensor_size_mb, 8.5, "写入 KVWorker 的 tensor 大小（MB）");
