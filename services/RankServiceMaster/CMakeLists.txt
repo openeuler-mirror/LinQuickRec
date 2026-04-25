@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(rank_master_service)
 
+# 添加 common 库
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -40,6 +43,7 @@ find_package(Threads REQUIRED)
 set(ABSL_LIBS
     absl_log_internal_check_op
     absl_log_internal_message
+    absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
     absl_base
@@ -91,8 +95,12 @@ target_link_libraries(rank_master_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
-    ${ABSL_LIBS}
     Threads::Threads
+    
+    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
+    -Wl,--no-as-needed
+    ${ABSL_LIBS}
+    -Wl,--as-needed
 )
 
 set_target_properties(rank_master_server PROPERTIES

@@ -31,19 +31,20 @@ DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），�
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
 DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB），默认 100KB");
 DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
+DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 
 namespace precalc {
 
 /**
- * @brief 生成指定大小的随机字符串
+ * @brief 生成指定大小的随机字符串（有效 UTF-8）
  * 
  * @param size_bytes 数据大小（字节）
- * @return std::string 生成的随机字符串
+ * @return std::string 生成的随机字符串（只包含 ASCII 可打印字符）
  */
 std::string generate_random_string(size_t size_bytes) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis('a', 'z');
+    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
     
     std::string result;
     result.resize(size_bytes);
@@ -55,36 +56,10 @@ std::string generate_random_string(size_t size_bytes) {
     return result;
 }
 
-/**
- * @brief 生成 user_feat_key，格式为 user_id + 随机字符串
- * 
- * @param user_id 用户 ID
- * @param size_kb 总大小（KB）
- * @return std::string user_feat_key
- */
-std::string generate_user_feat_key(uint64_t user_id, size_t size_kb) {
-    std::string prefix = std::to_string(user_id) + "_";
-    size_t random_length = size_kb * 1024 - prefix.size();
-    
-    if (random_length == 0) {
-        return prefix;
-    }
-    
-    std::string random_part = generate_random_string(random_length);
-    return prefix + random_part;
-}
-
-uint64_t extract_user_id(const std::string& user_feat) {
-    if (user_feat.size() >= sizeof(uint64_t)) {
-        return *reinterpret_cast<const uint64_t*>(user_feat.data());
-    }
-    return butil::fast_rand();
-}
-
 std::string generate_precalc_result(double size_mb) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 255);
+    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
     
     size_t total_bytes = static_cast<size_t>(size_mb * 1024 * 1024);
     std::string precalc_result;
@@ -107,9 +82,13 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG(INFO) << "TTL: " << FLAGS_ttl_seconds << " seconds";
 }
 
-void PrecalcServiceImpl::Precalculate(const PrecalcRequest* request,
+void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controller,
+                                      const PrecalcRequest* request,
                                       PrecalcResponse* response,
                                       google::protobuf::Closure* done) {
+    
+    brpc::ClosureGuard done_guard(done);
+    (void)controller;  // 显式忽略未使用的参数，消除警告
     
     // 使用线程池异步处理请求
     auto& pool = common::get_global_thread_pool();
@@ -133,9 +112,6 @@ void PrecalcServiceImpl::Precalculate(const PrecalcRequest* request,
         LOG(ERROR) << "Thread pool task failed: " << e.what();
         response->set_user_feat_key("");
     }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
-    brpc::ClosureGuard done_guard(done);
 }
 
 void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
@@ -148,15 +124,20 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     if (request->user_feat().empty()) {
         LOG(ERROR) << "Empty user_feat in request";
         response->set_user_feat_key("");
+        response->set_payload("");
         return;
     }
     
-    uint64_t user_id = extract_user_id(request->user_feat());
-    std::string user_feat_key = generate_user_feat_key(user_id, FLAGS_user_feat_key_size_kb);
+    // 取 user_feat 的前 6 位作为 user_feat_key
+    std::string user_feat_key;
+    if (request->user_feat().size() >= 6) {
+        user_feat_key = request->user_feat().substr(0, 6);
+    } else {
+        user_feat_key = request->user_feat();
+    }
     
     LOG(INFO) << "Generated user_feat_key: " << user_feat_key
-              << ", size: " << user_feat_key.size() << " bytes ("
-              << user_feat_key.size() / 1024.0 << " KB)"
+              << ", size: " << user_feat_key.size() << " bytes"
               << ", user_feat_size: " << request->user_feat().size() << " bytes";
     
     std::string precalc_result = generate_precalc_result(FLAGS_precalc_result_size_mb);
@@ -164,9 +145,11 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     ConnectOptions connectOptions;
     connectOptions.host = FLAGS_kvworker_host;
     connectOptions.port = FLAGS_kvworker_port;
-    
+    LOG(INFO) << "ConnectionOptions";
+
     KVClient kv_client(connectOptions);
-    
+    LOG(INFO) << "kv_client";
+
     Status status = kv_client.Init();
     if (!status.IsOk()) {
         LOG(ERROR) << "KVClient init failed: " << status.ToString();
@@ -174,13 +157,15 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_payload("");
         return;
     }
+    LOG(INFO) << "KVClient init success";
     
     SetParam param;
     param.ttlSecond = FLAGS_ttl_seconds;
     param.writeMode = WriteMode::NONE_L2_CACHE;
     param.existence = ExistenceOpt::NONE;
     param.cacheType = CacheType::MEMORY;
-    
+    LOG(INFO) << "set param success";
+
     int64_t kvwrite_start_us = butil::gettimeofday_us();
     
     std::shared_ptr<Buffer> buffer;
@@ -190,8 +175,9 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_user_feat_key("");
         return;
     }
+    LOG(INFO) << "KVClient Create success";
     
-    std::memcpy(buffer->data(), precalc_result.data(), precalc_result.size());
+    std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
     
     status = kv_client.Set(buffer);
     if (!status.IsOk()) {
@@ -199,6 +185,7 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
         response->set_user_feat_key("");
         return;
     }
+    LOG(INFO) << "KVClient Set success";
     
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
@@ -207,7 +194,10 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
               << ", size=" << precalc_result.size() << " bytes (" 
               << precalc_result.size() / (1024.0 * 1024.0) << " MB)";
     
-    // 只返回 user_feat_key，不再生成 payload
+    // 生成 payload
+    std::string payload = generate_random_string(FLAGS_payload_size_kb * 1024);
+    response->set_payload(payload);
+    
     int64_t server_send_us = butil::gettimeofday_us();
     
     response->set_user_feat_key(user_feat_key);
@@ -216,10 +206,9 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     
     LOG(INFO) << "Precalculate success:"
               << " key=" << user_feat_key
-              << ", key_size=" << user_feat_key.size() << " bytes (" 
-              << user_feat_key.size() / 1024.0 << " KB)"
-              << ", precalc_result_size=" << precalc_result.size() << " bytes (" 
-              << precalc_result.size() / (1024.0 * 1024.0) << " MB)";
+              << ", key_size=" << user_feat_key.size() << " bytes"
+              << ", payload_size=" << payload.size() << " bytes (" 
+              << payload.size() / 1024.0 << " KB)";
     
     if (FLAGS_enable_timing_stats) {
         LOG(INFO) << "Server timing breakdown:"

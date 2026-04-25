@@ -14,7 +14,8 @@ message RankSubRequest {
 
 // 精排子图服务 - 响应
 message RankSubResponse {
-    repeated uint64 skus_score = 1;
+    repeated uint32 skus_id = 1;
+    repeated uint64 skus_score = 2;
 }
 
 // 精排子图服务定义

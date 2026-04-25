@@ -15,9 +15,6 @@
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     
-    logging::SetLoggingLevel(logging::BLOG_INFO);
-    butil::AtExitManager exit_manager;
-    
     precalc::PrecalcServiceImpl precalc_service;
     
     brpc::Server server;

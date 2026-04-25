@@ -177,12 +177,14 @@ RecallServiceImpl::RecallServiceImpl()
               << thread_pool_.size();
 }
 
-void RecallServiceImpl::Recall(const RecallRequest* request,
+void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
+                              const RecallRequest* request,
                               RecallResponse* response,
                               google::protobuf::Closure* done) {
     
     brpc::ClosureGuard done_guard(done);
-
+    (void)controller;  // 显式忽略未使用的参数，消除警告
+    
     LOG(INFO) << "Recall request received, user_id: " << request->user_id();
 
     try {
@@ -206,8 +208,8 @@ void RecallServiceImpl::Recall(const RecallRequest* request,
     }
 }
 
-RecallServiceImpl::RecallResult process_recall_request(const RecallRequest* request) {
-    RecallResult result;
+RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const RecallRequest* request) {
+    RecallServiceImpl::RecallResult result;
 
     std::string request_json = proto_to_json(request);
     LOG(INFO) << "Converted request to JSON: " << request_json;

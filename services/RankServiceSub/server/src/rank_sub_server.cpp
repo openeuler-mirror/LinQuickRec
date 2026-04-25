@@ -84,7 +84,8 @@ RankSubServiceImpl::RankSubServiceImpl() {
     LOG(INFO) << "Scoring delay: " << FLAGS_scoring_delay_ms << " ms";
 }
 
-void RankSubServiceImpl::Rank(const RankSubRequest* request,
+void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
+                              const RankSubRequest* request,
                               RankSubResponse* response,
                               google::protobuf::Closure* done) {
     
@@ -160,7 +161,7 @@ void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
         return;
     }
     
-    std::string user_feat(reinterpret_cast<char*>(buffer->data()), buffer->size());
+    std::string user_feat(reinterpret_cast<const char*>(buffer->ImmutableData()), buffer->GetSize());
     
     LOG(INFO) << "Retrieved user_feat from KVWorker: key=" 
               << request->user_feat_key() 
