@@ -89,7 +89,9 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
                               RankSubResponse* response,
                               google::protobuf::Closure* done) {
     
-    // 使用线程池异步处理请求
+    brpc::ClosureGuard done_guard(done);
+    (void)controller;
+    
     auto& pool = common::get_global_thread_pool();
     
     // 提交任务到线程池
@@ -110,9 +112,6 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
     } catch (const std::exception& e) {
         LOG(ERROR) << "Thread pool task failed: " << e.what();
     }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
-    brpc::ClosureGuard done_guard(done);
 }
 
 void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
