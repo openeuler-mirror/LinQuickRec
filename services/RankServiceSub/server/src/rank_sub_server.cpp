@@ -148,7 +148,7 @@ void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
     int64_t kv_read_start_us = butil::gettimeofday_us();
     
     // 使用 Buffer 方式获取数据（适合大数据）
-    std::shared_ptr<Buffer> buffer;
+    datasystem::Optional<datasystem::Buffer> buffer;
     status = kv_client.Get(request->user_feat_key(), buffer);
     
     int64_t kv_read_end_us = butil::gettimeofday_us();
