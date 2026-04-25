@@ -51,7 +51,7 @@ int main() {
     // ==============================
     // Example 6: Multiple sinks
     // ==============================
-    common::logger::ClearSinks();
+    common::logger::Logger::Instance().ClearSinks();
     common::logger::AddConsoleSink(common::logger::LogLevel::INFO);
     common::logger::AddFileSink("detailed.log", common::logger::LogLevel::TRACE);
     common::logger::AddFileSink("errors.log", common::logger::LogLevel::ERROR);
