@@ -59,6 +59,34 @@ set(ABSL_LIBS
 set(PROTO_DIR "${CMAKE_SOURCE_DIR}/../../proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
+# 元戎 SDK 配置
+if(DEFINED ENV{YR_SDK_PATH})
+    set(YR_SDK_PATH $ENV{YR_SDK_PATH})
+    message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
+else()
+    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
+    message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
+endif()
+
+find_path(YR_INCLUDE_DIR datasystem/kv_client.h
+    PATHS ${YR_SDK_PATH}
+    PATH_SUFFIXES include
+)
+
+find_library(YR_LIBRARY
+    NAMES yr-api datasystem
+    PATHS ${YR_SDK_PATH}
+    PATH_SUFFIXES lib lib64
+)
+
+if(NOT YR_INCLUDE_DIR OR NOT YR_LIBRARY)
+    message(WARNING "Yuanrong SDK not found. Please set YR_SDK_PATH environment variable.")
+    message(WARNING "Example: export YR_SDK_PATH=/path/to/yuanrong")
+else()
+    message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+    message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+endif()
+
 # 生成 rank_master protobuf 文件
 add_custom_command(
     OUTPUT ${PROTO_OUT_DIR}/rank_master.pb.cc ${PROTO_OUT_DIR}/rank_master.pb.h
@@ -126,6 +154,7 @@ target_include_directories(rank_master_test_client PRIVATE
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
     ${BRPC_INCLUDE_DIR}
+    ${YR_INCLUDE_DIR}
 )
 
 target_link_libraries(rank_master_test_client PRIVATE
@@ -133,6 +162,7 @@ target_link_libraries(rank_master_test_client PRIVATE
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
+    ${YR_LIBRARY}
     ${ABSL_LIBS}
 )
 
@@ -148,6 +178,8 @@ message(STATUS "RankServiceMaster Build Configuration")
 message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - rank_master_server")
-message(STATUS "  - rank_master_test_client")
+message(STATUS "  - rank_master_test_client (with Yuanrong SDK)")
+message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
