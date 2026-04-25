@@ -39,16 +39,20 @@ link_directories(/usr/local/lib64)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
-# Abseil 库（BRPC 依赖）
+# Abseil 库（与 Recall 服务保持一致）
 set(ABSL_LIBS
+    absl_log_internal_nullguard
     absl_log_internal_check_op
     absl_log_internal_message
-    absl_log_internal_nullguard
     absl_raw_logging_internal
     absl_strings
     absl_base
     absl_time
     absl_synchronization
+    absl_status
+    absl_hash
+    absl_spinlock_wait
+    absl_throw_delegate
 )
 
 # 设置 proto 文件路径
@@ -94,6 +98,7 @@ target_include_directories(rank_master_server PRIVATE
 target_link_libraries(rank_master_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
     
@@ -126,6 +131,7 @@ target_include_directories(rank_master_test_client PRIVATE
 target_link_libraries(rank_master_test_client PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
 )
