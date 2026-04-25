@@ -303,7 +303,7 @@ void RankMasterServiceImpl::process_rank_request(const RankMasterRequest* reques
             continue;
         }
         
-        futures.push_back(std::async(std::launch::async, [this, i, &request]() {
+        futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution]() {
             RankSubResponse sub_response;
             bool success = call_sub_worker(i, request->user_feat_key(), 
                                           distribution[i], &sub_response);
