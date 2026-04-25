@@ -17,10 +17,8 @@
 services/discovery/
 ├── DESIGN.md               # 详细设计文档
 ├── README.md               # 本文件
-├── CMakeLists.txt          # 顶层 CMake 配置
+├── CMakeLists.txt          # CMake 配置（支持单独构建与父工程子目录两种模式）
 ├── Dockerfile              # Docker 构建文件
-├── proto/
-│   └── discovery.proto     # Protobuf 协议定义
 ├── server/
 │   ├── include/
 │   │   └── discovery_server.h
@@ -28,14 +26,24 @@ services/discovery/
 │       ├── main.cpp
 │       └── discovery_server.cpp
 └── client/
-    ├── CMakeLists.txt
     └── src/
         └── main.cpp
 ```
 
 ## 编译
 
-在项目根目录执行 CMake 构建：
+支持两种构建方式：
+
+### 方式一：在 discovery 目录内单独构建
+
+```bash
+cd services/discovery
+mkdir -p build && cd build
+cmake ..
+make discovery_server discovery_client -j$(nproc)
+```
+
+### 方式二：在项目根目录整体构建
 
 ```bash
 mkdir -p build && cd build
@@ -43,7 +51,7 @@ cmake ..
 make discovery_server discovery_client -j$(nproc)
 ```
 
-编译产物：
+### 编译产物
 
 | 二进制 | 路径 | 用途 |
 |--------|------|------|
@@ -103,10 +111,10 @@ make discovery_server discovery_client -j$(nproc)
 ```dockerfile
 FROM lingquickrec/base:latest
 WORKDIR /app
-COPY proto/discovery.proto /app/proto/
 COPY services/discovery/CMakeLists.txt /app/
 COPY services/discovery/server /app/server/
 COPY services/discovery/client /app/client/
+COPY proto/discovery.proto /app/../../proto/
 RUN mkdir -p build && cd build && cmake .. && make -j$(nproc)
 EXPOSE 8100
 CMD ["./build/discovery_server"]

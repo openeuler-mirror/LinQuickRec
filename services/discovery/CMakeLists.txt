@@ -3,6 +3,13 @@ project(discovery LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# 依赖查找（单独构建时生效，作为子目录时由父工程传递）
+find_package(Threads REQUIRED)
+find_package(Protobuf REQUIRED)
+find_package(brpc REQUIRED)
+find_package(absl REQUIRED)
+
+# BRPC 路径配置（当 brpc CMake config 不可用时作为降级方案）
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES
     brpc
@@ -13,9 +20,6 @@ set(BRPC_LIBRARIES
     pthread
 )
 link_directories(/usr/local/lib64)
-
-find_package(Threads REQUIRED)
-find_package(Protobuf REQUIRED)
 
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/discovery.proto)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc)
