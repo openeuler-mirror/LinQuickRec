@@ -17,11 +17,7 @@
 #include <string>
 #include <atomic>
 
-<<<<<<< HEAD
-#include "global_thread_pool.h"
-=======
 #include "common/global_thread_pool.h"
->>>>>>> origin/main
 
 DECLARE_string(vllm_base_url);
 DECLARE_string(vllm_endpoint);

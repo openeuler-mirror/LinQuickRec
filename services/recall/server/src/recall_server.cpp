@@ -29,7 +29,7 @@
 #include <rapidjson/stringbuffer.h>
 
 // 5. 本项目内其他头文件
-#include "global_thread_pool.h"
+#include "common/global_thread_pool.h"
 
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
 DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");

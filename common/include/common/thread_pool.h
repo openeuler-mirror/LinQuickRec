@@ -107,38 +107,6 @@ private:
     std::atomic<bool> stop_;
 };
 
-<<<<<<< HEAD:common/include/thread_pool.h
-=======
-// 模板实现必须放在头文件中
-template<typename F, typename... Args>
-auto ThreadPool::submit(F&& f, Args&&... args) 
-    -> std::future<decltype(f(args...))> {
-    
-    using return_type = decltype(f(args...));
-    
-    auto task = std::make_shared<std::packaged_task<return_type()>>(
-        std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-    );
-    
-    std::future<return_type> result = task->get_future();
-    
-    {
-        std::unique_lock<std::mutex> lock(queue_mutex_);
-        
-        if (stop_) {
-            throw std::runtime_error("Cannot submit task to stopped ThreadPool");
-        }
-        
-        tasks_.emplace([task]() {
-            (*task)();
-        });
-    }
-    
-    condition_.notify_one();
-    return result;
-}
-
->>>>>>> origin/main:common/include/common/thread_pool.h
 } // namespace common
 
 #endif // COMMON_THREAD_POOL_H
