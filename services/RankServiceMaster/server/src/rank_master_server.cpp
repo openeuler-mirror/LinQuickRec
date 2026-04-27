@@ -155,7 +155,8 @@ RankMasterServiceImpl::~RankMasterServiceImpl() {
     LOG(INFO) << "RankMasterServiceImpl destroyed";
 }
 
-void RankMasterServiceImpl::Rank(const RankMasterRequest* request,
+void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
+                                 const RankMasterRequest* request,
                                  RankMasterResponse* response,
                                  google::protobuf::Closure* done) {
     
@@ -217,7 +218,7 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
     }
     
     LOG(INFO) << "Sub-worker " << worker_index << " returned " 
-              << response->skus_score_size() / 2 << " scores";
+              << response->skus_score_size() << " scores";
     
     return true;
 }
