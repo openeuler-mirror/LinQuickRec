@@ -5,6 +5,9 @@
 #include <numeric>
 #include <chrono>
 #include <iomanip>
+#include <gflags/gflags.h>
+
+DEFINE_int32(tasks, 100, "number of fibonacci tasks to submit");
 
 struct TaskResult {
     int id;
@@ -33,7 +36,7 @@ int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     common::ThreadPool& pool = common::get_global_thread_pool();
-    const int N = 100;
+    const int N = FLAGS_tasks;
 
     std::vector<std::future<TaskResult>> futures;
     futures.reserve(N);
