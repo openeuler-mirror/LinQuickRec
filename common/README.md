@@ -21,7 +21,8 @@ common/
 │   └── test_thread_pool.cpp
 ├── examples/                # 使用示例
 │   ├── error_example.cpp
-│   └── logger_example.cpp
+│   ├── logger_example.cpp
+│   └── thread_pool_example.cpp
 └── CMakeLists.txt
 ```
 
@@ -41,6 +42,7 @@ cmake --build . --target test_error
 cmake --build . --target test_thread_pool
 cmake --build . --target error_example
 cmake --build . --target logger_example
+cmake --build . --target thread_pool_example
 ```
 
 ## 运行测试
@@ -55,4 +57,7 @@ cmake --build . --target logger_example
 ```bash
 ./examples/error_example
 ./examples/logger_example
+
+# 线程池示例（可通过 gflags 指定工作线程数，默认 4）
+./examples/thread_pool_example --global_thread_pool_size=4
 ```
