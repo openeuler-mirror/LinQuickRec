@@ -58,6 +58,6 @@ make thread_pool_example -j$(nproc)
 ./examples/error_example
 ./examples/logger_example
 
-# 线程池示例（可通过 gflags 指定工作线程数，默认 4）
-./examples/thread_pool_example --global_thread_pool_size=4
+# 线程池示例（可通过 gflags 配置线程数和任务数）
+./examples/thread_pool_example --global_thread_pool_size=4 --tasks=100
 ```
