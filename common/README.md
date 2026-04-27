@@ -32,17 +32,17 @@ common/
 # 从 common 目录运行
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
-cmake --build .
+make -j$(nproc)
 ```
 
 单独编译某个目标：
 
 ```bash
-cmake --build . --target test_error
-cmake --build . --target test_thread_pool
-cmake --build . --target error_example
-cmake --build . --target logger_example
-cmake --build . --target thread_pool_example
+make test_error -j$(nproc)
+make test_thread_pool -j$(nproc)
+make error_example -j$(nproc)
+make logger_example -j$(nproc)
+make thread_pool_example -j$(nproc)
 ```
 
 ## 运行测试
