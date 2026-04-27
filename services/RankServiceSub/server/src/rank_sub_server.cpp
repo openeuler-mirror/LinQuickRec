@@ -89,7 +89,9 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
                               RankSubResponse* response,
                               google::protobuf::Closure* done) {
     
-    // 使用线程池异步处理请求
+    brpc::ClosureGuard done_guard(done);
+    (void)controller;
+    
     auto& pool = common::get_global_thread_pool();
     
     // 提交任务到线程池
@@ -110,9 +112,6 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
     } catch (const std::exception& e) {
         LOG(ERROR) << "Thread pool task failed: " << e.what();
     }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
-    brpc::ClosureGuard done_guard(done);
 }
 
 void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
@@ -149,7 +148,7 @@ void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
     int64_t kv_read_start_us = butil::gettimeofday_us();
     
     // 使用 Buffer 方式获取数据（适合大数据）
-    std::shared_ptr<Buffer> buffer;
+    datasystem::Optional<datasystem::Buffer> buffer;
     status = kv_client.Get(request->user_feat_key(), buffer);
     
     int64_t kv_read_end_us = butil::gettimeofday_us();

@@ -103,7 +103,7 @@ std::string build_vllm_request(const std::string& request_json) {
     messages.PushBack(user_msg, allocator);
     d.AddMember("messages", messages, allocator);
     
-    d.AddMember("max_tokens", 1024, allocator);
+    d.AddMember("max_tokens", 102400, allocator);
     d.AddMember("temperature", 0.7, allocator);
     d.AddMember("top_p", 0.9, allocator);
     d.AddMember("stream", false, allocator);
