@@ -1,0 +1,41 @@
+services:
+  discovery-server:
+    build:
+      context: .
+      dockerfile: services/discovery/Dockerfile
+    ports:
+      - "8100:8100"
+    container_name: discovery-server
+
+  pseudo-recall:
+    build:
+      context: .
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8001
+    container_name: pseudo-recall
+
+  pseudo-feature:
+    build:
+      context: .
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: feature_service
+      SERVICE_PORT: 8002
+    container_name: pseudo-feature
+
+  pseudo-proxy:
+    build:
+      context: .
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: proxy
+      SERVICE_PORT: 8003
+    container_name: pseudo-proxy
