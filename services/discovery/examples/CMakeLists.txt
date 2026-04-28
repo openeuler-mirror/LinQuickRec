@@ -30,7 +30,7 @@ add_executable(pseudo_service
 )
 
 set_target_properties(pseudo_service PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
 set(ABSL_LIBS
@@ -59,7 +59,7 @@ function(add_test_binary name)
         Threads::Threads
     )
     set_target_properties(${name} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(${name} PRIVATE -Wall -Wextra -O2)

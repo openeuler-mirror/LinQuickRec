@@ -46,10 +46,10 @@ make -j$(nproc)
 
 | 编译产物 | 用途 |
 |--------|------|
-| `build/pseudo_service` | 模拟业务服务，监听 TCP 端口 |
-| `build/test_discover` | 查询指定 service_type 的实例列表 |
-| `build/test_register` | 验证 Register + Deregister RPC |
-| `build/test_heartbeat_cycle` | 验证全生命周期健康检查 |
+| `build/bin/pseudo_service` | 模拟业务服务，监听 TCP 端口 |
+| `build/bin/test_discover` | 查询指定 service_type 的实例列表 |
+| `build/bin/test_register` | 验证 Register + Deregister RPC |
+| `build/bin/test_heartbeat_cycle` | 验证全生命周期健康检查 |
 
 ## 容器化搭建
 
