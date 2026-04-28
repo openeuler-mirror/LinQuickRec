@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     std::cout << "expected payload size: " << FLAGS_payload_size_kb << " KB" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "Note: Precalc result (8.5 MB) is stored in KVWorker" << std::endl;
-    std::cout << "Response contains user_feat_key (6 bytes) and payload" << std::endl;
+    std::cout << "Response contains user_feat_key (16 bytes) and payload" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "Test completed successfully!" << std::endl;
     std::cout << "========================================" << std::endl;
