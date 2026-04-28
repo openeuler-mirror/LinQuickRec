@@ -48,8 +48,8 @@ int main(int argc, char* argv[]) {
         std::cout << "  [" << i << "] " << inst.instance_id()
                   << "  " << inst.host() << ":" << inst.port()
                   << "  status=";
-        if (inst.status() == InstanceStatus::UP) std::cout << "UP";
-        else if (inst.status() == InstanceStatus::DOWN) std::cout << "DOWN";
+        if (inst.status() == discovery::InstanceStatus::UP) std::cout << "UP";
+        else if (inst.status() == discovery::InstanceStatus::DOWN) std::cout << "DOWN";
         else std::cout << inst.status();
         std::cout << std::endl;
     }

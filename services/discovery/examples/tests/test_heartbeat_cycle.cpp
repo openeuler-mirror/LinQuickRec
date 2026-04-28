@@ -45,8 +45,8 @@ static bool discover_count(const std::string& server,
                     bool status_match = true;
                     if (!expected_status.empty()) {
                         for (int i = 0; i < n; ++i) {
-                            bool up = (rsp.instances(i).status() == InstanceStatus::UP);
-                            bool down = (rsp.instances(i).status() == InstanceStatus::DOWN);
+                            bool up = (rsp.instances(i).status() == discovery::InstanceStatus::UP);
+                            bool down = (rsp.instances(i).status() == discovery::InstanceStatus::DOWN);
                             if ((expected_status == "UP" && !up) ||
                                 (expected_status == "DOWN" && !down)) {
                                 status_match = false;
