@@ -5,7 +5,7 @@
 services:
   discovery-server:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/Dockerfile
     ports:
       - "8100:8100"
@@ -13,7 +13,7 @@ services:
 
   pseudo-proxy:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -24,7 +24,7 @@ services:
 
   pseudo-feature:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -35,7 +35,7 @@ services:
 
   pseudo-recall-1:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -46,7 +46,7 @@ services:
 
   pseudo-recall-2:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -57,7 +57,7 @@ services:
 
   pseudo-recall-3:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -68,7 +68,7 @@ services:
 
   pseudo-rank-1:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -79,7 +79,7 @@ services:
 
   pseudo-rank-2:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -90,7 +90,7 @@ services:
 
   pseudo-rank-3:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -101,7 +101,7 @@ services:
 
   test-client:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
