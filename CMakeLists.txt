@@ -17,11 +17,8 @@ else()
     add_compile_options(-O2)
 endif()
 
-# 查找必要的包
+# 查找必要的包（gRPC/brpc/absl 无 CMake Config，各子模块自行处理）
 find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
-find_package(brpc REQUIRED)
-find_package(absl REQUIRED)
 find_package(CURL REQUIRED)
 
 # 包含目录
