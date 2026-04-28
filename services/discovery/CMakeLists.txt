@@ -14,6 +14,7 @@ set(BRPC_LIBRARIES
     crypto
     z
     pthread
+    leveldb
 )
 link_directories(/usr/local/lib64)
 

@@ -7,7 +7,7 @@ find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
-set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread)
+set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread leveldb)
 link_directories(/usr/local/lib64)
 
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto/discovery.proto)
