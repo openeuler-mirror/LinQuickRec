@@ -25,7 +25,7 @@
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31501, "元戎 KVWorker 端口 (Recall)");
+DEFINE_int32(kvworker_port, 31502, "元戎 KVWorker 端口 (PrecalcService)");
 DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");
 DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
@@ -130,8 +130,8 @@ void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
     
     // 取 user_feat 的前 6 位作为 user_feat_key
     std::string user_feat_key;
-    if (request->user_feat().size() >= 6) {
-        user_feat_key = request->user_feat().substr(0, 6);
+    if (request->user_feat().size() >= 16) {
+        user_feat_key = request->user_feat().substr(0, 16);
     } else {
         user_feat_key = request->user_feat();
     }
