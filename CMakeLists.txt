@@ -17,13 +17,8 @@ else()
     add_compile_options(-O2)
 endif()
 
-# 查找必要的包（gRPC/brpc/absl/CURL 无 CMake Config 或未安装，各子模块自行处理）
-find_package(Protobuf REQUIRED)
-
 # 包含目录
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${PROTOBUF_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # 添加公共库子目录
 add_subdirectory(common)
