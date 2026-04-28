@@ -17,7 +17,7 @@
 services/discovery/
 ├── DESIGN.md               # 详细设计文档
 ├── README.md               # 本文件
-├── CMakeLists.txt          # CMake 配置（支持单独构建与父工程子目录两种模式）
+├── CMakeLists.txt          # CMake 配置
 ├── Dockerfile              # discovery_server 容器镜像
 ├── server/
 │   ├── include/
@@ -29,18 +29,12 @@ services/discovery/
 │   └── src/
 │       └── main.cpp
 └── examples/               # 端到端演示示例
-    ├── README.md
-    ├── CMakeLists.txt
-    ├── Dockerfile          # 多阶段构建，产 pseudo_service + test_discover
-    ├── docker-compose.yml  # 1 discovery-server + 3 业务容器
-    ├── entrypoint.sh       # 容器启动脚本
-    ├── pseudo_service/     # 纯 POSIX socket 模拟业务服务
-    │   └── main.cpp
-    └── tests/              # 模块级功能测试
-        ├── test_discover.cpp
-        ├── test_register.cpp
-        └── test_heartbeat_cycle.cpp
 ```
+
+## 前置条件
+
+- 编译机已安装 brpc、abseil、protobuf
+- 编译机已安装 docker
 
 ## 编译
 
@@ -69,10 +63,6 @@ make discovery_server discovery_client -j$(nproc)
 |--------|------|------|
 | `build/discovery_server` | 服务端 | 运行在发现中心容器 |
 | `build/discovery_client` | 客户端 | 每个业务容器内运行一份 |
-| `build/pseudo_service` | 示例 | 模拟业务服务（纯 C++ socket） |
-| `build/test_discover` | 测试 | 查询指定 service_type 的实例列表 |
-| `build/test_register` | 测试 | 验证 Register + Deregister RPC |
-| `build/test_heartbeat_cycle` | 测试 | 验证全生命周期健康检查 |
 
 ## 使用方法
 
@@ -97,9 +87,9 @@ make discovery_server discovery_client -j$(nproc)
 
 ```bash
 ./discovery_client \
-  --service_type=recall_service \
-  --service_port=8001 \
-  --discovery_addr=discovery:8100
+  --service_type=<service_name> \
+  --service_port=<service_port> \
+  --discovery_addr=<discovery_server_ip>:8100
 ```
 
 必填参数：
@@ -122,21 +112,7 @@ make discovery_server discovery_client -j$(nproc)
 
 ### Docker 镜像构建
 
-**设计原则**：Docker 镜像不执行编译，仅将主机编译机上预构建的二进制 COPY 到容器内。
-
-构建前需先完成编译：
-
-```bash
-# 编译 discovery_server + discovery_client
-cd /path/to/project
-mkdir build && cd build
-cmake .. && make discovery_server discovery_client -j$(nproc)
-
-# 编译示例程序
-cd ../services/discovery/examples
-mkdir build && cd build
-cmake .. && make -j$(nproc)
-```
+构建前需先完成编译。
 
 **Discovery Server** 镜像：
 
@@ -145,32 +121,13 @@ docker build -t discovery-server \
   -f services/discovery/Dockerfile .
 ```
 
-对应 Dockerfile 仅 COPY 预编译产物：
-
-```dockerfile
-FROM brpc_base:latest
-COPY build/discovery_server /usr/bin/
-EXPOSE 8100
-ENTRYPOINT ["discovery_server"]
-CMD ["--server_port=8100"]
-```
-
-**Docker Compose 端到端演示**（启动 8 个伪服务容器 + 1 个测试容器）：
-
-```bash
-cd services/discovery/examples
-docker compose up -d
-```
-
-详情见 [examples/README.md](examples/README.md)。
-
-### 消费者端使用
+### 获取已注册的服务列表
 
 需要调用下游服务的消费者（如 Proxy）通过 BRPC 调用 Discovery Server 的 `Discover` RPC 获取实例列表，自行实现选择逻辑：
 
 1. 周期性调用 `Discover("feature_service")` 获取 UP 实例列表
 2. 本地缓存实例列表
-3. 每次调用下游时从列表中选择一个实例（RoundRobin / Random 等），创建 BRPC Channel 发起调用
+3. 每次调用下游时从列表中选择一个实例，并创建 BRPC Channel 发起调用
 
 ## 工作流程
 
@@ -197,15 +154,3 @@ docker compose up -d
 3. **docker-compose.yml** — 一键启动 1 个 discovery-server + 6 个伪业务容器 + 1 个测试客户端
 
 详细操作步骤见 [examples/README.md](examples/README.md)。
-
-## 服务类型名对照表
-
-| snake_case | 对应服务 |
-|------------|---------|
-| `proxy` | Proxy 网关 |
-| `feature_service` | FeatureService |
-| `recall_service` | RecallService |
-| `precalc_service` | PrecalcService |
-| `rank_service` | RankService（通用） |
-| `rank_master` | RankServiceMaster |
-| `rank_sub` | RankServiceSub |
