@@ -6,7 +6,7 @@ echo "Starting Recall Service + vLLM"
 echo "==========================================="
 
 echo "Starting vLLM..."
-/app/run_vllm.sh &
+/app/start_vllm_back.sh &
 VLLM_PID=$!
 
 echo "Waiting for vLLM to be ready..."
