@@ -33,6 +33,17 @@ set_target_properties(pseudo_service PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+set(ABSL_LIBS
+    absl_log_internal_check_op
+    absl_log_internal_message
+    absl_raw_logging_internal
+    absl_strings
+    absl_base
+    absl_time
+    absl_synchronization
+    absl_log_internal_nullguard
+)
+
 # test_discover — 需要 brpc + protobuf
 add_executable(test_discover
     test_discover/main.cpp
@@ -47,6 +58,7 @@ target_include_directories(test_discover PRIVATE
 target_link_libraries(test_discover PRIVATE
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
     Threads::Threads
 )
 
