@@ -25,6 +25,7 @@ enum class ModuleCode : uint8_t {
     KVWORKER   = 0x06,
     REDIS      = 0x07,
     VLLM       = 0x08,
+    DISCOVERY  = 0x09,
     // 保留 0x09-0x0F 供未来使用
     UNKNOWN    = 0xFF
 };
@@ -106,7 +107,7 @@ std::string ErrorCodeToString(uint32_t code);
 // 常用成功错误码
 constexpr uint32_t OK_CODE = MakeErrorCode(ModuleCode::COMMON, ErrorType::SUCCESS, 0);
 
-// 通用错误码定义 (模块: COMMON)
+// 通用错误码
 namespace common_errors {
     constexpr uint32_t SUCCESS = OK_CODE;
     constexpr uint32_t UNKNOWN_ERROR = MakeErrorCode(ModuleCode::COMMON, ErrorType::INTERNAL, 0x0001);

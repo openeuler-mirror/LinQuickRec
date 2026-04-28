@@ -155,11 +155,14 @@ RankMasterServiceImpl::~RankMasterServiceImpl() {
     LOG(INFO) << "RankMasterServiceImpl destroyed";
 }
 
-void RankMasterServiceImpl::Rank(const RankMasterRequest* request,
+void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
+                                 const RankMasterRequest* request,
                                  RankMasterResponse* response,
                                  google::protobuf::Closure* done) {
     
-    // 使用线程池异步处理请求
+    brpc::ClosureGuard done_guard(done);
+    (void)controller;
+    
     auto& pool = common::get_global_thread_pool();
     
     // 提交任务到线程池
@@ -180,9 +183,6 @@ void RankMasterServiceImpl::Rank(const RankMasterRequest* request,
     } catch (const std::exception& e) {
         LOG(ERROR) << "Thread pool task failed: " << e.what();
     }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
-    brpc::ClosureGuard done_guard(done);
 }
 
 bool RankMasterServiceImpl::call_sub_worker(int worker_index,
@@ -217,7 +217,7 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
     }
     
     LOG(INFO) << "Sub-worker " << worker_index << " returned " 
-              << response->skus_score_size() / 2 << " scores";
+              << response->skus_score_size() << " scores";
     
     return true;
 }
@@ -303,7 +303,7 @@ void RankMasterServiceImpl::process_rank_request(const RankMasterRequest* reques
             continue;
         }
         
-        futures.push_back(std::async(std::launch::async, [this, i, &request]() {
+        futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution]() {
             RankSubResponse sub_response;
             bool success = call_sub_worker(i, request->user_feat_key(), 
                                           distribution[i], &sub_response);
