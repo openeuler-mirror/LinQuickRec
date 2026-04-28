@@ -61,15 +61,15 @@ make discovery_server discovery_client -j$(nproc)
 
 | 二进制 | 路径 | 用途 |
 |--------|------|------|
-| `build/discovery_server` | 服务端 | 运行在发现中心容器 |
-| `build/discovery_client` | 客户端 | 每个业务容器内运行一份 |
+| `build/bin/discovery_server` | 服务端 | 运行在发现中心容器 |
+| `build/bin/discovery_client` | 客户端 | 每个业务容器内运行一份 |
 
 ## 使用方法
 
 ### 启动 Discovery Server
 
 ```bash
-./discovery_server --server_port=8100
+./bin/discovery_server --server_port=8100
 ```
 
 可选参数：
