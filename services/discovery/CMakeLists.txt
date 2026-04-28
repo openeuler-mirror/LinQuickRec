@@ -39,6 +39,7 @@ set(ABSL_LIBS
     absl_base
     absl_time
     absl_synchronization
+    absl_log_internal_nullguard
 )
 
 include_directories(
