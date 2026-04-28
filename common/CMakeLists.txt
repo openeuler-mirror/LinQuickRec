@@ -68,3 +68,6 @@ target_link_libraries(error_example PRIVATE common_lib)
 
 add_executable(logger_example examples/logger_example.cpp)
 target_link_libraries(logger_example PRIVATE common_lib)
+
+add_executable(thread_pool_example examples/thread_pool_example.cpp)
+target_link_libraries(thread_pool_example PRIVATE common_lib)

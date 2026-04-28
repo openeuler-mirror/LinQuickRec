@@ -21,7 +21,8 @@ common/
 │   └── test_thread_pool.cpp
 ├── examples/                # 使用示例
 │   ├── error_example.cpp
-│   └── logger_example.cpp
+│   ├── logger_example.cpp
+│   └── thread_pool_example.cpp
 └── CMakeLists.txt
 ```
 
@@ -31,16 +32,17 @@ common/
 # 从 common 目录运行
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
-cmake --build .
+make -j$(nproc)
 ```
 
 单独编译某个目标：
 
 ```bash
-cmake --build . --target test_error
-cmake --build . --target test_thread_pool
-cmake --build . --target error_example
-cmake --build . --target logger_example
+make test_error -j$(nproc)
+make test_thread_pool -j$(nproc)
+make error_example -j$(nproc)
+make logger_example -j$(nproc)
+make thread_pool_example -j$(nproc)
 ```
 
 ## 运行测试
@@ -55,4 +57,7 @@ cmake --build . --target logger_example
 ```bash
 ./examples/error_example
 ./examples/logger_example
+
+# 线程池示例（可通过 gflags 配置线程数和任务数）
+./examples/thread_pool_example --global_thread_pool_size=4 --tasks=100
 ```

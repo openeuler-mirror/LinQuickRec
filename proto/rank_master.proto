@@ -5,19 +5,19 @@ package rank;
 // 启用 C++ 通用服务代码生成
 option cc_generic_services = true;
 
-// 精排服务 - 请求
-message RankRequest {
+// 精排主图服务 - 请求
+message RankMasterRequest {
     string user_feat_key = 1;
     string skus = 2; // 100KB
     string payload = 3; // 100KB
 }
 
-// 精排服务 - 响应
-message RankResponse {
+// 精排主图服务 - 响应
+message RankMasterResponse {
     repeated uint64 candidates = 1;
 }
 
-// 精排服务定义
-service RankService {
-    rpc Rank(RankRequest) returns (RankResponse);
+// 精排主图服务定义
+service RankMasterService {
+    rpc Rank(RankMasterRequest) returns (RankMasterResponse);
 }

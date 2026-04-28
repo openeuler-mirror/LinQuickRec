@@ -16,6 +16,7 @@ std::string ModuleToString(ModuleCode module) {
         {ModuleCode::KVWORKER,  "KVWORKER"},
         {ModuleCode::REDIS,     "REDIS"},
         {ModuleCode::VLLM,      "VLLM"},
+        {ModuleCode::DISCOVERY, "DISCOVERY"},
         {ModuleCode::UNKNOWN,   "UNKNOWN"}
     };
     
