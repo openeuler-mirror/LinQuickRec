@@ -1,7 +1,11 @@
+# Prerequisite: Build binaries on host first:
+#   mkdir build && cd build && cmake .. && make discovery_server discovery_client -j$(nproc)
+#   cd services/discovery/examples && mkdir build && cd build && cmake .. && make -j$(nproc)
+
 services:
   discovery-server:
     build:
-      context: .
+      context: ../..
       dockerfile: services/discovery/Dockerfile
     ports:
       - "8100:8100"
@@ -9,7 +13,7 @@ services:
 
   pseudo-recall:
     build:
-      context: .
+      context: ../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -20,7 +24,7 @@ services:
 
   pseudo-feature:
     build:
-      context: .
+      context: ../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server
@@ -31,7 +35,7 @@ services:
 
   pseudo-proxy:
     build:
-      context: .
+      context: ../..
       dockerfile: services/discovery/examples/Dockerfile
     depends_on:
       - discovery-server

@@ -3,7 +3,6 @@
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 
 #include <iostream>
 #include <string>
@@ -43,7 +42,7 @@ int main(int argc, char* argv[]) {
     }
 
     int n = rsp.instances_size();
-    std::cout << "Found " << n << " instance(s) of [" << service_type << "]:" << std::endl;
+    std::cout << "[PASS] Found " << n << " instance(s) of [" << service_type << "]:" << std::endl;
     for (int i = 0; i < n; ++i) {
         const auto& inst = rsp.instances(i);
         std::cout << "  [" << i << "] " << inst.instance_id()
