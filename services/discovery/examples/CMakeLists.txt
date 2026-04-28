@@ -43,6 +43,7 @@ set(ABSL_LIBS
     absl_synchronization
     absl_log_internal_nullguard
     absl_hash
+    absl_status
 )
 
 # test_discover — 需要 brpc + protobuf

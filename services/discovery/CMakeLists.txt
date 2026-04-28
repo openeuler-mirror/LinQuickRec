@@ -41,6 +41,7 @@ set(ABSL_LIBS
     absl_synchronization
     absl_log_internal_nullguard
     absl_hash
+    absl_status
 )
 
 include_directories(
