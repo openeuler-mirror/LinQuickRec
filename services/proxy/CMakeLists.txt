@@ -121,6 +121,39 @@ set_target_properties(gateway_test_client PROPERTIES
 )
 
 # ============================================================================
+# 编译 Integration Test
+# ============================================================================
+add_executable(gateway_integration_test
+    tests/integration_test.cpp
+    ${PROTO_OUT_DIR}/proxy.pb.cc
+    ${PROTO_OUT_DIR}/feature.pb.cc
+    ${PROTO_OUT_DIR}/recall.pb.cc
+    ${PROTO_OUT_DIR}/precalc.pb.cc
+    ${PROTO_OUT_DIR}/rank_master.pb.cc
+)
+
+target_include_directories(gateway_integration_test PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${PROTO_OUT_DIR}
+    ${PROTO_DIR}
+    ${PROTOBUF_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+)
+
+target_link_libraries(gateway_integration_test PRIVATE
+    common_lib
+    brpc::brpc
+    protobuf::libprotobuf
+    absl::strings
+    Threads::Threads
+)
+
+set_target_properties(gateway_integration_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# ============================================================================
 # 输出信息
 # ============================================================================
 message(STATUS "")
@@ -128,6 +161,7 @@ message(STATUS "=== Gateway Service Configuration ===")
 message(STATUS "Build targets:")
 message(STATUS "  - gateway_server")
 message(STATUS "  - gateway_test_client")
+message(STATUS "  - gateway_integration_test")
 message(STATUS "Proto files:")
 message(STATUS "  - proxy.proto")
 message(STATUS "  - feature.proto")
