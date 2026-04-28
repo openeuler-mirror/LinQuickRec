@@ -206,5 +206,6 @@ docker compose up -d
 | `feature_service` | FeatureService |
 | `recall_service` | RecallService |
 | `precalc_service` | PrecalcService |
+| `rank_service` | RankService（通用） |
 | `rank_master` | RankServiceMaster |
 | `rank_sub` | RankServiceSub |
