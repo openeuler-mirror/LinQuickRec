@@ -66,8 +66,7 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 > ```bash
 > # 例如从 services/discovery/ 目录单独编译后，在 project root 执行：
 > docker compose -f services/discovery/examples/docker-compose.yml build \
->   --build-arg DISCOVERY_CLIENT_BIN=build/bin/discovery_client \
->   --build-arg PSEUDO_SERVICE_BIN=services/discovery/examples/build/bin/pseudo_service
+>   --build-arg DISCOVERY_CLIENT_BIN=services/discovery/build/bin/discovery_client
 > ```
 >
 > 完整参数列表见 [examples/Dockerfile](Dockerfile) 中的 `ARG` 定义。
