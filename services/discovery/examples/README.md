@@ -61,6 +61,17 @@ docker compose -f services/discovery/examples/docker-compose.yml build --no-cach
 docker compose -f services/discovery/examples/docker-compose.yml up -d
 ```
 
+> **覆盖二进制路径**：若编译产物位置与默认不同，可通过 `--build-arg` 指定：
+>
+> ```bash
+> # 例如从 services/discovery/ 目录单独编译后，在 project root 执行：
+> docker compose -f services/discovery/examples/docker-compose.yml build \
+>   --build-arg DISCOVERY_CLIENT_BIN=build/bin/discovery_client \
+>   --build-arg PSEUDO_SERVICE_BIN=services/discovery/examples/build/bin/pseudo_service
+> ```
+>
+> 完整参数列表见 [examples/Dockerfile](Dockerfile) 中的 `ARG` 定义。
+
 ### 2. 容器一览
 
 启动 9 个容器：
