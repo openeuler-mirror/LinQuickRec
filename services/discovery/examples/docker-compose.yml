@@ -11,7 +11,7 @@ services:
       - "8100:8100"
     container_name: discovery-server
 
-  pseudo-recall:
+  pseudo-recall-1:
     build:
       context: ../..
       dockerfile: services/discovery/examples/Dockerfile
@@ -20,9 +20,20 @@ services:
     environment:
       SERVICE_TYPE: recall_service
       SERVICE_PORT: 8001
-    container_name: pseudo-recall
+    container_name: pseudo-recall-1
 
-  pseudo-feature:
+  pseudo-recall-2:
+    build:
+      context: ../..
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8002
+    container_name: pseudo-recall-2
+
+  pseudo-feature-1:
     build:
       context: ../..
       dockerfile: services/discovery/examples/Dockerfile
@@ -30,10 +41,21 @@ services:
       - discovery-server
     environment:
       SERVICE_TYPE: feature_service
-      SERVICE_PORT: 8002
-    container_name: pseudo-feature
+      SERVICE_PORT: 8003
+    container_name: pseudo-feature-1
 
-  pseudo-proxy:
+  pseudo-feature-2:
+    build:
+      context: ../..
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: feature_service
+      SERVICE_PORT: 8004
+    container_name: pseudo-feature-2
+
+  pseudo-proxy-1:
     build:
       context: ../..
       dockerfile: services/discovery/examples/Dockerfile
@@ -41,5 +63,25 @@ services:
       - discovery-server
     environment:
       SERVICE_TYPE: proxy
-      SERVICE_PORT: 8003
-    container_name: pseudo-proxy
+      SERVICE_PORT: 8005
+    container_name: pseudo-proxy-1
+
+  pseudo-proxy-2:
+    build:
+      context: ../..
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: proxy
+      SERVICE_PORT: 8006
+    container_name: pseudo-proxy-2
+
+  test-client:
+    build:
+      context: ../..
+      dockerfile: services/discovery/examples/Dockerfile
+    depends_on:
+      - discovery-server
+    container_name: test-client
+    entrypoint: ["tail", "-f", "/dev/null"]

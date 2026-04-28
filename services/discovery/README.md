@@ -148,16 +148,14 @@ docker build -t discovery-server \
 对应 Dockerfile 仅 COPY 预编译产物：
 
 ```dockerfile
-FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates libgcc-s1 && \
-    rm -rf /var/lib/apt/lists/*
+FROM brpc_base:latest
 COPY build/discovery_server /usr/bin/
 EXPOSE 8100
-CMD ["discovery_server"]
+ENTRYPOINT ["discovery_server"]
+CMD ["--server_port=8100"]
 ```
 
-**Docker Compose 端到端演示**：
+**Docker Compose 端到端演示**（启动 8 个伪服务容器 + 1 个测试容器）：
 
 ```bash
 cd services/discovery/examples
@@ -194,9 +192,9 @@ docker compose up -d
 
 `examples/` 目录包含一个完整的 docker-compose 演示：
 
-1. **pseudo_service** — 一个纯 POSIX socket 的模拟业务服务，无 brpc 依赖，用于验证注册与心跳
-2. **test_discover** — 通过 Discover RPC 查询实例列表的命令行工具
-3. **docker-compose.yml** — 一键启动 1 个 discovery-server + 3 个伪业务容器
+1. **pseudo_service** — 纯 POSIX socket 的模拟业务服务，无 brpc 依赖，用于验证注册与心跳
+2. **tests/** — 模块级功能测试：`test_discover`、`test_register`、`test_heartbeat_cycle`
+3. **docker-compose.yml** — 一键启动 1 个 discovery-server + 6 个伪业务容器 + 1 个测试客户端
 
 详细操作步骤见 [examples/README.md](examples/README.md)。
 

@@ -1,6 +1,6 @@
 # 服务发现示例
 
-演示场景：部署一个 `discovery-server` 容器 + 多个伪服务容器，伪服务自动注册到发现中心，并通过测试工具验证各项功能。
+演示场景：部署一个 `discovery-server` + 多个伪服务实例（同类服务多副本），通过测试工具验证各项功能。
 
 ## 目录结构
 
@@ -62,19 +62,27 @@ docker compose -f services/discovery/examples/docker-compose.yml build --no-cach
 docker compose -f services/discovery/examples/docker-compose.yml up -d
 ```
 
-启动 4 个容器：
+### 2. 容器一览
 
-| 容器名 | 服务类型 | 监听端口 | 角色 |
-|--------|---------|---------|------|
+启动 9 个容器：
+
+| 容器名 | 服务类型 | 端口 | 角色 |
+|--------|---------|------|------|
 | discovery-server | — | 8100 | 服务发现中心 |
-| pseudo-recall | recall_service | 8001 | 伪召回服务 |
-| pseudo-feature | feature_service | 8002 | 伪特征服务 |
-| pseudo-proxy | proxy | 8003 | 伪网关 |
+| pseudo-recall-1 | recall_service | 8001 | 伪召回副本 1 |
+| pseudo-recall-2 | recall_service | 8002 | 伪召回副本 2 |
+| pseudo-feature-1 | feature_service | 8003 | 伪特征副本 1 |
+| pseudo-feature-2 | feature_service | 8004 | 伪特征副本 2 |
+| pseudo-proxy-1 | proxy | 8005 | 伪网关副本 1 |
+| pseudo-proxy-2 | proxy | 8006 | 伪网关副本 2 |
+| test-client | (空闲) | — | 运行测试工具，不注册服务 |
 
-### 2. 查看容器日志确认注册成功
+各伪服务容器自动运行 `pseudo_service + discovery_client`，向发现中心注册。
+
+### 3. 查看容器日志确认注册成功
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-recall
+docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-recall-1
 ```
 
 预期输出（每 5s 一条心跳日志）：
@@ -86,23 +94,24 @@ discovery_client: Heartbeat OK
 
 ## 手动验证测试
 
-在宿主机上，通过 `docker compose exec` 在任意伪服务容器内执行测试工具。
+在宿主机上，通过 `docker compose exec` 在容器内执行测试工具。所有容器均内置测试二进制，但建议使用 `test-client`（无业务进程干扰）。
 
 ### 测试 1：查询实例列表
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 recall_service
 
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 rank_master
 ```
 
 预期输出：
 
 ```
-[PASS] Found 1 instance(s) of [recall_service]:
+[PASS] Found 2 instance(s) of [recall_service]:
   [0] recall_service_172.17.0.3_8001_1  172.17.0.3:8001  status=UP
+  [1] recall_service_172.17.0.4_8002_1  172.17.0.4:8002  status=UP
 
 [PASS] Found 0 instance(s) of [rank_master]:
 ```
@@ -110,7 +119,7 @@ docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-rec
 ### 测试 2：注册与反注册
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
   test_register --server=discovery-server:8100 \
     --service_type=_test_ --host=127.0.0.1 --port=10000
 ```
@@ -127,7 +136,7 @@ docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-rec
 ### 测试 3：全生命周期健康检查
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
   test_heartbeat_cycle --server=discovery-server:8100 \
     --service_type=_test_ --host=127.0.0.1 --port=10000 --heartbeat_interval=3
 ```
@@ -149,7 +158,7 @@ docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-rec
 
 | 测试 | 验证点 | 预期结果 |
 |------|--------|---------|
-| `test_discover recall_service` | 正常注册的服务可被查询 | 1 个 UP 实例 |
+| `test_discover recall_service` | 同类服务多副本查询 | 2 个 UP 实例 |
 | `test_discover rank_master` | 未部署服务返回空 | 0 个实例 |
 | `test_register` | Register + Deregister RPC | 注册成功 → 反注册成功 → 确认已删除 |
 | `test_heartbeat_cycle` | 心跳保持 UP → 停心跳变 DOWN → 超时清理 | 5 步全部 PASS |
