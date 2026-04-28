@@ -1,5 +1,5 @@
 ---
-name: git-commit-convention
+name: git-commit
 description: >
   This project follows the Conventional Commits specification. All commit
   messages MUST use the <type>: <subject> format. AI-assisted commits MUST
