@@ -1,17 +1,8 @@
-FROM lingquickrec/base:latest
+FROM brpc_base:latest
 
-WORKDIR /app
-
-COPY proto/discovery.proto /app/proto/
-COPY services/discovery/CMakeLists.txt /app/
-COPY services/discovery/server /app/server/
-COPY services/discovery/client /app/client/
-
-RUN mkdir -p build && \
-    cd build && \
-    cmake .. && \
-    make -j$(nproc)
+COPY build/discovery_server /usr/bin/
 
 EXPOSE 8100
 
-CMD ["./build/discovery_server"]
+ENTRYPOINT ["discovery_server"]
+CMD ["--server_port=8100"]

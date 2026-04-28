@@ -18,16 +18,28 @@ services/discovery/
 ├── DESIGN.md               # 详细设计文档
 ├── README.md               # 本文件
 ├── CMakeLists.txt          # CMake 配置（支持单独构建与父工程子目录两种模式）
-├── Dockerfile              # Docker 构建文件
+├── Dockerfile              # discovery_server 容器镜像
 ├── server/
 │   ├── include/
 │   │   └── discovery_server.h
 │   └── src/
 │       ├── main.cpp
 │       └── discovery_server.cpp
-└── client/
-    └── src/
-        └── main.cpp
+├── client/
+│   └── src/
+│       └── main.cpp
+└── examples/               # 端到端演示示例
+    ├── README.md
+    ├── CMakeLists.txt
+    ├── Dockerfile          # 多阶段构建，产 pseudo_service + test_discover
+    ├── docker-compose.yml  # 1 discovery-server + 3 业务容器
+    ├── entrypoint.sh       # 容器启动脚本
+    ├── pseudo_service/     # 纯 POSIX socket 模拟业务服务
+    │   └── main.cpp
+    └── tests/              # 模块级功能测试
+        ├── test_discover.cpp
+        ├── test_register.cpp
+        └── test_heartbeat_cycle.cpp
 ```
 
 ## 编译
@@ -57,6 +69,10 @@ make discovery_server discovery_client -j$(nproc)
 |--------|------|------|
 | `build/discovery_server` | 服务端 | 运行在发现中心容器 |
 | `build/discovery_client` | 客户端 | 每个业务容器内运行一份 |
+| `build/pseudo_service` | 示例 | 模拟业务服务（纯 C++ socket） |
+| `build/test_discover` | 测试 | 查询指定 service_type 的实例列表 |
+| `build/test_register` | 测试 | 验证 Register + Deregister RPC |
+| `build/test_heartbeat_cycle` | 测试 | 验证全生命周期健康检查 |
 
 ## 使用方法
 
@@ -104,39 +120,51 @@ make discovery_server discovery_client -j$(nproc)
 | `--fail_threshold` | 3 | 连续失败次数阈值，超过则反注册 |
 | `--startup_timeout` | 30 | 等待主服务端口就绪超时（秒） |
 
-### Docker 集成
+### Docker 镜像构建
 
-**Discovery Server** Dockerfile：
+**设计原则**：Docker 镜像不执行编译，仅将主机编译机上预构建的二进制 COPY 到容器内。
 
-```dockerfile
-FROM lingquickrec/base:latest
-WORKDIR /app
-COPY services/discovery/CMakeLists.txt /app/
-COPY services/discovery/server /app/server/
-COPY services/discovery/client /app/client/
-COPY proto/discovery.proto /app/../../proto/
-RUN mkdir -p build && cd build && cmake .. && make -j$(nproc)
-EXPOSE 8100
-CMD ["./build/discovery_server"]
-```
-
-**业务服务容器**：在现有 Dockerfile 中添加：
-
-```dockerfile
-COPY --from=discovery-build /app/build/discovery_client /app/discovery_client
-```
-
-启动时使用 `--init` 标志并同时拉起两个进程：
+构建前需先完成编译：
 
 ```bash
-docker run --init --name recall-service \
-  recall-image \
-  sh -c "/app/recall_server --server_port=8001 & \
-         /app/discovery_client --service_type=recall_service --service_port=8001 --discovery_addr=discovery:8100 & \
-         wait"
+# 编译 discovery_server + discovery_client
+cd /path/to/project
+mkdir build && cd build
+cmake .. && make discovery_server discovery_client -j$(nproc)
+
+# 编译示例程序
+cd ../services/discovery/examples
+mkdir build && cd build
+cmake .. && make -j$(nproc)
 ```
 
-`--init` 注入 tini 作为 PID 1，确保容器停止时 `SIGTERM` 正确转发给两个子进程。
+**Discovery Server** 镜像：
+
+```bash
+docker build -t discovery-server \
+  -f services/discovery/Dockerfile .
+```
+
+对应 Dockerfile 仅 COPY 预编译产物：
+
+```dockerfile
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libgcc-s1 && \
+    rm -rf /var/lib/apt/lists/*
+COPY build/discovery_server /usr/bin/
+EXPOSE 8100
+CMD ["discovery_server"]
+```
+
+**Docker Compose 端到端演示**：
+
+```bash
+cd services/discovery/examples
+docker compose up -d
+```
+
+详情见 [examples/README.md](examples/README.md)。
 
 ### 消费者端使用
 
@@ -161,6 +189,16 @@ docker run --init --name recall-service \
   │                          │───> SIGTERM   → Deregister
   └──────────────────────────┘
 ```
+
+## 端到端示例
+
+`examples/` 目录包含一个完整的 docker-compose 演示：
+
+1. **pseudo_service** — 一个纯 POSIX socket 的模拟业务服务，无 brpc 依赖，用于验证注册与心跳
+2. **test_discover** — 通过 Discover RPC 查询实例列表的命令行工具
+3. **docker-compose.yml** — 一键启动 1 个 discovery-server + 3 个伪业务容器
+
+详细操作步骤见 [examples/README.md](examples/README.md)。
 
 ## 服务类型名对照表
 

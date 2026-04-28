@@ -46,31 +46,32 @@ set(ABSL_LIBS
     absl_status
 )
 
-# test_discover — 需要 brpc + protobuf
-add_executable(test_discover
-    test_discover/main.cpp
-    ${PROTO_SRC}
-)
+function(add_test_binary name)
+    add_executable(${name} tests/${name}.cpp ${PROTO_SRC})
+    target_include_directories(${name} PRIVATE
+        ${BRPC_INCLUDE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    target_link_libraries(${name} PRIVATE
+        ${BRPC_LIBRARIES}
+        ${Protobuf_LIBRARIES}
+        ${ABSL_LIBS}
+        Threads::Threads
+    )
+    set_target_properties(${name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(${name} PRIVATE -Wall -Wextra -O2)
+    endif()
+endfunction()
 
-target_include_directories(test_discover PRIVATE
-    ${BRPC_INCLUDE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-target_link_libraries(test_discover PRIVATE
-    ${BRPC_LIBRARIES}
-    ${Protobuf_LIBRARIES}
-    ${ABSL_LIBS}
-    Threads::Threads
-)
-
-set_target_properties(test_discover PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
+add_test_binary(test_discover)
+add_test_binary(test_register)
+add_test_binary(test_heartbeat_cycle)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(pseudo_service PRIVATE -Wall -Wextra -O2)
-    target_compile_options(test_discover PRIVATE -Wall -Wextra -O2)
 endif()
 
 message(STATUS "===========================================")
@@ -79,4 +80,6 @@ message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - pseudo_service")
 message(STATUS "  - test_discover")
+message(STATUS "  - test_register")
+message(STATUS "  - test_heartbeat_cycle")
 message(STATUS "===========================================")

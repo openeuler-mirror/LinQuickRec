@@ -1,53 +1,56 @@
 # 服务发现示例
 
-演示场景：部署一个 `discovery-server` 容器 + 多个伪服务容器，伪服务自动注册到发现中心，并通过 `test_discover` 查询验证。
+演示场景：部署一个 `discovery-server` 容器 + 多个伪服务容器，伪服务自动注册到发现中心，并通过测试工具验证各项功能。
 
 ## 目录结构
 
 ```
 services/discovery/examples/
 ├── README.md                 # 本文件（全流程操作指导）
-├── CMakeLists.txt            # 编译 pseudo_service + test_discover
-├── Dockerfile                # 伪服务容器镜像（多阶段构建）
+├── CMakeLists.txt            # 编译 pseudo_service + 测试工具
+├── Dockerfile                # 伪服务容器镜像
 ├── docker-compose.yml        # 一键编排所有容器
 ├── entrypoint.sh             # 容器入口：启动 pseudo_service + discovery_client
 ├── pseudo_service/
 │   └── main.cpp              # 简易 TCP server，模拟业务服务
-└── test_discover/
-    └── main.cpp              # 调用 Discover RPC 查询实例列表
+└── tests/
+    ├── test_discover.cpp       # 查询 Discover RPC
+    ├── test_register.cpp       # 测试 Register + Deregister RPC
+    └── test_heartbeat_cycle.cpp# 全生命周期：注册 → 心跳 → DOWN → 清理
 ```
 
 ## 前置条件
 
+- 编译机已安装 brpc、abseil、protobuf
 - Docker 及 docker compose
-- 项目根目录存在 `proto/discovery.proto`
 
 ## 编译
 
-### 1. 编译 discovery_server
+### 1. 编译 discovery_server + discovery_client
 
 ```bash
-cd <project-root>
-mkdir -p build && cd build
-cmake ..
-make discovery_server -j$(nproc)
+cd /path/to/project
+mkdir build && cd build
+cmake .. && make discovery_server discovery_client -j$(nproc)
 ```
 
-### 2. 编译 pseudo_service 和 test_discover
+### 2. 编译示例和测试工具
 
 ```bash
 cd services/discovery/examples
 mkdir -p build && cd build
 cmake ..
-make pseudo_service test_discover -j$(nproc)
+make -j$(nproc)
 ```
 
 编译产物：
 
-| 二进制 | 路径 | 用途 |
-|--------|------|------|
-| `build/pseudo_service` | 伪服务 | 模拟业务服务，监听 TCP 端口 |
-| `build/test_discover` | 查询工具 | 向发现中心发起 Discover RPC |
+| 二进制 | 用途 |
+|--------|------|
+| `build/pseudo_service` | 模拟业务服务，监听 TCP 端口 |
+| `build/test_discover` | 查询指定 service_type 的实例列表 |
+| `build/test_register` | 验证 Register + Deregister RPC |
+| `build/test_heartbeat_cycle` | 验证全生命周期健康检查 |
 
 ## 容器化搭建
 
@@ -81,57 +84,75 @@ discovery_client: Registered as recall_service_172.17.0.3_8001_1
 discovery_client: Heartbeat OK
 ```
 
-## 验证测试
+## 手动验证测试
 
-使用 `test_discover` 在任意容器内查询各服务类型的实例列表：
+在宿主机上，通过 `docker compose exec` 在任意伪服务容器内执行测试工具。
+
+### 测试 1：查询实例列表
 
 ```bash
-# 查询 recall_service
 docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
   test_discover --server=discovery-server:8100 recall_service
 
-# 查询 feature_service
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-feature \
-  test_discover --server=discovery-server:8100 feature_service
-
-# 查询 proxy
-docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-proxy \
-  test_discover --server=discovery-server:8100 proxy
-
-# 查询未部署的服务类型（应返回 0 个实例）
 docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
   test_discover --server=discovery-server:8100 rank_master
 ```
 
-### 预期输出
+预期输出：
 
 ```
-# test_discover --server=discovery-server:8100 recall_service
-Found 1 instance(s) of [recall_service]:
+[PASS] Found 1 instance(s) of [recall_service]:
   [0] recall_service_172.17.0.3_8001_1  172.17.0.3:8001  status=UP
 
-# test_discover --server=discovery-server:8100 feature_service
-Found 1 instance(s) of [feature_service]:
-  [0] feature_service_172.17.0.4_8002_1  172.17.0.4:8002  status=UP
-
-# test_discover --server=discovery-server:8100 proxy
-Found 1 instance(s) of [proxy]:
-  [0] proxy_172.17.0.5_8003_1  172.17.0.5:8003  status=UP
-
-# test_discover --server=discovery-server:8100 rank_master
-Found 0 instance(s) of [rank_master]:
+[PASS] Found 0 instance(s) of [rank_master]:
 ```
 
-### 验证要点
+### 测试 2：注册与反注册
 
-| 查询 service_type | 应返回实例数 | 说明 |
-|------------------|-------------|------|
-| recall_service | 1 | 正常注册的伪召回服务 |
-| feature_service | 1 | 正常注册的伪特征服务 |
-| proxy | 1 | 正常注册的伪网关 |
-| rank_master | 0 | 未部署该服务 |
+```bash
+docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+  test_register --server=discovery-server:8100 \
+    --service_type=_test_ --host=127.0.0.1 --port=10000
+```
 
-每个实例的 `host:port` 应与对应容器的 IP 和 `SERVICE_PORT` 一致，`status` 应为 UP。
+预期输出：
+
+```
+[PASS] Registered as _test__127.0.0.1_10000_1
+[PASS] Deregistered _test__127.0.0.1_10000_1
+[PASS] Confirmed 0 instances of [_test_]
+[PASS] test_register passed
+```
+
+### 测试 3：全生命周期健康检查
+
+```bash
+docker compose -f services/discovery/examples/docker-compose.yml exec pseudo-recall \
+  test_heartbeat_cycle --server=discovery-server:8100 \
+    --service_type=_test_ --host=127.0.0.1 --port=10000 --heartbeat_interval=3
+```
+
+预期输出（共需约 20s，含等待 DOWN + 清理的时间）：
+
+```
+[PASS] Step 1: Registered as _test__127.0.0.1_10000_1
+[PASS] Step 2: Heartbeat accepted
+[PASS] Step 3: Instance is UP
+[INFO] Waiting for server to mark instance DOWN (~6s)...
+[PASS] Step 4: Instance is DOWN
+[INFO] Waiting for server to remove instance (~9s)...
+[PASS] Step 5: Instance cleaned up
+[PASS] test_heartbeat_cycle passed
+```
+
+## 测试要点对照
+
+| 测试 | 验证点 | 预期结果 |
+|------|--------|---------|
+| `test_discover recall_service` | 正常注册的服务可被查询 | 1 个 UP 实例 |
+| `test_discover rank_master` | 未部署服务返回空 | 0 个实例 |
+| `test_register` | Register + Deregister RPC | 注册成功 → 反注册成功 → 确认已删除 |
+| `test_heartbeat_cycle` | 心跳保持 UP → 停心跳变 DOWN → 超时清理 | 5 步全部 PASS |
 
 ## 清理
 
