@@ -22,17 +22,18 @@ services/discovery/examples/
 ## 前置条件
 
 - 编译机已安装 brpc、abseil、protobuf
-- Docker 及 docker compose
+- 编译机已安装 docker 及 docker compose
 
 ## 编译
 
 ### 1. 编译 discovery_server + discovery_client
 
-```bash
-cd /path/to/project
-mkdir build && cd build
-cmake .. && make discovery_server discovery_client -j$(nproc)
-```
+参考 `services/discovery` 目录下的 `README.md` 文件完成编译。
+
+**编译产物：**
+
+- `discovery_server`
+- `discovery_client`
 
 ### 2. 编译示例和测试工具
 
@@ -43,9 +44,7 @@ cmake ..
 make -j$(nproc)
 ```
 
-编译产物：
-
-| 二进制 | 用途 |
+| 编译产物 | 用途 |
 |--------|------|
 | `build/pseudo_service` | 模拟业务服务，监听 TCP 端口 |
 | `build/test_discover` | 查询指定 service_type 的实例列表 |
@@ -73,7 +72,7 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 | pseudo-feature | feature_service | 8002 | 1 |
 | pseudo-recall-{1,2,3} | recall_service | 8003 | 3 |
 | pseudo-rank-{1,2,3} | rank_service | 8004 | 3 |
-| test-client | (空闲) | — | 1 |
+| test-client | — | — | 1 |
 
 各伪服务容器自动运行 `pseudo_service + discovery_client`，向发现中心注册。同类型容器使用相同端口（各自容器内独立，互不冲突）。
 
@@ -92,7 +91,7 @@ discovery_client: Heartbeat OK
 
 ## 手动验证测试
 
-在宿主机上，通过 `docker compose exec` 在容器内执行测试工具。建议使用 `test-client`（无业务进程干扰）。
+在宿主机上，通过 `docker compose exec` 在容器内执行测试工具。建议使用 `test-client` 容器（无业务进程干扰）。
 
 ### 测试 1：查询各服务类型实例
 
@@ -115,10 +114,10 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 
 # 未部署类型
 docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
-  test_discover --server=discovery-server:8100 rank_master
+  test_discover --server=discovery-server:8100 no_this_service
 ```
 
-预期输出：
+**预期输出：**
 
 ```
 [PASS] Found 1 instance(s) of [proxy]:
@@ -137,18 +136,21 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
   [1] rank_service_172.17.0.x_8004_1  172.17.0.x:8004  status=UP
   [2] rank_service_172.17.0.x_8004_1  172.17.0.x:8004  status=UP
 
-[PASS] Found 0 instance(s) of [rank_master]:
+[PASS] Found 0 instance(s) of [no_this_service]:
 ```
 
 ### 测试 2：注册与反注册
 
 ```bash
 docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
-  test_register --server=discovery-server:8100 \
-    --service_type=_test_ --host=127.0.0.1 --port=10000
+  test_register \
+  --server=discovery-server:8100 \
+  --service_type=_test_ \
+  --host=127.0.0.1 \
+  --port=10000
 ```
 
-预期输出：
+**预期输出：**
 
 ```
 [PASS] Registered as _test__127.0.0.1_10000_1
@@ -161,11 +163,14 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 
 ```bash
 docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
-  test_heartbeat_cycle --server=discovery-server:8100 \
-    --service_type=_test_ --host=127.0.0.1 --port=10000 --heartbeat_interval=3
+  test_heartbeat_cycle \
+    --server=discovery-server:8100 \
+    --service_type=_test_ \
+    --host=127.0.0.1 --port=10000 \
+    --heartbeat_interval=3
 ```
 
-预期输出（共需约 20s，含等待 DOWN + 清理的时间）：
+**预期输出（共需约 20s，含等待 DOWN + 清理的时间）：**
 
 ```
 [PASS] Step 1: Registered as _test__127.0.0.1_10000_1
