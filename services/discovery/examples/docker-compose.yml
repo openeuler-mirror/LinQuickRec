@@ -7,103 +7,113 @@ services:
     build:
       context: ../../..
       dockerfile: services/discovery/Dockerfile
+    image: discovery-examples-server
     ports:
       - "8100:8100"
-    container_name: discovery-server
+    container_name: discovery-examples-server
 
   pseudo-proxy:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: proxy
       SERVICE_PORT: 8001
-    container_name: pseudo-proxy
+    container_name: discovery-examples-proxy
 
   pseudo-feature:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: feature_service
       SERVICE_PORT: 8002
-    container_name: pseudo-feature
+    container_name: discovery-examples-feature
 
   pseudo-recall-1:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: recall_service
       SERVICE_PORT: 8003
-    container_name: pseudo-recall-1
+    container_name: discovery-examples-recall-1
 
   pseudo-recall-2:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: recall_service
       SERVICE_PORT: 8003
-    container_name: pseudo-recall-2
+    container_name: discovery-examples-recall-2
 
   pseudo-recall-3:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: recall_service
       SERVICE_PORT: 8003
-    container_name: pseudo-recall-3
+    container_name: discovery-examples-recall-3
 
   pseudo-rank-1:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: rank_service
       SERVICE_PORT: 8004
-    container_name: pseudo-rank-1
+    container_name: discovery-examples-rank-1
 
   pseudo-rank-2:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: rank_service
       SERVICE_PORT: 8004
-    container_name: pseudo-rank-2
+    container_name: discovery-examples-rank-2
 
   pseudo-rank-3:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
     environment:
       SERVICE_TYPE: rank_service
       SERVICE_PORT: 8004
-    container_name: pseudo-rank-3
+    container_name: discovery-examples-rank-3
 
   test-client:
     build:
       context: ../../..
       dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
     depends_on:
       - discovery-server
-    container_name: test-client
+    container_name: discovery-examples-client
     entrypoint: ["tail", "-f", "/dev/null"]
