@@ -1,5 +1,7 @@
 FROM brpc_base:latest
 
+RUN ldconfig
+
 ARG DISCOVERY_SERVER_BIN=build/bin/discovery_server
 COPY $DISCOVERY_SERVER_BIN /usr/bin/discovery_server
 
