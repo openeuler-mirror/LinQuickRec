@@ -4,6 +4,8 @@
 #include <sstream>
 #include <cstdint>
 
+// common/logger.h is included via discovery_server.h
+
 DEFINE_int32(server_port, 8100, "Discovery server listening port");
 DEFINE_int32(heartbeat_check_interval_ms, 1000, "Health check scan interval (ms)");
 DEFINE_double(heartbeat_grace_factor, 2.0, "Heartbeat timeout multiplier");
@@ -13,9 +15,9 @@ DEFINE_int32(default_heartbeat_interval_sec, 5, "Default heartbeat interval (sec
 namespace discovery {
 
 DiscoveryServiceImpl::DiscoveryServiceImpl() {
-    LOG(INFO) << "DiscoveryServiceImpl initializing...";
+    LOG_INFO << "DiscoveryServiceImpl initializing...";
     health_thread_ = std::thread(&DiscoveryServiceImpl::health_check_loop, this);
-    LOG(INFO) << "DiscoveryServiceImpl initialized, health check thread started";
+    LOG_INFO << "DiscoveryServiceImpl initialized, health check thread started";
 }
 
 DiscoveryServiceImpl::~DiscoveryServiceImpl() {
@@ -23,7 +25,7 @@ DiscoveryServiceImpl::~DiscoveryServiceImpl() {
     if (health_thread_.joinable()) {
         health_thread_.join();
     }
-    LOG(INFO) << "DiscoveryServiceImpl destroyed";
+    LOG_INFO << "DiscoveryServiceImpl destroyed";
 }
 
 std::string DiscoveryServiceImpl::generate_instance_id(
@@ -74,7 +76,7 @@ void DiscoveryServiceImpl::Register(
     response->set_heartbeat_interval_sec(interval);
     response->set_message("registered successfully");
 
-    LOG(INFO) << "Registered: " << inst.service_name()
+    LOG_INFO << "Registered: " << inst.service_name()
               << " [" << instance_id << "] "
               << inst.host() << ":" << inst.port();
 }
@@ -100,7 +102,7 @@ void DiscoveryServiceImpl::Deregister(
     response->set_success(true);
     response->set_message("deregistered successfully");
 
-    LOG(INFO) << "Deregistered: " << request->service_name()
+    LOG_INFO << "Deregistered: " << request->service_name()
               << " [" << request->instance_id() << "]";
 }
 
@@ -123,7 +125,7 @@ void DiscoveryServiceImpl::Heartbeat(
                 inst_it->second.last_heartbeat_us = now;
                 if (inst_it->second.status == InstanceStatus::DOWN) {
                     inst_it->second.status = InstanceStatus::UP;
-                    LOG(INFO) << "Instance recovered: " << request->service_name()
+                    LOG_INFO << "Instance recovered: " << request->service_name()
                               << " [" << request->instance_id() << "]";
                 }
             } else {
@@ -171,18 +173,18 @@ void DiscoveryServiceImpl::health_check_loop() {
 
                     if (elapsed > static_cast<int64_t>(
                             interval_us * FLAGS_cleanup_factor)) {
-                        LOG(WARNING) << "Removing stale instance: "
-                                     << inst_it->second.service_name
-                                     << " [" << inst_it->second.instance_id << "]";
+                        LOG_WARN << "Removing stale instance: "
+                                      << inst_it->second.service_name
+                                      << " [" << inst_it->second.instance_id << "]";
                         inst_it = svc_it->second.erase(inst_it);
                         continue;
                     } else if (elapsed > static_cast<int64_t>(
                                    interval_us * FLAGS_heartbeat_grace_factor)) {
                         if (inst_it->second.status == InstanceStatus::UP) {
                             inst_it->second.status = InstanceStatus::DOWN;
-                            LOG(WARNING) << "Marked DOWN: "
-                                         << inst_it->second.service_name
-                                         << " [" << inst_it->second.instance_id << "]";
+                            LOG_WARN << "Marked DOWN: "
+                                          << inst_it->second.service_name
+                                          << " [" << inst_it->second.instance_id << "]";
                         }
                     }
                     ++inst_it;

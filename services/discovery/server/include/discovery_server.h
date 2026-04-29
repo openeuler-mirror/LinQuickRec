@@ -1,11 +1,11 @@
 #ifndef DISCOVERY_SERVER_H
 #define DISCOVERY_SERVER_H
 
+#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 

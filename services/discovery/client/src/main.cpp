@@ -3,7 +3,6 @@
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <gflags/gflags.h>
 
 #include <string>
@@ -47,7 +46,7 @@ static std::string g_instance_id;
 static bool g_registered = false;
 
 static void signal_handler(int signum) {
-    LOG(INFO) << "Received signal " << signum << ", shutting down";
+    LOG_INFO << "Received signal " << signum << ", shutting down";
     g_running = false;
 }
 
@@ -141,21 +140,21 @@ int main(int argc, char* argv[]) {
 
     std::string host = detect_host();
 
-    LOG(INFO) << "Discovery Client starting";
-    LOG(INFO) << "  service_type: " << FLAGS_service_type;
-    LOG(INFO) << "  service_port: " << FLAGS_service_port;
-    LOG(INFO) << "  host: " << host;
-    LOG(INFO) << "  discovery_addr: " << FLAGS_discovery_addr;
-    LOG(INFO) << "  heartbeat_interval: " << FLAGS_heartbeat_interval << "s";
-    LOG(INFO) << "  fail_threshold: " << FLAGS_fail_threshold;
-    LOG(INFO) << "  startup_timeout: " << FLAGS_startup_timeout << "s";
+    LOG_INFO << "Discovery Client starting";
+    LOG_INFO << "  service_type: " << FLAGS_service_type;
+    LOG_INFO << "  service_port: " << FLAGS_service_port;
+    LOG_INFO << "  host: " << host;
+    LOG_INFO << "  discovery_addr: " << FLAGS_discovery_addr;
+    LOG_INFO << "  heartbeat_interval: " << FLAGS_heartbeat_interval << "s";
+    LOG_INFO << "  fail_threshold: " << FLAGS_fail_threshold;
+    LOG_INFO << "  startup_timeout: " << FLAGS_startup_timeout << "s";
 
     brpc::Channel channel;
     brpc::ChannelOptions channel_opts;
     channel_opts.timeout_ms = 5000;
     channel_opts.max_retry = 2;
     if (channel.Init(FLAGS_discovery_addr.c_str(), &channel_opts) != 0) {
-        LOG(ERROR) << "Failed to connect to discovery server at "
+        LOG_ERROR << "Failed to connect to discovery server at "
                    << FLAGS_discovery_addr;
         return 1;
     }
@@ -165,7 +164,7 @@ int main(int argc, char* argv[]) {
     while (waited < FLAGS_startup_timeout) {
         if (check_health("127.0.0.1", FLAGS_service_port,
                          FLAGS_health_check_timeout)) {
-            LOG(INFO) << "Main service port " << FLAGS_service_port
+            LOG_INFO << "Main service port " << FLAGS_service_port
                       << " is ready";
             break;
         }
@@ -173,7 +172,7 @@ int main(int argc, char* argv[]) {
         waited++;
     }
     if (waited >= FLAGS_startup_timeout) {
-        LOG(WARNING) << "Main service port " << FLAGS_service_port
+        LOG_WARN << "Main service port " << FLAGS_service_port
                      << " not ready after " << FLAGS_startup_timeout
                      << "s, proceeding anyway";
     }
@@ -199,11 +198,11 @@ int main(int argc, char* argv[]) {
 
                 stub.Register(&cntl, &req, &rsp, nullptr);
                 if (cntl.Failed()) {
-                    LOG(ERROR) << "Register failed: " << cntl.ErrorText();
+                    LOG_ERROR << "Register failed: " << cntl.ErrorText();
                 } else if (rsp.success()) {
                     g_instance_id = rsp.instance_id();
                     g_registered = true;
-                    LOG(INFO) << "Registered as " << g_instance_id;
+                    LOG_INFO << "Registered as " << g_instance_id;
                 }
             } else {
                 discovery::HeartbeatRequest req;
@@ -215,9 +214,9 @@ int main(int argc, char* argv[]) {
 
                 stub.Heartbeat(&cntl, &req, &rsp, nullptr);
                 if (cntl.Failed()) {
-                    LOG(ERROR) << "Heartbeat failed: " << cntl.ErrorText();
+                    LOG_ERROR << "Heartbeat failed: " << cntl.ErrorText();
                 } else if (rsp.needs_reregister()) {
-                    LOG(WARNING) << "Server lost state, re-registering";
+                    LOG_WARN << "Server lost state, re-registering";
                     g_registered = false;
                 } else {
                     LOG_INFO << "Heartbeat OK";
@@ -225,7 +224,7 @@ int main(int argc, char* argv[]) {
             }
         } else {
             fail_count++;
-            LOG(WARNING) << "Health check failed (" << fail_count
+            LOG_WARN << "Health check failed (" << fail_count
                          << "/" << FLAGS_fail_threshold << ")";
 
             if (g_registered && fail_count >= FLAGS_fail_threshold) {
@@ -238,9 +237,9 @@ int main(int argc, char* argv[]) {
 
                 stub.Deregister(&cntl, &req, &rsp, nullptr);
                 if (cntl.Failed()) {
-                    LOG(ERROR) << "Deregister failed: " << cntl.ErrorText();
+                    LOG_ERROR << "Deregister failed: " << cntl.ErrorText();
                 } else {
-                    LOG(INFO) << "Deregistered due to health check failure";
+                    LOG_INFO << "Deregistered due to health check failure";
                     g_registered = false;
                 }
             }
@@ -252,7 +251,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (g_registered) {
-        LOG(INFO) << "Shutting down, deregistering...";
+        LOG_INFO << "Shutting down, deregistering...";
         discovery::DeregisterRequest req;
         discovery::DeregisterResponse rsp;
         brpc::Controller cntl;
@@ -262,13 +261,13 @@ int main(int argc, char* argv[]) {
 
         stub.Deregister(&cntl, &req, &rsp, nullptr);
         if (cntl.Failed()) {
-            LOG(ERROR) << "Deregister on shutdown failed: "
+            LOG_ERROR << "Deregister on shutdown failed: "
                        << cntl.ErrorText();
         } else {
-            LOG(INFO) << "Deregistered successfully on shutdown";
+            LOG_INFO << "Deregistered successfully on shutdown";
         }
     }
 
-    LOG(INFO) << "Discovery Client stopped";
+    LOG_INFO << "Discovery Client stopped";
     return 0;
 }
