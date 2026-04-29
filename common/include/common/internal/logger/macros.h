@@ -13,7 +13,7 @@
 #define LOG_TRACE   LOG_STREAM(TRACE)
 #define LOG_DEBUG   LOG_STREAM(DEBUG)
 #define LOG_INFO    LOG_STREAM(INFO)
-#define LOG_WARN    LOG_STREAM(WARN)
+#define LOG_WARN    LOG_STREAM(WARNING)
 #define LOG_ERROR   LOG_STREAM(ERROR)
 #define LOG_FATAL   LOG_STREAM(FATAL)
 
@@ -57,9 +57,9 @@
 
 #define LOG_WARN_FMT(fmt, ...) \
     do { \
-        if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::WARN)) { \
+        if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::WARNING)) { \
             common::logger::Logger::Instance().Log( \
-                common::logger::LogLevel::WARN, \
+                common::logger::LogLevel::WARNING, \
                 __FILE__, __LINE__, __FUNCTION__, \
                 fmt::format(fmt, ##__VA_ARGS__)); \
         } \
