@@ -1,7 +1,5 @@
 FROM brpc_base:latest
 
-RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local.conf && ldconfig
-
 ARG DISCOVERY_CLIENT_BIN=build/bin/discovery_client
 ARG PSEUDO_SERVICE_BIN=services/discovery/examples/build/bin/pseudo_service
 ARG TEST_DISCOVER_BIN=services/discovery/examples/build/bin/test_discover
