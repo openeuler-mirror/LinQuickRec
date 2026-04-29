@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 查找必要的包
 find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
 find_package(brpc REQUIRED)
 find_package(absl REQUIRED)
 find_package(Threads REQUIRED)
@@ -87,7 +86,6 @@ target_link_libraries(gateway_server PRIVATE
     brpc::brpc
     protobuf::libprotobuf
     absl::strings
-    gRPC::grpc++
     Threads::Threads
 )
 
@@ -115,7 +113,6 @@ target_link_libraries(gateway_test_client PRIVATE
     brpc::brpc
     protobuf::libprotobuf
     absl::strings
-    gRPC::grpc++
     Threads::Threads
 )
 
