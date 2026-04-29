@@ -10,22 +10,22 @@
         __FILE__, __LINE__, __FUNCTION__)
 
 // 各级别流式日志快捷宏
-#define LOG_TRACE_STREAM   LOG_STREAM(TRACE)
-#define LOG_DEBUG_STREAM   LOG_STREAM(DEBUG)
-#define LOG_INFO_STREAM    LOG_STREAM(INFO)
-#define LOG_WARN_STREAM    LOG_STREAM(WARN)
-#define LOG_ERROR_STREAM   LOG_STREAM(ERROR)
-#define LOG_FATAL_STREAM   LOG_STREAM(FATAL)
+#define LOG_TRACE   LOG_STREAM(TRACE)
+#define LOG_DEBUG   LOG_STREAM(DEBUG)
+#define LOG_INFO    LOG_STREAM(INFO)
+#define LOG_WARN    LOG_STREAM(WARN)
+#define LOG_ERROR   LOG_STREAM(ERROR)
+#define LOG_FATAL   LOG_STREAM(FATAL)
 
 // 条件日志宏（仅在满足条件时记录）
-#define LOG_IF_STREAM(level, condition) \
+#define LOG_IF(level, condition) \
     if (condition) LOG_STREAM(level)
 
 // 格式化日志宏（需要 fmt 库支持）
 #if HAVE_FMTLIB
 #include <fmt/format.h>
 
-#define LOG_TRACE(fmt, ...) \
+#define LOG_TRACE_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::TRACE)) { \
             common::logger::Logger::Instance().Log( \
@@ -35,7 +35,7 @@
         } \
     } while (0)
 
-#define LOG_DEBUG(fmt, ...) \
+#define LOG_DEBUG_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::DEBUG)) { \
             common::logger::Logger::Instance().Log( \
@@ -45,7 +45,7 @@
         } \
     } while (0)
 
-#define LOG_INFO(fmt, ...) \
+#define LOG_INFO_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::INFO)) { \
             common::logger::Logger::Instance().Log( \
@@ -55,7 +55,7 @@
         } \
     } while (0)
 
-#define LOG_WARN(fmt, ...) \
+#define LOG_WARN_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::WARN)) { \
             common::logger::Logger::Instance().Log( \
@@ -65,7 +65,7 @@
         } \
     } while (0)
 
-#define LOG_ERROR(fmt, ...) \
+#define LOG_ERROR_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::ERROR)) { \
             common::logger::Logger::Instance().Log( \
@@ -75,7 +75,7 @@
         } \
     } while (0)
 
-#define LOG_FATAL(fmt, ...) \
+#define LOG_FATAL_FMT(fmt, ...) \
     do { \
         if (common::logger::Logger::Instance().ShouldLog(common::logger::LogLevel::FATAL)) { \
             common::logger::Logger::Instance().Log( \
@@ -87,12 +87,12 @@
 
 #else
 // 如果没有 fmt，格式化日志宏不可用
-#define LOG_TRACE(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
-#define LOG_DEBUG(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
-#define LOG_INFO(fmt, ...)    static_assert(false, "fmt library required for formatted logging")
-#define LOG_WARN(fmt, ...)    static_assert(false, "fmt library required for formatted logging")
-#define LOG_ERROR(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
-#define LOG_FATAL(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
+#define LOG_TRACE_FMT(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
+#define LOG_DEBUG_FMT(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
+#define LOG_INFO_FMT(fmt, ...)    static_assert(false, "fmt library required for formatted logging")
+#define LOG_WARN_FMT(fmt, ...)    static_assert(false, "fmt library required for formatted logging")
+#define LOG_ERROR_FMT(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
+#define LOG_FATAL_FMT(fmt, ...)   static_assert(false, "fmt library required for formatted logging")
 #endif // HAVE_FMTLIB
 
 // 兼容宏：尝试与现有 LOG(INFO) 宏共存
