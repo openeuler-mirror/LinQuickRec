@@ -11,12 +11,10 @@ namespace common {
 namespace logger {
 
 Logger::Logger() {
-    // 默认 trace_id 获取器返回空字符串
     trace_id_getter_ = []() { return std::string(); };
 }
 
 Logger::~Logger() {
-    // 刷新所有输出器
     for (auto& sink : sinks_) {
         sink->Flush();
     }
@@ -29,20 +27,15 @@ Logger& Logger::Instance() {
 
 void Logger::Initialize(const LoggerConfig& config) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    if (initialized_) {
-        // 已初始化，重新配置
-        ClearSinks();
-    }
-    
+
+    if (initialized_)
+        clearSinksUnsafe();
+
     config_ = config;
-    
-    // 创建控制台输出器
-    if (config.console_output) {
-        AddSink(std::make_shared<ConsoleSink>(config.level));
-    }
-    
-    // 创建文件输出器
+
+    if (config.console_output)
+        addSinkUnsafe(std::make_shared<ConsoleSink>(config.level));
+
     if (!config.file_path.empty()) {
         try {
             auto file_sink = std::make_shared<FileSink>(
@@ -51,15 +44,13 @@ void Logger::Initialize(const LoggerConfig& config) {
                 config.max_file_size,
                 config.max_files
             );
-            AddSink(file_sink);
+            addSinkUnsafe(file_sink);
         } catch (const std::exception& e) {
-            // 文件输出器创建失败，fallback 到控制台
-            if (!config.console_output) {
-                AddSink(std::make_shared<ConsoleSink>(config.level));
-            }
+            if (!config.console_output)
+                addSinkUnsafe(std::make_shared<ConsoleSink>(config.level));
         }
     }
-    
+
     initialized_ = true;
 }
 
@@ -71,14 +62,22 @@ void Logger::InitializeDefault() {
     Initialize(config);
 }
 
+void Logger::addSinkUnsafe(LogSinkPtr sink) {
+    sinks_.push_back(std::move(sink));
+}
+
+void Logger::clearSinksUnsafe() {
+    sinks_.clear();
+}
+
 void Logger::AddSink(LogSinkPtr sink) {
     std::lock_guard<std::mutex> lock(mutex_);
-    sinks_.push_back(sink);
+    addSinkUnsafe(std::move(sink));
 }
 
 void Logger::ClearSinks() {
     std::lock_guard<std::mutex> lock(mutex_);
-    sinks_.clear();
+    clearSinksUnsafe();
 }
 
 void Logger::SetLevel(LogLevel level) {
@@ -99,9 +98,9 @@ void Logger::SetTraceIdGetter(std::function<std::string()> getter) {
     trace_id_getter_ = std::move(getter);
 }
 
-LogStream Logger::Stream(LogLevel level, 
-                         const char* file, 
-                         int line, 
+LogStream Logger::Stream(LogLevel level,
+                         const char* file,
+                         int line,
                          const char* func) {
     return LogStream(*this, level, file, line, func);
 }
@@ -111,17 +110,23 @@ void Logger::Log(LogLevel level,
                  int line,
                  const char* func,
                  const std::string& message) {
-    if (!ShouldLog(level)) {
-        return;
+    std::string local_pattern;
+    bool local_enable_trace_id = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!logger::ShouldLog(level, config_.level))
+            return;
+        local_pattern = config_.pattern;
+        local_enable_trace_id = config_.enable_trace_id;
     }
-    
-    std::string formatted = FormatMessage(level, file, line, func, message);
-    
+
+    std::string formatted = FormatMessage(level, file, line, func, message,
+                                          local_pattern, local_enable_trace_id);
+
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& sink : sinks_) {
-        if (logger::ShouldLog(level, sink->GetLevel())) {
+        if (logger::ShouldLog(level, sink->GetLevel()))
             sink->Write(formatted);
-        }
     }
 }
 
@@ -139,8 +144,10 @@ std::string Logger::FormatMessage(LogLevel level,
                                   const char* file,
                                   int line,
                                   const char* func,
-                                  const std::string& message) const {
-    return ApplyPattern(config_.pattern, level, file, line, func, message);
+                                  const std::string& message,
+                                  const std::string& pattern,
+                                  bool enable_trace_id) const {
+    return ApplyPattern(pattern, level, file, line, func, message, enable_trace_id);
 }
 
 std::string Logger::ApplyPattern(const std::string& pattern,
@@ -148,112 +155,94 @@ std::string Logger::ApplyPattern(const std::string& pattern,
                                  const char* file,
                                  int line,
                                  const char* func,
-                                 const std::string& message) const {
+                                 const std::string& message,
+                                 bool enable_trace_id) const {
     std::string result = pattern;
-    
-    // 获取当前时间
+
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()) % 1000;
-    
+
     std::tm tm;
 #ifdef _WIN32
     localtime_s(&tm, &time_t);
 #else
     localtime_r(&time_t, &tm);
 #endif
-    
-    // 替换时间模式
-    // %Y: 年, %m: 月, %d: 日
-    // %H: 时, %M: 分, %S: 秒
-    // %e: 毫秒
-    // %l: 日志级别
-    // %t: 线程ID
-    // %v: 消息内容
-    // %f: 文件名
-    // %F: 完整文件路径
-    // %L: 行号
-    // %c: 函数名
-    // %T: trace_id
-    
+
     std::ostringstream oss;
-    
-    // 逐字符处理，避免多次替换
+
     for (size_t i = 0; i < result.size(); ++i) {
         if (result[i] == '%' && i + 1 < result.size()) {
             char spec = result[i + 1];
             switch (spec) {
-                case 'Y': // 年
+                case 'Y':
                     oss << std::put_time(&tm, "%Y");
                     break;
-                case 'm': // 月
+                case 'm':
                     oss << std::put_time(&tm, "%m");
                     break;
-                case 'd': // 日
+                case 'd':
                     oss << std::put_time(&tm, "%d");
                     break;
-                case 'H': // 时
+                case 'H':
                     oss << std::put_time(&tm, "%H");
                     break;
-                case 'M': // 分
+                case 'M':
                     oss << std::put_time(&tm, "%M");
                     break;
-                case 'S': // 秒
+                case 'S':
                     oss << std::put_time(&tm, "%S");
                     break;
-                case 'e': // 毫秒
+                case 'e':
                     oss << std::setfill('0') << std::setw(3) << ms.count();
                     break;
-                case 'l': // 日志级别
+                case 'l':
                     oss << LogLevelToString(level);
                     break;
-                case 't': // 线程ID
+                case 't':
                     oss << std::this_thread::get_id();
                     break;
-                case 'v': // 消息内容
+                case 'v':
                     oss << message;
                     break;
-                case 'f': // 文件名
+                case 'f':
                     {
                         std::string f(file);
                         size_t pos = f.find_last_of("/\\");
-                        if (pos != std::string::npos) {
+                        if (pos != std::string::npos)
                             f = f.substr(pos + 1);
-                        }
                         oss << f;
                     }
                     break;
-                case 'F': // 完整文件路径
+                case 'F':
                     oss << file;
                     break;
-                case 'L': // 行号
+                case 'L':
                     oss << line;
                     break;
-                case 'c': // 函数名
+                case 'c':
                     oss << func;
                     break;
-                case 'T': // trace_id
-                    if (config_.enable_trace_id) {
+                case 'T':
+                    if (enable_trace_id)
                         oss << GetTraceId();
-                    }
                     break;
                 default:
-                    // 未知模式，保留原字符
                     oss << '%' << spec;
                     break;
             }
-            ++i; // 跳过模式字符
+            ++i;
         } else {
             oss << result[i];
         }
     }
-    
+
     return oss.str();
 }
 
-// LogStream 实现
-LogStream::LogStream(Logger& logger, 
+LogStream::LogStream(Logger& logger,
                      LogLevel level,
                      const char* file,
                      int line,
