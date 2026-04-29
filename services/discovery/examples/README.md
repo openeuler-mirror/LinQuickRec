@@ -92,7 +92,7 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 **Discovery Server：**
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs discovery-examples-server
+docker compose -f services/discovery/examples/docker-compose.yml logs discovery-server
 ```
 
 预期输出：
@@ -110,7 +110,7 @@ docker compose -f services/discovery/examples/docker-compose.yml logs discovery-
 **任一伪服务容器（如 pseudo-recall-1）：**
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs discovery-examples-recall-1
+docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-recall-1
 ```
 
 预期输出：
