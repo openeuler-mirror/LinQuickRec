@@ -66,6 +66,7 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 > ```bash
 > # 例如从 services/discovery/ 目录单独编译后，在 project root 执行：
 > docker compose -f services/discovery/examples/docker-compose.yml build \
+>   --build-arg DISCOVERY_SERVER_BIN=services/discovery/build/bin/discovery_server \
 >   --build-arg DISCOVERY_CLIENT_BIN=services/discovery/build/bin/discovery_client
 > ```
 >
