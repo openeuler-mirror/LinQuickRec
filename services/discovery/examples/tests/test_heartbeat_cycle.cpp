@@ -1,10 +1,10 @@
+#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include <iostream>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -69,11 +69,12 @@ static bool discover_count(const std::string& server,
 }
 
 int main(int argc, char* argv[]) {
+    common::logger::InitializeDefault();
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_service_type.empty()) {
-        std::cerr << "Usage: test_heartbeat_cycle --server=<addr> --service_type=<type>"
-                  << " --host=<ip> --port=<n>" << std::endl;
+        LOG_ERROR << "Usage: test_heartbeat_cycle --server=<addr> --service_type=<type>"
+                  << " --host=<ip> --port=<n>";
         return 1;
     }
 
@@ -82,7 +83,7 @@ int main(int argc, char* argv[]) {
     opts.timeout_ms = 5000;
     opts.max_retry = 1;
     if (channel.Init(FLAGS_server.c_str(), &opts) != 0) {
-        std::cerr << "[FAIL] Failed to connect to " << FLAGS_server << std::endl;
+        LOG_ERROR << "[FAIL] Failed to connect to " << FLAGS_server;
         return 1;
     }
 
@@ -103,11 +104,11 @@ int main(int argc, char* argv[]) {
         stub.Register(&cntl, &req, &rsp, nullptr);
 
         if (cntl.Failed() || !rsp.success() || rsp.instance_id().empty()) {
-            std::cerr << "[FAIL] Step 1 (Register): " << cntl.ErrorText() << std::endl;
+            LOG_ERROR << "[FAIL] Step 1 (Register): " << cntl.ErrorText();
             return 1;
         }
         instance_id = rsp.instance_id();
-        std::cout << "[PASS] Step 1: Registered as " << instance_id << std::endl;
+        LOG_INFO << "[PASS] Step 1: Registered as " << instance_id;
     }
 
     // === Step 2: Send heartbeat ===
@@ -122,52 +123,48 @@ int main(int argc, char* argv[]) {
         stub.Heartbeat(&cntl, &req, &rsp, nullptr);
 
         if (cntl.Failed()) {
-            std::cerr << "[FAIL] Step 2 (Heartbeat): " << cntl.ErrorText() << std::endl;
+            LOG_ERROR << "[FAIL] Step 2 (Heartbeat): " << cntl.ErrorText();
             return 1;
         }
         if (!rsp.success()) {
-            std::cerr << "[FAIL] Step 2 (Heartbeat): server returned success=false" << std::endl;
+            LOG_ERROR << "[FAIL] Step 2 (Heartbeat): server returned success=false";
             return 1;
         }
-        std::cout << "[PASS] Step 2: Heartbeat accepted" << std::endl;
+        LOG_INFO << "[PASS] Step 2: Heartbeat accepted";
     }
 
     // === Step 3: Discover, expect UP ===
     {
         if (!discover_count(FLAGS_server, FLAGS_service_type, 1, "UP", 5)) {
-            std::cerr << "[FAIL] Step 3: Expected 1 UP instance of ["
-                      << FLAGS_service_type << "]" << std::endl;
+            LOG_ERROR << "[FAIL] Step 3: Expected 1 UP instance of ["
+                      << FLAGS_service_type << "]";
             return 1;
         }
-        std::cout << "[PASS] Step 3: Instance is UP" << std::endl;
+        LOG_INFO << "[PASS] Step 3: Instance is UP";
     }
 
     // === Step 4: Stop heartbeating, wait for DOWN ===
-    // Server checks: last_heartbeat < now - interval*grace_factor(2.0)
-    // With interval=3, DOWN after ~6s of no heartbeat. Wait up to 12s.
     {
-        std::cout << "[INFO] Waiting for server to mark instance DOWN (~6s)..." << std::endl;
+        LOG_INFO << "[INFO] Waiting for server to mark instance DOWN (~6s)...";
         if (!discover_count(FLAGS_server, FLAGS_service_type, 1, "DOWN", 15)) {
-            std::cerr << "[FAIL] Step 4: Expected 1 DOWN instance of ["
-                      << FLAGS_service_type << "]" << std::endl;
+            LOG_ERROR << "[FAIL] Step 4: Expected 1 DOWN instance of ["
+                      << FLAGS_service_type << "]";
             return 1;
         }
-        std::cout << "[PASS] Step 4: Instance is DOWN" << std::endl;
+        LOG_INFO << "[PASS] Step 4: Instance is DOWN";
     }
 
     // === Step 5: Wait for cleanup ===
-    // cleanup_factor=5.0, so removal after ~15s of no heartbeat.
-    // We've already waited ~6s from Step 4, so wait up to 15s more.
     {
-        std::cout << "[INFO] Waiting for server to remove instance (~9s)..." << std::endl;
+        LOG_INFO << "[INFO] Waiting for server to remove instance (~9s)...";
         if (!discover_count(FLAGS_server, FLAGS_service_type, 0, "", 15)) {
-            std::cerr << "[FAIL] Step 5: Expected 0 instances of ["
-                      << FLAGS_service_type << "] after cleanup" << std::endl;
+            LOG_ERROR << "[FAIL] Step 5: Expected 0 instances of ["
+                      << FLAGS_service_type << "] after cleanup";
             return 1;
         }
-        std::cout << "[PASS] Step 5: Instance cleaned up" << std::endl;
+        LOG_INFO << "[PASS] Step 5: Instance cleaned up";
     }
 
-    std::cout << "[PASS] test_heartbeat_cycle passed" << std::endl;
+    LOG_INFO << "[PASS] test_heartbeat_cycle passed";
     return 0;
 }

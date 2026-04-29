@@ -1,4 +1,4 @@
-#include <iostream>
+#include "common/logger.h"
 #include <csignal>
 #include <cstring>
 #include <atomic>
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
-        std::cerr << "Failed to create socket" << std::endl;
+        LOG_ERROR << "Failed to create socket";
         return 1;
     }
 
@@ -39,13 +39,13 @@ int main(int argc, char* argv[]) {
     addr.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Failed to bind port " << port << std::endl;
+        LOG_ERROR << "Failed to bind port " << port;
         close(server_fd);
         return 1;
     }
 
     listen(server_fd, 5);
-    std::cout << "Pseudo service listening on port " << port << std::endl;
+    LOG_INFO << "Pseudo service listening on port " << port;
 
     fd_set read_fds;
     struct timeval tv;
@@ -61,9 +61,6 @@ int main(int argc, char* argv[]) {
             socklen_t client_len = sizeof(client);
             int client_fd = accept(server_fd, (struct sockaddr*)&client, &client_len);
             if (client_fd >= 0) {
-                std::cout << "Accepted connection from "
-                          << inet_ntoa(client.sin_addr) << ":"
-                          << ntohs(client.sin_port) << std::endl;
                 const char* response = "OK\n";
                 send(client_fd, response, strlen(response), 0);
                 close(client_fd);
@@ -72,6 +69,6 @@ int main(int argc, char* argv[]) {
     }
 
     close(server_fd);
-    std::cout << "Pseudo service on port " << port << " stopped" << std::endl;
+    LOG_INFO << "Pseudo service on port " << port << " stopped";
     return 0;
 }
