@@ -25,23 +25,23 @@ int main() {
     common::logger::InitializeDefault();
     
     // 测试流式日志
-    LOG_INFO_STREAM << "This is an info message";
-    LOG_WARN_STREAM << "This is a warning message";
-    LOG_ERROR_STREAM << "This is an error message";
+    LOG_INFO << "This is an info message";
+    LOG_WARN << "This is a warning message";
+    LOG_ERROR << "This is an error message";
     
     // 测试条件日志
     bool debug_enabled = false;
-    LOG_IF_STREAM(DEBUG, debug_enabled) << "This debug message won't appear";
+    LOG_IF(DEBUG, debug_enabled) << "This debug message won't appear";
     
     debug_enabled = true;
-    LOG_IF_STREAM(DEBUG, debug_enabled) << "This debug message will appear if level is DEBUG";
+    LOG_IF(DEBUG, debug_enabled) << "This debug message will appear if level is DEBUG";
     
     // 设置 trace_id 获取器
     common::logger::SetTraceIdGetter([]() {
         return "test-trace-123";
     });
     
-    LOG_INFO_STREAM << "Message with trace_id";
+    LOG_INFO << "Message with trace_id";
     
     // 3. 测试文件日志输出
     std::cout << "\n=== Testing File Logger ===" << std::endl;
@@ -56,7 +56,7 @@ int main() {
     common::logger::Initialize(config);
     
     for (int i = 0; i < 5; ++i) {
-        LOG_INFO_STREAM << "Test log entry " << i << " for file rotation test";
+        LOG_INFO << "Test log entry " << i << " for file rotation test";
     }
     
     std::cout << "\n=== Test Completed ===" << std::endl;
