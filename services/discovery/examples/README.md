@@ -100,6 +100,16 @@ discovery_client: Registered as recall_service_172.17.0.3_8003_1
 discovery_client: Heartbeat OK
 ```
 
+### 4. 清除资源
+
+```bash
+# 停止并移除所有容器
+docker compose -f services/discovery/examples/docker-compose.yml down
+
+# 删除构建的镜像
+docker rmi discovery-examples-server discovery-examples-pseudo
+```
+
 ## 手动验证测试
 
 在宿主机上，通过 `docker compose exec` 在容器内执行测试工具。建议使用 `test-client` 容器（无业务进程干扰）。
@@ -206,8 +216,4 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 | `test_register` | Register + Deregister RPC | 注册成功 → 反注册成功 → 确认已删除 |
 | `test_heartbeat_cycle` | 心跳保持 UP → 停心跳变 DOWN → 超时清理 | 5 步全部 PASS |
 
-## 清理
 
-```bash
-docker compose -f services/discovery/examples/docker-compose.yml down
-```
