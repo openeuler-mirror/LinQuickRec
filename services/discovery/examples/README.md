@@ -89,15 +89,48 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 
 ### 3. 查看容器日志确认注册成功
 
+**Discovery Server：**
+
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-recall-1
+docker compose -f services/discovery/examples/docker-compose.yml logs discovery-examples-server
 ```
 
-预期输出（每 5s 一条心跳日志）：
+预期输出：
 
 ```
-discovery_client: Registered as recall_service_172.17.0.3_8003_1
-discovery_client: Heartbeat OK
+[2026-04-29 11:14:15.123] [INFO] [main.cpp:42] Discovery Server starting on 8100
+[2026-04-29 11:14:15.124] [INFO] [main.cpp:43] Heartbeat check interval: 1000ms
+[2026-04-29 11:14:16.962] [INFO] [discovery_server.cpp:74] Register: proxy_172.19.0.3_8001_1
+[2026-04-29 11:14:17.237] [INFO] [discovery_server.cpp:74] Register: feature_service_172.19.0.8_8002_1
+[2026-04-29 11:14:17.421] [INFO] [discovery_server.cpp:74] Register: recall_service_172.19.0.4_8003_1
+[2026-04-29 11:14:17.592] [INFO] [discovery_server.cpp:74] Register: rank_service_172.19.0.9_8004_1
+...
+```
+
+**任一伪服务容器（如 pseudo-recall-1）：**
+
+```bash
+docker compose -f services/discovery/examples/docker-compose.yml logs discovery-examples-recall-1
+```
+
+预期输出：
+
+```
+========================================
+Pseudo service starting
+  service_type: recall_service
+  service_port: 8003
+  discovery_addr: discovery-server:8100
+========================================
+[2026-04-29 11:14:17.410] [INFO] [main.cpp:48] Pseudo service listening on port 8003
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:140] Discovery Client starting
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:163] Main service port 8003 is ready
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:68] Port 8003 accepting health checks
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:69] (subsequent health check logs are suppressed)
+[2026-04-29 11:14:17.415] [INFO] [main.cpp:202] Registered as recall_service_172.19.0.4_8003_1
+[2026-04-29 11:14:22.418] [INFO] [main.cpp:218] Heartbeat OK              ← 每 5s 一条
+[2026-04-29 11:14:27.422] [INFO] [main.cpp:218] Heartbeat OK
+...
 ```
 
 ### 4. 清除资源

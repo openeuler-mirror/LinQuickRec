@@ -15,7 +15,11 @@ DEFINE_int32(port, 10000, "Instance port");
 DEFINE_int32(heartbeat_interval, 10, "Heartbeat interval (seconds)");
 
 int main(int argc, char* argv[]) {
-    common::logger::InitializeDefault();
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] %v";
+        common::logger::Initialize(cfg);
+    }
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_service_type.empty()) {
