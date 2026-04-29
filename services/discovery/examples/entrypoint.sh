@@ -16,7 +16,7 @@ echo "  service_port: $SERVICE_PORT"
 echo "  discovery_addr: $DISCOVERY_ADDR"
 echo "========================================"
 
-pseudo_service --port="$SERVICE_PORT" &
+pseudo_service --port "$SERVICE_PORT" &
 PID_SERVICE=$!
 
 discovery_client \
