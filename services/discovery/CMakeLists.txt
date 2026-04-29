@@ -64,6 +64,7 @@ target_link_libraries(discovery_server PRIVATE
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
+    common_lib
 )
 
 set_target_properties(discovery_server PROPERTIES
