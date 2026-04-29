@@ -123,7 +123,11 @@ static std::string detect_host() {
 }
 
 int main(int argc, char* argv[]) {
-    common::logger::InitializeDefault();
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] %v";
+        common::logger::Initialize(cfg);
+    }
 
     google::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -215,6 +219,8 @@ int main(int argc, char* argv[]) {
                 } else if (rsp.needs_reregister()) {
                     LOG(WARNING) << "Server lost state, re-registering";
                     g_registered = false;
+                } else {
+                    LOG_INFO << "Heartbeat OK";
                 }
             }
         } else {

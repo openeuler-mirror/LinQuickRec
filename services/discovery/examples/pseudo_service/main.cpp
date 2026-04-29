@@ -14,6 +14,12 @@ static void signal_handler(int) {
 }
 
 int main(int argc, char* argv[]) {
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] %v";
+        common::logger::Initialize(cfg);
+    }
+
     int port = 8001;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
@@ -61,6 +67,12 @@ int main(int argc, char* argv[]) {
             socklen_t client_len = sizeof(client);
             int client_fd = accept(server_fd, (struct sockaddr*)&client, &client_len);
             if (client_fd >= 0) {
+                static bool first_conn = true;
+                if (first_conn) {
+                    LOG_INFO << "Port " << port << " accepting health checks";
+                    LOG_INFO << "(subsequent health check logs are suppressed)";
+                    first_conn = false;
+                }
                 const char* response = "OK\n";
                 send(client_fd, response, strlen(response), 0);
                 close(client_fd);

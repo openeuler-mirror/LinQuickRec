@@ -10,7 +10,11 @@
 DEFINE_string(server, "127.0.0.1:8100", "Discovery server address");
 
 int main(int argc, char* argv[]) {
-    common::logger::InitializeDefault();
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] %v";
+        common::logger::Initialize(cfg);
+    }
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (argc < 2) {
