@@ -63,7 +63,7 @@ int main() {
     // ==============================
     // Example 7: Dynamic log level
     // ==============================
-    common::logger::SetLevel(common::logger::LogLevel::WARN);
+    common::logger::SetLevel(common::logger::LogLevel::WARNING);
     LOG_INFO << "This won't appear (level is WARN)";
     LOG_WARN << "This will appear (level is WARN)";
     LOG_ERROR << "This will also appear";
