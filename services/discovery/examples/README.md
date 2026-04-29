@@ -76,14 +76,14 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 
 启动 9 个容器：
 
-| 容器名 | 服务类型 | 容器内端口 | 副本数 |
-|--------|---------|-----------|--------|
-| discovery-server | — | 8100 | 1 |
-| pseudo-proxy | proxy | 8001 | 1 |
-| pseudo-feature | feature_service | 8002 | 1 |
-| pseudo-recall-{1,2,3} | recall_service | 8003 | 3 |
-| pseudo-rank-{1,2,3} | rank_service | 8004 | 3 |
-| test-client | — | — | 1 |
+| 容器名 | 镜像名 | 服务类型 | 容器内端口 | 副本数 |
+|--------|--------|---------|-----------|--------|
+| discovery-examples-server | discovery-examples-server | — | 8100 | 1 |
+| discovery-examples-proxy | discovery-examples-pseudo | proxy | 8001 | 1 |
+| discovery-examples-feature | discovery-examples-pseudo | feature_service | 8002 | 1 |
+| discovery-examples-recall-{1,2,3} | discovery-examples-pseudo | recall_service | 8003 | 3 |
+| discovery-examples-rank-{1,2,3} | discovery-examples-pseudo | rank_service | 8004 | 3 |
+| discovery-examples-client | discovery-examples-pseudo | — | — | 1 |
 
 各伪服务容器自动运行 `pseudo_service + discovery_client`，向发现中心注册。同类型容器使用相同端口（各自容器内独立，互不冲突）。
 
