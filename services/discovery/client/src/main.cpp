@@ -1,3 +1,4 @@
+#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
@@ -122,11 +123,12 @@ static std::string detect_host() {
 }
 
 int main(int argc, char* argv[]) {
+    common::logger::InitializeDefault();
+
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_service_type.empty() || FLAGS_service_port == 0) {
-        std::cerr << "Error: --service_type and --service_port are required"
-                  << std::endl;
+        LOG_ERROR << "Error: --service_type and --service_port are required";
         return 1;
     }
 

@@ -1,10 +1,10 @@
+#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include <iostream>
 #include <string>
 #include <cstdlib>
 
@@ -15,11 +15,12 @@ DEFINE_int32(port, 10000, "Instance port");
 DEFINE_int32(heartbeat_interval, 10, "Heartbeat interval (seconds)");
 
 int main(int argc, char* argv[]) {
+    common::logger::InitializeDefault();
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_service_type.empty()) {
-        std::cerr << "Usage: test_register --server=<addr> --service_type=<type>"
-                  << " --host=<ip> --port=<n>" << std::endl;
+        LOG_ERROR << "Usage: test_register --server=<addr> --service_type=<type>"
+                  << " --host=<ip> --port=<n>";
         return 1;
     }
 
@@ -28,7 +29,7 @@ int main(int argc, char* argv[]) {
     opts.timeout_ms = 5000;
     opts.max_retry = 1;
     if (channel.Init(FLAGS_server.c_str(), &opts) != 0) {
-        std::cerr << "[FAIL] Failed to connect to " << FLAGS_server << std::endl;
+        LOG_ERROR << "[FAIL] Failed to connect to " << FLAGS_server;
         return 1;
     }
 
@@ -48,20 +49,20 @@ int main(int argc, char* argv[]) {
         stub.Register(&cntl, &req, &rsp, nullptr);
 
         if (cntl.Failed()) {
-            std::cerr << "[FAIL] Register RPC failed: " << cntl.ErrorText() << std::endl;
+            LOG_ERROR << "[FAIL] Register RPC failed: " << cntl.ErrorText();
             return 1;
         }
         if (!rsp.success()) {
-            std::cerr << "[FAIL] Register returned success=false: " << rsp.message() << std::endl;
+            LOG_ERROR << "[FAIL] Register returned success=false: " << rsp.message();
             return 1;
         }
         if (rsp.instance_id().empty()) {
-            std::cerr << "[FAIL] Register returned empty instance_id" << std::endl;
+            LOG_ERROR << "[FAIL] Register returned empty instance_id";
             return 1;
         }
 
         std::string instance_id = rsp.instance_id();
-        std::cout << "[PASS] Registered as " << instance_id << std::endl;
+        LOG_INFO << "[PASS] Registered as " << instance_id;
 
         // --- Deregister ---
         discovery::DeregisterRequest dereg_req;
@@ -74,15 +75,15 @@ int main(int argc, char* argv[]) {
         stub.Deregister(&dereg_cntl, &dereg_req, &dereg_rsp, nullptr);
 
         if (dereg_cntl.Failed()) {
-            std::cerr << "[FAIL] Deregister RPC failed: " << dereg_cntl.ErrorText() << std::endl;
+            LOG_ERROR << "[FAIL] Deregister RPC failed: " << dereg_cntl.ErrorText();
             return 1;
         }
         if (!dereg_rsp.success()) {
-            std::cerr << "[FAIL] Deregister returned success=false: " << dereg_rsp.message() << std::endl;
+            LOG_ERROR << "[FAIL] Deregister returned success=false: " << dereg_rsp.message();
             return 1;
         }
 
-        std::cout << "[PASS] Deregistered " << instance_id << std::endl;
+        LOG_INFO << "[PASS] Deregistered " << instance_id;
     }
 
     // --- Verify instance is gone ---
@@ -95,20 +96,19 @@ int main(int argc, char* argv[]) {
         stub.Discover(&cntl, &req, &rsp, nullptr);
 
         if (cntl.Failed()) {
-            std::cerr << "[FAIL] Discover RPC failed: " << cntl.ErrorText() << std::endl;
+            LOG_ERROR << "[FAIL] Discover RPC failed: " << cntl.ErrorText();
             return 1;
         }
 
         if (rsp.instances_size() != 0) {
-            std::cerr << "[FAIL] Expected 0 instances after deregister, got "
-                      << rsp.instances_size() << std::endl;
+            LOG_ERROR << "[FAIL] Expected 0 instances after deregister, got "
+                      << rsp.instances_size();
             return 1;
         }
 
-        std::cout << "[PASS] Confirmed 0 instances of [" << FLAGS_service_type << "]"
-                  << std::endl;
+        LOG_INFO << "[PASS] Confirmed 0 instances of [" << FLAGS_service_type << "]";
     }
 
-    std::cout << "[PASS] test_register passed" << std::endl;
+    LOG_INFO << "[PASS] test_register passed";
     return 0;
 }

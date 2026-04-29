@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 
+# common 库（用于日志）
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread leveldb)
 link_directories(/usr/local/lib64)
@@ -41,6 +44,7 @@ include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
 )
 
 add_executable(discovery_server
@@ -81,6 +85,7 @@ target_link_libraries(discovery_client PRIVATE
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
+    common_lib
 )
 
 set_target_properties(discovery_client PROPERTIES

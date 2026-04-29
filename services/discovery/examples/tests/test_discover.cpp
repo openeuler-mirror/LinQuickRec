@@ -1,19 +1,20 @@
+#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include <iostream>
 #include <string>
 
 DEFINE_string(server, "127.0.0.1:8100", "Discovery server address");
 
 int main(int argc, char* argv[]) {
+    common::logger::InitializeDefault();
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (argc < 2) {
-        std::cerr << "Usage: test_discover --server=<addr> <service_type>" << std::endl;
+        LOG_ERROR << "Usage: test_discover --server=<addr> <service_type>";
         return 1;
     }
 
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]) {
     opts.timeout_ms = 5000;
     opts.max_retry = 1;
     if (channel.Init(FLAGS_server.c_str(), &opts) != 0) {
-        std::cerr << "Failed to connect to " << FLAGS_server << std::endl;
+        LOG_ERROR << "Failed to connect to " << FLAGS_server;
         return 1;
     }
 
@@ -37,21 +38,21 @@ int main(int argc, char* argv[]) {
     stub.Discover(&cntl, &req, &rsp, nullptr);
 
     if (cntl.Failed()) {
-        std::cerr << "Discover RPC failed: " << cntl.ErrorText() << std::endl;
+        LOG_ERROR << "Discover RPC failed: " << cntl.ErrorText();
         return 1;
     }
 
     int n = rsp.instances_size();
-    std::cout << "[PASS] Found " << n << " instance(s) of [" << service_type << "]:" << std::endl;
+    LOG_INFO << "[PASS] Found " << n << " instance(s) of [" << service_type << "]:";
     for (int i = 0; i < n; ++i) {
         const auto& inst = rsp.instances(i);
-        std::cout << "  [" << i << "] " << inst.instance_id()
-                  << "  " << inst.host() << ":" << inst.port()
-                  << "  status=";
-        if (inst.status() == discovery::InstanceStatus::UP) std::cout << "UP";
-        else if (inst.status() == discovery::InstanceStatus::DOWN) std::cout << "DOWN";
-        else std::cout << inst.status();
-        std::cout << std::endl;
+        std::string status;
+        if (inst.status() == discovery::InstanceStatus::UP) status = "UP";
+        else if (inst.status() == discovery::InstanceStatus::DOWN) status = "DOWN";
+        else status = std::to_string(inst.status());
+        LOG_INFO << "  [" << i << "] " << inst.instance_id()
+                 << "  " << inst.host() << ":" << inst.port()
+                 << "  status=" << status;
     }
 
     return 0;

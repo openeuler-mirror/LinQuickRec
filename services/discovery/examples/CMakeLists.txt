@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 
+# common 库（用于日志）
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../common ${CMAKE_BINARY_DIR}/common)
+
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread leveldb)
 link_directories(/usr/local/lib64)
@@ -24,9 +27,17 @@ add_custom_command(
     COMMENT "Running protoc on discovery.proto"
 )
 
-# pseudo_service — 纯 POSIX socket，无需额外链接
+# pseudo_service — 纯 POSIX socket
 add_executable(pseudo_service
     pseudo_service/main.cpp
+)
+
+target_include_directories(pseudo_service PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
+)
+
+target_link_libraries(pseudo_service PRIVATE
+    common_lib
 )
 
 set_target_properties(pseudo_service PROPERTIES
@@ -51,12 +62,14 @@ function(add_test_binary name)
     target_include_directories(${name} PRIVATE
         ${BRPC_INCLUDE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../..
     )
     target_link_libraries(${name} PRIVATE
         ${BRPC_LIBRARIES}
         ${Protobuf_LIBRARIES}
         ${ABSL_LIBS}
         Threads::Threads
+        common_lib
     )
     set_target_properties(${name} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
