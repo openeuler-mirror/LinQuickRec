@@ -24,7 +24,7 @@ constexpr int MOCK_RANK_PORT    = 18004;
 constexpr int PROXY_PORT        = 18000;
 
 // ============================================================================
-// Mock Service Implementations
+// Passing Mock Implementations
 // ============================================================================
 
 class MockFeatureService : public feature::FeatureService {
@@ -91,8 +91,71 @@ public:
 };
 
 // ============================================================================
+// Failing Mock Implementations
+// ============================================================================
+
+class MockFeatureServiceFailing : public feature::FeatureService {
+public:
+    void GetUserFeatures(google::protobuf::RpcController* cntl,
+                         const feature::UserFeatureRequest* request,
+                         feature::UserFeatureResponse* response,
+                         google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        cntl->SetFailed("mock feature failure");
+    }
+
+    void GetSKUFeatures(google::protobuf::RpcController* cntl,
+                        const feature::SKUFeatureRequest* request,
+                        feature::SKUFeatureResponse* response,
+                        google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+    }
+};
+
+class MockRecallServiceFailing : public recall::RecallService {
+public:
+    void Recall(google::protobuf::RpcController* cntl,
+                const recall::RecallRequest* request,
+                recall::RecallResponse* response,
+                google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        cntl->SetFailed("mock recall failure");
+    }
+};
+
+class MockPrecalcServiceFailing : public precalc::PrecalcService {
+public:
+    void Precalculate(google::protobuf::RpcController* cntl,
+                      const precalc::PrecalcRequest* request,
+                      precalc::PrecalcResponse* response,
+                      google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        cntl->SetFailed("mock precalc failure");
+    }
+};
+
+class MockRankServiceFailing : public rank::RankService {
+public:
+    void Rank(google::protobuf::RpcController* cntl,
+              const rank::RankRequest* request,
+              rank::RankResponse* response,
+              google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        cntl->SetFailed("mock rank failure");
+    }
+};
+
+// ============================================================================
 // Helper: start a brpc server on a given port
 // ============================================================================
+
+struct ServerSet {
+    brpc::Server feature_svr;
+    brpc::Server recall_svr;
+    brpc::Server precalc_svr;
+    brpc::Server rank_svr;
+    brpc::Server proxy_svr;
+};
 
 static bool start_server(brpc::Server* server, int port,
                          google::protobuf::Service* service) {
@@ -105,99 +168,144 @@ static bool start_server(brpc::Server* server, int port,
         LOG_ERROR_STREAM << "Failed to start server on " << addr;
         return false;
     }
-    LOG_INFO_STREAM << "Server started on " << addr;
     return true;
 }
 
+static void stop_all(ServerSet& svrs) {
+    svrs.proxy_svr.Stop(0);    svrs.proxy_svr.Join();
+    svrs.feature_svr.Stop(0);  svrs.feature_svr.Join();
+    svrs.recall_svr.Stop(0);   svrs.recall_svr.Join();
+    svrs.precalc_svr.Stop(0);  svrs.precalc_svr.Join();
+    svrs.rank_svr.Stop(0);     svrs.rank_svr.Join();
+}
+
 // ============================================================================
-// Main: single-process integration test
+// Test runner: start mocks + proxy, send request, assert response
+// ============================================================================
+
+struct TestScenario {
+    const char*              name;
+    feature::FeatureService* feature;
+    recall::RecallService*   recall;
+    precalc::PrecalcService* precalc;
+    rank::RankService*       rank;
+    int                      expect_candidates;
+    int                      expect_error_code;  // 0 = success
+};
+
+static void run_scenario(const TestScenario& s) {
+    std::cout << "\n--- " << s.name << " ---" << std::endl;
+
+    MockFeatureService    pass_feat;
+    MockRecallService     pass_recall;
+    MockPrecalcService    pass_precalc;
+    MockRankService       pass_rank;
+
+    auto* f = s.feature ? s.feature : static_cast<feature::FeatureService*>(&pass_feat);
+    auto* r = s.recall   ? s.recall   : static_cast<recall::RecallService*>(&pass_recall);
+    auto* p = s.precalc  ? s.precalc  : static_cast<precalc::PrecalcService*>(&pass_precalc);
+    auto* k = s.rank     ? s.rank     : static_cast<rank::RankService*>(&pass_rank);
+
+    ServerSet svrs;
+    assert(start_server(&svrs.feature_svr, MOCK_FEATURE_PORT, f));
+    assert(start_server(&svrs.recall_svr,  MOCK_RECALL_PORT,  r));
+    assert(start_server(&svrs.precalc_svr, MOCK_PRECALC_PORT, p));
+    assert(start_server(&svrs.rank_svr,    MOCK_RANK_PORT,    k));
+
+    proxy::ProxyServiceImpl proxy_impl;
+    assert(start_server(&svrs.proxy_svr, PROXY_PORT, &proxy_impl));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Send request
+    brpc::Channel channel;
+    brpc::ChannelOptions opts;
+    opts.timeout_ms      = 10000;
+    opts.protocol        = "http";
+    opts.connection_type = "pooled";
+
+    std::string proxy_addr = "127.0.0.1:" + std::to_string(PROXY_PORT);
+    assert(channel.Init(proxy_addr.c_str(), &opts) == 0);
+
+    proxy::Proxy_Stub stub(&channel);
+    proxy::RecommendRequest req;
+    req.set_user_id(42);
+    req.set_payload("test_payload");
+
+    proxy::RecommendResponse rsp;
+    brpc::Controller cntl;
+    stub.Recommend(&cntl, &req, &rsp, nullptr);
+
+    assert(!cntl.Failed());
+    assert(rsp.error_code() == s.expect_error_code);
+    assert(rsp.candidates_size() == s.expect_candidates);
+
+    if (s.expect_error_code != 0) {
+        assert(!rsp.error_message().empty());
+        std::cout << "[PASS] error_code=" << rsp.error_code()
+                  << " error_message=" << rsp.error_message() << std::endl;
+    } else {
+        std::cout << "[PASS] candidates=[" << rsp.candidates(0) << ","
+                  << rsp.candidates(1) << "," << rsp.candidates(2) << "]"
+                  << std::endl;
+    }
+
+    stop_all(svrs);
+}
+
+// ============================================================================
+// Main
 // ============================================================================
 
 int main(int argc, char* argv[]) {
     common::logger::AddConsoleSink();
     std::cout << "=== Proxy Integration Test ===" << std::endl;
 
-    // -----------------------------------------------------------------------
-    // 1. Point proxy gflags to local mock servers
-    // -----------------------------------------------------------------------
-    FLAGS_feature_service_addr = "127.0.0.1:" + std::to_string(MOCK_FEATURE_PORT);
-    FLAGS_recall_service_addr  = "127.0.0.1:" + std::to_string(MOCK_RECALL_PORT);
-    FLAGS_precalc_service_addr = "127.0.0.1:" + std::to_string(MOCK_PRECALC_PORT);
-    FLAGS_rank_service_addr    = "127.0.0.1:" + std::to_string(MOCK_RANK_PORT);
-    FLAGS_server_port          = PROXY_PORT;
     FLAGS_enable_timing_stats  = false;
-    // shrink timeouts for test
     FLAGS_global_thread_pool_size = 4;
 
-    // -----------------------------------------------------------------------
-    // 2. Start mock downstream servers
-    // -----------------------------------------------------------------------
-    MockFeatureService mock_feature;
-    MockRecallService  mock_recall;
-    MockPrecalcService mock_precalc;
-    MockRankService    mock_rank;
+    // Happy path
+    run_scenario({
+        "Happy path: all services succeed",
+        nullptr, nullptr, nullptr, nullptr,
+        3,   // expect 3 candidates
+        0    // expect no error
+    });
 
-    brpc::Server feature_svr, recall_svr, precalc_svr, rank_svr;
-    assert(start_server(&feature_svr, MOCK_FEATURE_PORT, &mock_feature));
-    assert(start_server(&recall_svr,  MOCK_RECALL_PORT,  &mock_recall));
-    assert(start_server(&precalc_svr, MOCK_PRECALC_PORT, &mock_precalc));
-    assert(start_server(&rank_svr,    MOCK_RANK_PORT,    &mock_rank));
-    std::cout << "[PASS] All mock servers started" << std::endl;
+    // Feature fails
+    MockFeatureServiceFailing fail_feat;
+    run_scenario({
+        "Feature service fails",
+        &fail_feat, nullptr, nullptr, nullptr,
+        0,                     // expect 0 candidates
+        0x01030001             // GATEWAY | SERVICE_ERROR | 0x0001
+    });
 
-    // -----------------------------------------------------------------------
-    // 3. Start proxy server
-    // -----------------------------------------------------------------------
-    proxy::ProxyServiceImpl proxy_impl;
-    brpc::Server proxy_svr;
-    assert(start_server(&proxy_svr, PROXY_PORT, &proxy_impl));
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    std::cout << "[PASS] Proxy server started on port " << PROXY_PORT << std::endl;
+    // Recall fails
+    MockRecallServiceFailing fail_recall;
+    run_scenario({
+        "Recall service fails",
+        nullptr, &fail_recall, nullptr, nullptr,
+        0,
+        0x01030002
+    });
 
-    // -----------------------------------------------------------------------
-    // 4. Send a Recommend request and verify response
-    // -----------------------------------------------------------------------
-    {
-        brpc::Channel channel;
-        brpc::ChannelOptions opts;
-        opts.timeout_ms      = 10000;
-        opts.protocol        = "http";
-        opts.connection_type = "pooled";
+    // Precalc fails
+    MockPrecalcServiceFailing fail_precalc;
+    run_scenario({
+        "Precalc service fails",
+        nullptr, nullptr, &fail_precalc, nullptr,
+        0,
+        0x01030003
+    });
 
-        std::string proxy_addr = "127.0.0.1:" + std::to_string(PROXY_PORT);
-        assert(channel.Init(proxy_addr.c_str(), &opts) == 0);
-
-        proxy::Proxy_Stub stub(&channel);
-        proxy::RecommendRequest req;
-        req.set_user_id(42);
-        req.set_payload("test_payload");
-
-        proxy::RecommendResponse rsp;
-        brpc::Controller cntl;
-
-        stub.Recommend(&cntl, &req, &rsp, nullptr);
-
-        assert(!cntl.Failed());
-        assert(rsp.candidates_size() == 3);
-        // Rank service re-orders: [1003, 1001, 1002]
-        assert(rsp.candidates(0) == 1003);
-        assert(rsp.candidates(1) == 1001);
-        assert(rsp.candidates(2) == 1002);
-
-        std::cout << "[PASS] Recommend RPC succeeded"
-                  << "  candidates=["
-                  << rsp.candidates(0) << ","
-                  << rsp.candidates(1) << ","
-                  << rsp.candidates(2) << "]" << std::endl;
-    }
-
-    // -----------------------------------------------------------------------
-    // 5. Cleanup
-    // -----------------------------------------------------------------------
-    proxy_svr.Stop(0);    proxy_svr.Join();
-    feature_svr.Stop(0);  feature_svr.Join();
-    recall_svr.Stop(0);   recall_svr.Join();
-    precalc_svr.Stop(0);  precalc_svr.Join();
-    rank_svr.Stop(0);     rank_svr.Join();
+    // Rank fails
+    MockRankServiceFailing fail_rank;
+    run_scenario({
+        "Rank service fails",
+        nullptr, nullptr, nullptr, &fail_rank,
+        0,
+        0x01030004
+    });
 
     std::cout << "\n=== All Proxy Integration Tests Passed ===" << std::endl;
     return 0;
