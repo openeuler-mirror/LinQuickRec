@@ -7,13 +7,23 @@
 
 // 4. 其他库头文件
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 #include <brpc/server.h>
 
 // 5. 本项目内其他头文件
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    common::logger::LoggerConfig log_config;
+    log_config.level = common::logger::LogLevel::INFO;
+    log_config.console_output = true;
+    log_config.file_path = "/var/log/lingquickrec/precalc.log";
+    log_config.max_file_size = 100 * 1024 * 1024;
+    log_config.max_files = 5;
+    log_config.enable_trace_id = true;
+    common::logger::Initialize(log_config);
     
     precalc::PrecalcServiceImpl precalc_service;
     

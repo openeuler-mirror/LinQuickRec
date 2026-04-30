@@ -6,7 +6,6 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
@@ -16,11 +15,17 @@
 #include <memory>
 #include <cstdint>
 
+#include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+
 DECLARE_int32(server_port);
 DECLARE_int32(sub_worker_count);
 DECLARE_string(sub_worker_addresses);
 DECLARE_int32(top_k);
 DECLARE_bool(enable_timing_stats);
+DECLARE_int32(sub_worker_timeout_ms);
 
 namespace rank {
 
@@ -82,12 +87,13 @@ public:
 private:
     /**
      * @brief 实际处理精排请求的内部方法
-     * 
+     *
      * @param request 请求对象
      * @param response 响应对象
+     * @return common::error::Status 处理状态
      */
-    void process_rank_request(const RankMasterRequest* request,
-                              RankMasterResponse* response);
+    common::error::Status process_rank_request(const RankMasterRequest* request,
+                                              RankMasterResponse* response);
 
     /**
      * @brief 调用子图服务

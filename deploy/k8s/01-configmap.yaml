@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lingquickrec-config
+  namespace: lingquickrec
+data:
+  KVWORKER_HOST: "141.61.84.245"
+  KVWORKER_PORT: "31502"
+  ETCD_ADDRESS: "141.61.84.245:2379"
+  TTL_SECONDS: "5"
+  PRECALC_RESULT_SIZE_MB: "8.5"
+  PAYLOAD_SIZE_KB: "100"
+  SCORING_DELAY_MS: "100"
+  SUB_WORKER_COUNT: "10"
+  TOP_K: "100"
+  SUB_WORKER_TIMEOUT_MS: "5000"
+  VLLM_PORT: "8000"
+  VLLM_BASE_URL: "http://127.0.0.1:8000"
+  VLLM_ENDPOINT: "/v1/chat/completions"
+  MODEL_NAME: "/app/models/Qwen3-0.6B/"
+  VLLM_TIMEOUT_MS: "5000"
+  SKU_COUNT: "1000"

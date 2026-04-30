@@ -5,7 +5,6 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
@@ -18,6 +17,9 @@
 #include <atomic>
 
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
 
 DECLARE_string(vllm_base_url);
 DECLARE_string(vllm_endpoint);
@@ -69,6 +71,7 @@ public:
         bool success = false;
         RecallResponse response;
         std::string error_message;
+        common::error::Status status;
     };
 
     /**

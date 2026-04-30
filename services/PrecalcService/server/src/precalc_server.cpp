@@ -15,13 +15,18 @@
 // 4. 其他库头文件
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 #include <datasystem/kv_client.h>
 
 // 5. 本项目内其他头文件
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+#include "common/random_utils.h"
+
+using namespace datasystem;
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
@@ -35,46 +40,6 @@ DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 
 namespace precalc {
 
-/**
- * @brief 生成指定大小的随机字符串（有效 UTF-8）
- * 
- * @param size_bytes 数据大小（字节）
- * @return std::string 生成的随机字符串（只包含 ASCII 可打印字符）
- */
-std::string generate_random_string(size_t size_bytes) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
-    
-    std::string result;
-    result.resize(size_bytes);
-    
-    for (size_t i = 0; i < size_bytes; ++i) {
-        result[i] = static_cast<char>(dis(gen));
-    }
-    
-    return result;
-}
-
-std::string generate_precalc_result(double size_mb) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(32, 126);  // ASCII 可打印字符范围（空格到~）
-    
-    size_t total_bytes = static_cast<size_t>(size_mb * 1024 * 1024);
-    std::string precalc_result;
-    precalc_result.resize(total_bytes);
-    
-    for (size_t i = 0; i < total_bytes; ++i) {
-        precalc_result[i] = static_cast<char>(dis(gen));
-    }
-    
-    LOG(INFO) << "Generated precalc result with size: " << total_bytes << " bytes (" 
-              << size_mb << " MB)";
-    
-    return precalc_result;
-}
-
 PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG(INFO) << "PrecalcServiceImpl initialized";
     LOG(INFO) << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
@@ -86,140 +51,142 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
                                       const PrecalcRequest* request,
                                       PrecalcResponse* response,
                                       google::protobuf::Closure* done) {
-    
+
     brpc::ClosureGuard done_guard(done);
-    (void)controller;  // 显式忽略未使用的参数，消除警告
-    
-    // 使用线程池异步处理请求
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
     auto& pool = common::get_global_thread_pool();
-    
-    // 提交任务到线程池
+
     auto future = pool.submit([this, request]() {
-        // 创建响应对象
         PrecalcResponse local_response;
-        
-        // 处理请求
-        process_precalc_request(request, &local_response);
-        
-        return local_response;
+        auto status = process_precalc_request(request, &local_response);
+        return std::make_pair(status, local_response);
     });
-    
-    // 等待任务完成
+
     try {
-        PrecalcResponse result = future.get();
-        response->CopyFrom(result);
+        auto result = future.get();
+        response->CopyFrom(result.second);
+        if (result.first.IsError()) {
+            cntl->SetFailed(result.first.ToString());
+        }
     } catch (const std::exception& e) {
-        LOG(ERROR) << "Thread pool task failed: " << e.what();
-        response->set_user_feat_key("");
+        auto status = common::error::Status(precalc_errors::INTERNAL_ERROR,
+            "Thread pool task failed: " + std::string(e.what()));
+        LOG(ERROR) << status.ToString();
+        cntl->SetFailed(status.ToString());
     }
 }
 
-void PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
+common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
                                                   PrecalcResponse* response) {
-    
+
     int64_t server_receive_us = butil::gettimeofday_us();
-    
+
     LOG(INFO) << "Precalculate request received";
-    
+
     if (request->user_feat().empty()) {
-        LOG(ERROR) << "Empty user_feat in request";
+        auto status = common::error::Status(precalc_errors::EMPTY_USER_FEAT, "Empty user_feat in request");
+        LOG(ERROR) << status.ToString();
         response->set_user_feat_key("");
         response->set_payload("");
-        return;
+        return status;
     }
-    
-    // 取 user_feat 的前 6 位作为 user_feat_key
+
     std::string user_feat_key;
     if (request->user_feat().size() >= 16) {
         user_feat_key = request->user_feat().substr(0, 16);
     } else {
         user_feat_key = request->user_feat();
     }
-    
+
     LOG(INFO) << "Generated user_feat_key: " << user_feat_key
               << ", size: " << user_feat_key.size() << " bytes"
               << ", user_feat_size: " << request->user_feat().size() << " bytes";
-    
-    std::string precalc_result = generate_precalc_result(FLAGS_precalc_result_size_mb);
-    
+
+    size_t precalc_size = static_cast<size_t>(FLAGS_precalc_result_size_mb * 1024 * 1024);
+    std::string precalc_result = common::generate_random_string(precalc_size);
+    LOG(INFO) << "Generated precalc result with size: " << precalc_size << " bytes ("
+              << FLAGS_precalc_result_size_mb << " MB)";
+
     ConnectOptions connectOptions;
     connectOptions.host = FLAGS_kvworker_host;
     connectOptions.port = FLAGS_kvworker_port;
-    LOG(INFO) << "ConnectionOptions";
 
     KVClient kv_client(connectOptions);
-    LOG(INFO) << "kv_client";
 
-    Status status = kv_client.Init();
-    if (!status.IsOk()) {
-        LOG(ERROR) << "KVClient init failed: " << status.ToString();
+    Status kv_status = kv_client.Init();
+    if (!kv_status.IsOk()) {
+        auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
+            "KVClient init failed: " + kv_status.ToString());
+        LOG(ERROR) << status.ToString();
         response->set_user_feat_key("");
         response->set_payload("");
-        return;
+        return status;
     }
-    LOG(INFO) << "KVClient init success";
-    
+
     SetParam param;
     param.ttlSecond = FLAGS_ttl_seconds;
     param.writeMode = WriteMode::NONE_L2_CACHE;
     param.existence = ExistenceOpt::NONE;
     param.cacheType = CacheType::MEMORY;
-    LOG(INFO) << "set param success";
 
     int64_t kvwrite_start_us = butil::gettimeofday_us();
-    
+
     std::shared_ptr<Buffer> buffer;
-    status = kv_client.Create(user_feat_key, precalc_result.size(), param, buffer);
-    if (!status.IsOk()) {
-        LOG(ERROR) << "KVClient Create failed: " << status.ToString();
+    kv_status = kv_client.Create(user_feat_key, precalc_result.size(), param, buffer);
+    if (!kv_status.IsOk()) {
+        auto status = common::error::Status(precalc_errors::KVCLIENT_CREATE_FAILED,
+            "KVClient Create failed: " + kv_status.ToString());
+        LOG(ERROR) << status.ToString();
         response->set_user_feat_key("");
-        return;
+        return status;
     }
-    LOG(INFO) << "KVClient Create success";
-    
+
     std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
-    
-    status = kv_client.Set(buffer);
-    if (!status.IsOk()) {
-        LOG(ERROR) << "KVClient Set failed: " << status.ToString();
+
+    kv_status = kv_client.Set(buffer);
+    if (!kv_status.IsOk()) {
+        auto status = common::error::Status(precalc_errors::KVCLIENT_SET_FAILED,
+            "KVClient Set failed: " + kv_status.ToString());
+        LOG(ERROR) << status.ToString();
         response->set_user_feat_key("");
-        return;
+        return status;
     }
-    LOG(INFO) << "KVClient Set success";
-    
+
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
-    
+
     LOG(INFO) << "Precalc result written to KVWorker: key=" << user_feat_key
-              << ", size=" << precalc_result.size() << " bytes (" 
+              << ", size=" << precalc_result.size() << " bytes ("
               << precalc_result.size() / (1024.0 * 1024.0) << " MB)";
-    
-    // 生成 payload
-    std::string payload = generate_random_string(FLAGS_payload_size_kb * 1024);
+
+    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
     response->set_payload(payload);
-    
+
     int64_t server_send_us = butil::gettimeofday_us();
-    
+
     response->set_user_feat_key(user_feat_key);
-    
+
     int64_t server_process_us = server_send_us - server_receive_us;
-    
+
     LOG(INFO) << "Precalculate success:"
               << " key=" << user_feat_key
               << ", key_size=" << user_feat_key.size() << " bytes"
-              << ", payload_size=" << payload.size() << " bytes (" 
+              << ", payload_size=" << payload.size() << " bytes ("
               << payload.size() / 1024.0 << " KB)";
-    
+
     if (FLAGS_enable_timing_stats) {
         LOG(INFO) << "Server timing breakdown:"
                   << " kvwrite_cost=" << kvwrite_cost_us / 1000.0 << " ms"
                   << " server_process_total=" << server_process_us / 1000.0 << " ms";
     }
-    
+
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;
-    
+
     LOG(INFO) << "Precalculate completed, cost=" << cost_us / 1000.0 << " ms";
+
+    return common::error::Status::OK();
 }
 
 } // namespace precalc
