@@ -10,9 +10,9 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
-#include <butil/time.h>
 #include <gflags/gflags.h>
+
+#include "common/logger.h"
 
 #include <string>
 #include <vector>

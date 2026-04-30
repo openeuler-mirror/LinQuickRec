@@ -2,8 +2,9 @@
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <gflags/gflags.h>
+
+#include "common/logger.h"
 
 DEFINE_string(server, "127.0.0.1:8080", "Proxy 服务地址");
 DEFINE_uint64(user_id, 12345, "用户 ID");
@@ -13,8 +14,10 @@ DEFINE_int32(timeout_ms, 30000, "请求超时 (ms)");
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    LOG(INFO) << "Gateway Test Client starting...";
-    LOG(INFO) << "Connecting to Proxy at: " << FLAGS_server;
+    common::logger::AddConsoleSink();
+
+    LOG_INFO_STREAM << "Gateway Test Client starting...";
+    LOG_INFO_STREAM << "Connecting to Proxy at: " << FLAGS_server;
 
     brpc::Channel channel;
     brpc::ChannelOptions opts;
@@ -23,7 +26,7 @@ int main(int argc, char* argv[]) {
     opts.connection_type = "pooled";
 
     if (channel.Init(FLAGS_server.c_str(), &opts) != 0) {
-        LOG(ERROR) << "Failed to connect to " << FLAGS_server;
+        LOG_ERROR_STREAM << "Failed to connect to " << FLAGS_server;
         return -1;
     }
 
@@ -33,7 +36,7 @@ int main(int argc, char* argv[]) {
     request.set_user_id(FLAGS_user_id);
     request.set_payload(FLAGS_payload);
 
-    LOG(INFO) << "Sending Recommend request:"
+    LOG_INFO_STREAM << "Sending Recommend request:"
               << " user_id=" << FLAGS_user_id
               << " payload=" << FLAGS_payload;
 
@@ -48,22 +51,22 @@ int main(int argc, char* argv[]) {
     timer.stop();
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "Recommend RPC failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "Recommend RPC failed: " << cntl.ErrorText();
         return -1;
     }
 
-    LOG(INFO) << "Recommend response received:"
+    LOG_INFO_STREAM << "Recommend response received:"
               << " candidates=" << response.candidates_size()
               << " latency=" << timer.m_elapsed() << "ms";
 
     for (int i = 0; i < response.candidates_size(); ++i) {
-        LOG(INFO) << "  candidate[" << i << "] = " << response.candidates(i);
+        LOG_INFO_STREAM << "  candidate[" << i << "] = " << response.candidates(i);
         if (i >= 20) {
-            LOG(INFO) << "  ... (" << (response.candidates_size() - 20) << " more)";
+            LOG_INFO_STREAM << "  ... (" << (response.candidates_size() - 20) << " more)";
             break;
         }
     }
 
-    LOG(INFO) << "Gateway Test Client finished successfully";
+    LOG_INFO_STREAM << "Gateway Test Client finished successfully";
     return 0;
 }

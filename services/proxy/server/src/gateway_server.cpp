@@ -29,22 +29,22 @@ DEFINE_bool(enable_timing_stats, true, "是否打印阶段时延统计");
 namespace proxy {
 
 ProxyServiceImpl::ProxyServiceImpl() {
-    LOG(INFO) << "ProxyServiceImpl initializing...";
+    LOG_INFO_STREAM << "ProxyServiceImpl initializing...";
 
     init_channel(feature_channel_, FLAGS_feature_service_addr, FLAGS_feature_timeout_ms);
     init_channel(recall_channel_, FLAGS_recall_service_addr, FLAGS_recall_timeout_ms);
     init_channel(precalc_channel_, FLAGS_precalc_service_addr, FLAGS_precalc_timeout_ms);
     init_channel(rank_channel_, FLAGS_rank_service_addr, FLAGS_rank_timeout_ms);
 
-    LOG(INFO) << "ProxyServiceImpl initialized";
-    LOG(INFO) << "  FeatureService: " << FLAGS_feature_service_addr;
-    LOG(INFO) << "  RecallService:  " << FLAGS_recall_service_addr;
-    LOG(INFO) << "  PrecalcService: " << FLAGS_precalc_service_addr;
-    LOG(INFO) << "  RankService:    " << FLAGS_rank_service_addr;
+    LOG_INFO_STREAM << "ProxyServiceImpl initialized";
+    LOG_INFO_STREAM << "  FeatureService: " << FLAGS_feature_service_addr;
+    LOG_INFO_STREAM << "  RecallService:  " << FLAGS_recall_service_addr;
+    LOG_INFO_STREAM << "  PrecalcService: " << FLAGS_precalc_service_addr;
+    LOG_INFO_STREAM << "  RankService:    " << FLAGS_rank_service_addr;
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {
-    LOG(INFO) << "ProxyServiceImpl destroyed";
+    LOG_INFO_STREAM << "ProxyServiceImpl destroyed";
 }
 
 bool ProxyServiceImpl::init_channel(std::unique_ptr<brpc::Channel>& ch,
@@ -57,10 +57,10 @@ bool ProxyServiceImpl::init_channel(std::unique_ptr<brpc::Channel>& ch,
     opts.max_retry = 2;
 
     if (ch->Init(addr.c_str(), &opts) != 0) {
-        LOG(ERROR) << "Failed to initialize channel to " << addr;
+        LOG_ERROR_STREAM << "Failed to initialize channel to " << addr;
         return false;
     }
-    LOG(INFO) << "Channel initialized to " << addr << " (timeout=" << timeout_ms << "ms)";
+    LOG_INFO_STREAM << "Channel initialized to " << addr << " (timeout=" << timeout_ms << "ms)";
     return true;
 }
 
@@ -79,7 +79,7 @@ void ProxyServiceImpl::Recommend(const RecommendRequest* request,
         RecommendResponse result = future.get();
         response->CopyFrom(result);
     } catch (const std::exception& e) {
-        LOG(ERROR) << "Thread pool task failed: " << e.what();
+        LOG_ERROR_STREAM << "Thread pool task failed: " << e.what();
     }
 
     brpc::ClosureGuard done_guard(done);
@@ -101,11 +101,11 @@ bool ProxyServiceImpl::call_feature_service(
     stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "FeatureService call failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "FeatureService call failed: " << cntl.ErrorText();
         return false;
     }
 
-    LOG(INFO) << "FeatureService success: user_id=" << request->user_id()
+    LOG_INFO_STREAM << "FeatureService success: user_id=" << request->user_id()
               << " user_logs=" << response->kr_feat_rsp().user_logs_size();
     return true;
 }
@@ -133,11 +133,11 @@ bool ProxyServiceImpl::call_recall_service(
     stub.Recall(&cntl, &recall_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "RecallService call failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "RecallService call failed: " << cntl.ErrorText();
         return false;
     }
 
-    LOG(INFO) << "RecallService success: sku_ids=" << response->sku_ids_size();
+    LOG_INFO_STREAM << "RecallService success: sku_ids=" << response->sku_ids_size();
     return true;
 }
 
@@ -158,11 +158,11 @@ bool ProxyServiceImpl::call_precalc_service(
     stub.Precalculate(&cntl, &precalc_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "PrecalcService call failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "PrecalcService call failed: " << cntl.ErrorText();
         return false;
     }
 
-    LOG(INFO) << "PrecalcService success: user_feat_key=" << response->user_feat_key();
+    LOG_INFO_STREAM << "PrecalcService success: user_feat_key=" << response->user_feat_key();
     return true;
 }
 
@@ -192,7 +192,7 @@ bool ProxyServiceImpl::call_rank_service(
     stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "RankService call failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "RankService call failed: " << cntl.ErrorText();
         return false;
     }
 
@@ -200,7 +200,7 @@ bool ProxyServiceImpl::call_rank_service(
         response->add_candidates(rank_rsp.candidates(i));
     }
 
-    LOG(INFO) << "RankService success: candidates=" << response->candidates_size();
+    LOG_INFO_STREAM << "RankService success: candidates=" << response->candidates_size();
     return true;
 }
 
@@ -210,7 +210,7 @@ void ProxyServiceImpl::process_recommend_request(
 
     int64_t t0 = butil::gettimeofday_us();
 
-    LOG(INFO) << "Proxy request received: user_id=" << request->user_id();
+    LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id();
 
     // ============================================================
     // Stage 1: 获取特征（同步）
@@ -221,7 +221,7 @@ void ProxyServiceImpl::process_recommend_request(
     t1 = butil::gettimeofday_us();
 
     if (!feat_ok) {
-        LOG(ERROR) << "Stage 1 (Feature) failed, aborting request";
+        LOG_ERROR_STREAM << "Stage 1 (Feature) failed, aborting request";
         return;
     }
 
@@ -247,7 +247,7 @@ void ProxyServiceImpl::process_recommend_request(
     int64_t t2 = butil::gettimeofday_us();
 
     if (!recall_ok || !precalc_ok) {
-        LOG(ERROR) << "Stage 2 failed: recall=" << (recall_ok ? "ok" : "fail")
+        LOG_ERROR_STREAM << "Stage 2 failed: recall=" << (recall_ok ? "ok" : "fail")
                    << " precalc=" << (precalc_ok ? "ok" : "fail");
         return;
     }
@@ -259,7 +259,7 @@ void ProxyServiceImpl::process_recommend_request(
     int64_t t3 = butil::gettimeofday_us();
 
     if (!rank_ok) {
-        LOG(ERROR) << "Stage 3 (Rank) failed";
+        LOG_ERROR_STREAM << "Stage 3 (Rank) failed";
         return;
     }
 
@@ -267,14 +267,14 @@ void ProxyServiceImpl::process_recommend_request(
     // 时延统计
     // ============================================================
     if (FLAGS_enable_timing_stats) {
-        LOG(INFO) << "[Proxy Timing] "
+        LOG_INFO_STREAM << "[Proxy Timing] "
                    << " feature=" << (t1 - t0) / 1000.0 << "ms"
                    << " recall+precalc=" << (t2 - t1) / 1000.0 << "ms"
                    << " rank=" << (t3 - t2) / 1000.0 << "ms"
                    << " total=" << (t3 - t0) / 1000.0 << "ms";
     }
 
-    LOG(INFO) << "Proxy request completed: user_id=" << request->user_id()
+    LOG_INFO_STREAM << "Proxy request completed: user_id=" << request->user_id()
               << " candidates=" << response->candidates_size();
 }
 
