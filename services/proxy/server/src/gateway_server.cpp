@@ -70,23 +70,20 @@ void ProxyServiceImpl::Recommend(const RecommendRequest* request,
                                   google::protobuf::Closure* done) {
     auto& pool = common::get_global_thread_pool();
 
-    auto future = pool.submit([this, request]() {
-        RecommendResponse local_response;
-        process_recommend_request(request, &local_response);
-        return local_response;
+    auto future = pool.submit([this, request, response]() {
+        return process_recommend_request(request, response);
     });
 
-    try {
-        RecommendResponse result = future.get();
-        response->CopyFrom(result);
-    } catch (const std::exception& e) {
-        LOG_ERROR_STREAM << "Thread pool task failed: " << e.what();
+    auto status = future.get();
+
+    if (!status.IsOk()) {
+        LOG_ERROR_STREAM << "Request failed: " << status.ToString();
     }
 
     brpc::ClosureGuard done_guard(done);
 }
 
-bool ProxyServiceImpl::call_feature_service(
+common::error::Status ProxyServiceImpl::call_feature_service(
     const RecommendRequest* request,
     feature::UserFeatureResponse* response) {
 
@@ -102,16 +99,18 @@ bool ProxyServiceImpl::call_feature_service(
     stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG_ERROR_STREAM << "FeatureService call failed: " << cntl.ErrorText();
-        return false;
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0001,
+            std::string("FeatureService: ") + cntl.ErrorText());
     }
 
     LOG_INFO_STREAM << "FeatureService success: user_id=" << request->user_id()
               << " user_logs=" << response->kr_feat_rsp().user_logs_size();
-    return true;
+    return common::error::Status::OK();
 }
 
-bool ProxyServiceImpl::call_recall_service(
+common::error::Status ProxyServiceImpl::call_recall_service(
     uint64_t user_id,
     const feature::UserFeatureResponse& user_feat,
     recall::RecallResponse* response) {
@@ -134,15 +133,17 @@ bool ProxyServiceImpl::call_recall_service(
     stub.Recall(&cntl, &recall_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG_ERROR_STREAM << "RecallService call failed: " << cntl.ErrorText();
-        return false;
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0002,
+            std::string("RecallService: ") + cntl.ErrorText());
     }
 
     LOG_INFO_STREAM << "RecallService success: sku_ids=" << response->sku_ids_size();
-    return true;
+    return common::error::Status::OK();
 }
 
-bool ProxyServiceImpl::call_precalc_service(
+common::error::Status ProxyServiceImpl::call_precalc_service(
     uint64_t user_id,
     const feature::UserFeatureResponse& user_feat,
     precalc::PrecalcResponse* response) {
@@ -159,15 +160,17 @@ bool ProxyServiceImpl::call_precalc_service(
     stub.Precalculate(&cntl, &precalc_req, response, nullptr);
 
     if (cntl.Failed()) {
-        LOG_ERROR_STREAM << "PrecalcService call failed: " << cntl.ErrorText();
-        return false;
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0003,
+            std::string("PrecalcService: ") + cntl.ErrorText());
     }
 
     LOG_INFO_STREAM << "PrecalcService success: user_feat_key=" << response->user_feat_key();
-    return true;
+    return common::error::Status::OK();
 }
 
-bool ProxyServiceImpl::call_rank_service(
+common::error::Status ProxyServiceImpl::call_rank_service(
     const recall::RecallResponse& recall_rsp,
     const precalc::PrecalcResponse& precalc_rsp,
     RecommendResponse* response) {
@@ -190,8 +193,10 @@ bool ProxyServiceImpl::call_rank_service(
     stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
 
     if (cntl.Failed()) {
-        LOG_ERROR_STREAM << "RankService call failed: " << cntl.ErrorText();
-        return false;
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0004,
+            std::string("RankService: ") + cntl.ErrorText());
     }
 
     for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
@@ -199,10 +204,10 @@ bool ProxyServiceImpl::call_rank_service(
     }
 
     LOG_INFO_STREAM << "RankService success: candidates=" << response->candidates_size();
-    return true;
+    return common::error::Status::OK();
 }
 
-void ProxyServiceImpl::process_recommend_request(
+common::error::Status ProxyServiceImpl::process_recommend_request(
     const RecommendRequest* request,
     RecommendResponse* response) {
 
@@ -214,12 +219,12 @@ void ProxyServiceImpl::process_recommend_request(
     // Stage 1: 获取特征（同步）
     // ============================================================
     feature::UserFeatureResponse user_feat;
-    bool feat_ok = call_feature_service(request, &user_feat);
+    auto feat_st = call_feature_service(request, &user_feat);
     auto t1 = std::chrono::steady_clock::now();
 
-    if (!feat_ok) {
-        LOG_ERROR_STREAM << "Stage 1 (Feature) failed, aborting request";
-        return;
+    if (!feat_st.IsOk()) {
+        LOG_ERROR_STREAM << "Stage 1 (Feature) failed: " << feat_st.ToString();
+        return feat_st;
     }
 
     // ============================================================
@@ -229,35 +234,38 @@ void ProxyServiceImpl::process_recommend_request(
 
     auto recall_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
         recall::RecallResponse rsp;
-        bool ok = call_recall_service(user_id, user_feat, &rsp);
-        return std::make_pair(ok, rsp);
+        auto st = call_recall_service(user_id, user_feat, &rsp);
+        return std::make_pair(st, std::move(rsp));
     });
 
     auto precalc_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
         precalc::PrecalcResponse rsp;
-        bool ok = call_precalc_service(user_id, user_feat, &rsp);
-        return std::make_pair(ok, rsp);
+        auto st = call_precalc_service(user_id, user_feat, &rsp);
+        return std::make_pair(st, std::move(rsp));
     });
 
-    auto [recall_ok, recall_rsp] = recall_future.get();
-    auto [precalc_ok, precalc_rsp] = precalc_future.get();
+    auto [recall_st, recall_rsp] = recall_future.get();
+    auto [precalc_st, precalc_rsp] = precalc_future.get();
     auto t2 = std::chrono::steady_clock::now();
 
-    if (!recall_ok || !precalc_ok) {
-        LOG_ERROR_STREAM << "Stage 2 failed: recall=" << (recall_ok ? "ok" : "fail")
-                   << " precalc=" << (precalc_ok ? "ok" : "fail");
-        return;
+    if (!recall_st.IsOk() || !precalc_st.IsOk()) {
+        LOG_ERROR_STREAM << "Stage 2 failed: recall="
+                         << (recall_st.IsOk() ? "ok" : recall_st.ToString())
+                         << " precalc="
+                         << (precalc_st.IsOk() ? "ok" : precalc_st.ToString());
+        if (!recall_st.IsOk()) return recall_st;
+        return precalc_st;
     }
 
     // ============================================================
     // Stage 3: 精排（同步）
     // ============================================================
-    bool rank_ok = call_rank_service(recall_rsp, precalc_rsp, response);
+    auto rank_st = call_rank_service(recall_rsp, precalc_rsp, response);
     auto t3 = std::chrono::steady_clock::now();
 
-    if (!rank_ok) {
-        LOG_ERROR_STREAM << "Stage 3 (Rank) failed";
-        return;
+    if (!rank_st.IsOk()) {
+        LOG_ERROR_STREAM << "Stage 3 (Rank) failed: " << rank_st.ToString();
+        return rank_st;
     }
 
     // ============================================================
@@ -278,6 +286,7 @@ void ProxyServiceImpl::process_recommend_request(
 
     LOG_INFO_STREAM << "Proxy request completed: user_id=" << request->user_id()
               << " candidates=" << response->candidates_size();
+    return common::error::Status::OK();
 }
 
 } // namespace proxy
