@@ -3,6 +3,7 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <random>
 #include <vector>
 #include <cstring>
 #include <memory>
@@ -26,6 +27,35 @@ DEFINE_int32(recall_timeout_ms, 5000, "Recall 调用超时 (ms)");
 DEFINE_int32(precalc_timeout_ms, 5000, "Precalc 调用超时 (ms)");
 DEFINE_int32(rank_timeout_ms, 10000, "Rank 调用超时 (ms)");
 DEFINE_bool(enable_timing_stats, true, "是否打印阶段时延统计");
+
+namespace {
+
+thread_local std::string tls_trace_id;
+
+std::string generate_trace_id() {
+    auto now = std::chrono::system_clock::now();
+    auto us = std::chrono::duration_cast<std::chrono::microseconds>(
+        now.time_since_epoch()).count();
+
+    static thread_local std::mt19937_64 rng(std::random_device{}());
+    uint64_t rand_val = rng();
+
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0')
+        << std::setw(16) << us
+        << std::setw(16) << rand_val;
+    return oss.str();
+}
+
+} // anonymous namespace
+
+namespace proxy {
+
+const std::string& get_current_trace_id() {
+    return tls_trace_id;
+}
+
+} // namespace proxy
 
 namespace proxy {
 
@@ -68,6 +98,8 @@ bool ProxyServiceImpl::init_channel(std::unique_ptr<brpc::Channel>& ch,
 void ProxyServiceImpl::Recommend(const RecommendRequest* request,
                                   RecommendResponse* response,
                                   google::protobuf::Closure* done) {
+    tls_trace_id = generate_trace_id();
+
     auto status = process_recommend_request(request, response);
 
     if (!status.IsOk()) {
@@ -207,7 +239,8 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
 
     auto t0 = std::chrono::steady_clock::now();
 
-    LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id();
+    LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id()
+                    << " trace_id=" << tls_trace_id;
 
     // ============================================================
     // Stage 1: 获取特征（同步）

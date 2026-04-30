@@ -76,6 +76,8 @@ private:
     std::unique_ptr<brpc::Channel> rank_channel_;
 };
 
+const std::string& get_current_trace_id();
+
 } // namespace proxy
 
 #endif // GATEWAY_SERVER_H
