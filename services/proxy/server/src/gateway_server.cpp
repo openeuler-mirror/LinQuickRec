@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <sstream>
+#include <iomanip>
 #include <vector>
 #include <cstring>
 #include <memory>
@@ -174,14 +175,11 @@ bool ProxyServiceImpl::call_rank_service(
     rank::RankRequest rank_req;
     rank_req.set_user_feat_key(precalc_rsp.user_feat_key());
 
-    std::string skus_str;
+    std::ostringstream skus_oss;
     for (int i = 0; i < recall_rsp.sku_ids_size(); ++i) {
-        char buf[8];
-        snprintf(buf, sizeof(buf), "%06lu",
-                 static_cast<unsigned long>(recall_rsp.sku_ids(i)));
-        skus_str += buf;
+        skus_oss << std::setw(6) << std::setfill('0') << recall_rsp.sku_ids(i);
     }
-    rank_req.set_skus(skus_str);
+    rank_req.set_skus(skus_oss.str());
     rank_req.set_payload(precalc_rsp.payload());
 
     brpc::Controller cntl;
@@ -208,17 +206,16 @@ void ProxyServiceImpl::process_recommend_request(
     const RecommendRequest* request,
     RecommendResponse* response) {
 
-    int64_t t0 = butil::gettimeofday_us();
+    auto t0 = std::chrono::steady_clock::now();
 
     LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id();
 
     // ============================================================
     // Stage 1: 获取特征（同步）
     // ============================================================
-    int64_t t1 = t0;
     feature::UserFeatureResponse user_feat;
     bool feat_ok = call_feature_service(request, &user_feat);
-    t1 = butil::gettimeofday_us();
+    auto t1 = std::chrono::steady_clock::now();
 
     if (!feat_ok) {
         LOG_ERROR_STREAM << "Stage 1 (Feature) failed, aborting request";
@@ -244,7 +241,7 @@ void ProxyServiceImpl::process_recommend_request(
 
     auto [recall_ok, recall_rsp] = recall_future.get();
     auto [precalc_ok, precalc_rsp] = precalc_future.get();
-    int64_t t2 = butil::gettimeofday_us();
+    auto t2 = std::chrono::steady_clock::now();
 
     if (!recall_ok || !precalc_ok) {
         LOG_ERROR_STREAM << "Stage 2 failed: recall=" << (recall_ok ? "ok" : "fail")
@@ -256,7 +253,7 @@ void ProxyServiceImpl::process_recommend_request(
     // Stage 3: 精排（同步）
     // ============================================================
     bool rank_ok = call_rank_service(recall_rsp, precalc_rsp, response);
-    int64_t t3 = butil::gettimeofday_us();
+    auto t3 = std::chrono::steady_clock::now();
 
     if (!rank_ok) {
         LOG_ERROR_STREAM << "Stage 3 (Rank) failed";
@@ -267,11 +264,16 @@ void ProxyServiceImpl::process_recommend_request(
     // 时延统计
     // ============================================================
     if (FLAGS_enable_timing_stats) {
+        auto feat_us   = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+        auto stage2_us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        auto rank_us   = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+        auto total_us  = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t0).count();
+
         LOG_INFO_STREAM << "[Proxy Timing] "
-                   << " feature=" << (t1 - t0) / 1000.0 << "ms"
-                   << " recall+precalc=" << (t2 - t1) / 1000.0 << "ms"
-                   << " rank=" << (t3 - t2) / 1000.0 << "ms"
-                   << " total=" << (t3 - t0) / 1000.0 << "ms";
+                   << " feature=" << feat_us / 1000.0 << "ms"
+                   << " recall+precalc=" << stage2_us / 1000.0 << "ms"
+                   << " rank=" << rank_us / 1000.0 << "ms"
+                   << " total=" << total_us / 1000.0 << "ms";
     }
 
     LOG_INFO_STREAM << "Proxy request completed: user_id=" << request->user_id()

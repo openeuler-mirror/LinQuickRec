@@ -3,6 +3,7 @@
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
+#include <chrono>
 
 #include "common/logger.h"
 
@@ -43,12 +44,11 @@ int main(int argc, char* argv[]) {
     proxy::RecommendResponse response;
     brpc::Controller cntl;
 
-    butil::Timer timer;
-    timer.start();
-
+    auto send_t0 = std::chrono::steady_clock::now();
     stub.Recommend(&cntl, &request, &response, nullptr);
+    auto send_t1 = std::chrono::steady_clock::now();
 
-    timer.stop();
+    auto latency_us = std::chrono::duration_cast<std::chrono::microseconds>(send_t1 - send_t0).count();
 
     if (cntl.Failed()) {
         LOG_ERROR_STREAM << "Recommend RPC failed: " << cntl.ErrorText();
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
     LOG_INFO_STREAM << "Recommend response received:"
               << " candidates=" << response.candidates_size()
-              << " latency=" << timer.m_elapsed() << "ms";
+              << " latency=" << latency_us / 1000.0 << "ms";
 
     for (int i = 0; i < response.candidates_size(); ++i) {
         LOG_INFO_STREAM << "  candidate[" << i << "] = " << response.candidates(i);
