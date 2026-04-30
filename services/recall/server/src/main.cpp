@@ -9,13 +9,23 @@
 // 4. 其他库头文件
 #include <brpc/server.h>
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 
 // 5. 本项目内其他头文件
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
-    google::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    common::logger::LoggerConfig log_config;
+    log_config.level = common::logger::LogLevel::INFO;
+    log_config.console_output = true;
+    log_config.file_path = "/var/log/lingquickrec/recall.log";
+    log_config.max_file_size = 100 * 1024 * 1024;
+    log_config.max_files = 5;
+    log_config.enable_trace_id = true;
+    common::logger::Initialize(log_config);
 
     int cpu_cores = std::thread::hardware_concurrency();
     if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
@@ -30,22 +40,23 @@ int main(int argc, char* argv[]) {
 
     brpc::Server server;
 
-    if (server.AddService(static_cast<google::protobuf::Service*>(&service_impl),
-                         brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    if (server.AddService(&service_impl, brpc::SERVER_OWNS_SERVICE) != 0) {
         LOG(ERROR) << "Failed to add RecallService";
         return -1;
     }
 
-    std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
-    if (server.Start(server_addr.c_str(), nullptr) != 0) {
-        LOG(ERROR) << "Failed to start server on " << server_addr;
+    brpc::ServerOptions server_options;
+    server_options.num_threads = 128;
+
+    if (server.Start(FLAGS_server_port, &server_options) != 0) {
+        LOG(ERROR) << "Failed to start server on port " << FLAGS_server_port;
         return -1;
     }
 
     LOG(INFO) << "===========================================";
     LOG(INFO) << "Recall Service Started";
     LOG(INFO) << "===========================================";
-    LOG(INFO) << "Listening on: " << server_addr;
+    LOG(INFO) << "Listening on port: " << FLAGS_server_port;
     LOG(INFO) << "vLLM Base URL: " << FLAGS_vllm_base_url;
     LOG(INFO) << "vLLM Endpoint: " << FLAGS_vllm_endpoint;
     LOG(INFO) << "Model Name: " << FLAGS_model_name;

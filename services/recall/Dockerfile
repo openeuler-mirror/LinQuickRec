@@ -1,24 +1,16 @@
-# Recall 服务 Dockerfile
-FROM lingquickrec/base:latest
+FROM brpc_base:v1.3
 
 WORKDIR /app
 
-# 复制 proto 文件
-COPY proto/recall.proto /app/proto/
-
-# 复制源代码
-COPY services/recall/CMakeLists.txt /app/
-COPY services/recall/client /app/client/
-COPY services/recall/server /app/server/
-
-# 构建
-RUN mkdir -p build && \
-    cd build && \
-    cmake .. && \
+COPY proto/ /app/proto/
+COPY common/ /app/common/
+COPY services/recall/ /app/services/recall/
+RUN mkdir -p /app/build && cd /app/build && \
+    cmake ../services/recall -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-# 暴露端口（根据实际服务端口调整）
 EXPOSE 8001
 
-# 启动命令
-CMD ["./build/brpc_server", "--server_port=8001"]
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
+
+CMD ["./build/recall_server", "--server_port=8001"]

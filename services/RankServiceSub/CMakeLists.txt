@@ -173,8 +173,45 @@ message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - rank_sub_server (with Yuanrong SDK)")
 message(STATUS "  - rank_sub_client")
+message(STATUS "  - rank_sub_test (unit tests)")
 message(STATUS "Yuanrong SDK Path: ${YR_SDK_PATH}")
 message(STATUS "Yuanrong SDK Include: ${YR_INCLUDE_DIR}")
 message(STATUS "Yuanrong SDK Library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
+
+# ============================================================================
+# 编译单元测试
+# ============================================================================
+add_executable(rank_sub_test
+    tests/test_rank_sub.cpp
+    server/src/rank_sub_server.cpp
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc
+)
+
+target_include_directories(rank_sub_test PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${PROTO_OUT_DIR}
+    ${PROTO_DIR}
+    ${PROTOBUF_INCLUDE_DIRS}
+    ${BRPC_INCLUDE_DIR}
+    ${YR_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+)
+
+target_link_libraries(rank_sub_test PRIVATE
+    common_lib
+    ${BRPC_LIBRARIES}
+    leveldb
+    ${Protobuf_LIBRARIES}
+    Threads::Threads
+    ${YR_LIBRARY}
+    -Wl,--no-as-needed
+    ${ABSL_LIBS}
+    -Wl,--as-needed
+)
+
+set_target_properties(rank_sub_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

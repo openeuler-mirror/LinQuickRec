@@ -4,17 +4,17 @@
 #include "rank_sub.pb.h"
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
-
-#include <datasystem/kv_client.h>
 
 #include <string>
 #include <vector>
 #include <cstdint>
 
-using namespace datasystem;
+#include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
@@ -67,12 +67,13 @@ public:
 private:
     /**
      * @brief 实际处理精排请求的内部方法
-     * 
+     *
      * @param request 请求对象
      * @param response 响应对象
+     * @return common::error::Status 处理状态
      */
-    void process_rank_request(const RankSubRequest* request,
-                              RankSubResponse* response);
+    common::error::Status process_rank_request(const RankSubRequest* request,
+                                              RankSubResponse* response);
 };
 
 } // namespace rank

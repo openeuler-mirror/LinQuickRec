@@ -1,18 +1,18 @@
-FROM brpc_base:v1.3
-
-ARG VLLM_WHL_PATH=/path/to/vllm.whl
-ARG VLLM_SCRIPT_PATH=/path/to/run_vllm.sh
-ARG QWEN_MODEL_PATH=/path/to/Qwen3-0.6B
+FROM brpc_base:latest
 
 WORKDIR /app
 
-COPY ${VLLM_WHL_PATH} /tmp/vllm.whl
-RUN pip3 install /tmp/vllm.whl && rm /tmp/vllm.whl
+COPY /home/w00921547/share/vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl /tmp/vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl
+RUN pip3 install /tmp/vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl && rm /tmp/vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl
 
-COPY ${VLLM_SCRIPT_PATH} /app/run_vllm.sh
-RUN chmod +x /app/run_vllm.sh
+COPY /home/y00909761/vllm/start_vllm_back.sh /app/start_vllm_back.sh
+RUN chmod +x /app/start_vllm_back.sh
 
-COPY ${QWEN_MODEL_PATH} /app/models/Qwen3-0.6B/
+COPY /home/y00909761/vllm/start_vllm.sh /app/start_vllm.sh
+RUN chmod +x /app/start_vllm.sh
+
+COPY /home/w00921547/share/Qwen3-0.6B/ /app/models/Qwen3-0.6B/
+COPY /home/w00921547/share/Qwen3-8B/ /app/models/Qwen3-8B/
 
 COPY proto/ /app/proto/
 COPY common/ /app/common/

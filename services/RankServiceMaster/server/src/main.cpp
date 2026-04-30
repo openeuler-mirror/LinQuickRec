@@ -1,17 +1,28 @@
 #include "rank_master_server.h"
 #include "common/global_thread_pool.h"
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 #include <brpc/server.h>
+
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    common::logger::LoggerConfig log_config;
+    log_config.level = common::logger::LogLevel::INFO;
+    log_config.console_output = true;
+    log_config.file_path = "/var/log/lingquickrec/rank_master.log";
+    log_config.max_file_size = 100 * 1024 * 1024;
+    log_config.max_files = 5;
+    log_config.enable_trace_id = true;
+    common::logger::Initialize(log_config);
     
-    rank::RankMasterServiceImpl precalc_service;
-    
+    rank::RankMasterServiceImpl rank_master_service;
+
     brpc::Server server;
-    
-    if (server.AddService(&precalc_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+
+    if (server.AddService(&rank_master_service, brpc::SERVER_OWNS_SERVICE) != 0) {
         LOG(ERROR) << "Failed to add RankMasterService";
         return -1;
     }

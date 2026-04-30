@@ -1,4 +1,4 @@
-FROM brpc_base:v1.2
+FROM brpc_base:latest
 
 WORKDIR /app
 
