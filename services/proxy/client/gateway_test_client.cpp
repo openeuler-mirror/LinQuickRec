@@ -51,7 +51,13 @@ int main(int argc, char* argv[]) {
     auto latency_us = std::chrono::duration_cast<std::chrono::microseconds>(send_t1 - send_t0).count();
 
     if (cntl.Failed()) {
-        LOG_ERROR_STREAM << "Recommend RPC failed: " << cntl.ErrorText();
+        LOG_ERROR_STREAM << "Recommend RPC transport failed: " << cntl.ErrorText();
+        return -1;
+    }
+
+    if (response.error_code() != 0) {
+        LOG_ERROR_STREAM << "Recommend service error: code=" << response.error_code()
+                         << " message=" << response.error_message();
         return -1;
     }
 

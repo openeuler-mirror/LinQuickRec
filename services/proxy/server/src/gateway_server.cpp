@@ -103,7 +103,10 @@ void ProxyServiceImpl::Recommend(const RecommendRequest* request,
     auto status = process_recommend_request(request, response);
 
     if (!status.IsOk()) {
-        LOG_ERROR_STREAM << "Request failed: " << status.ToString();
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
+        LOG_ERROR_STREAM << "Request failed: trace_id=" << tls_trace_id
+                         << " error=" << status.ToString();
     }
 
     brpc::ClosureGuard done_guard(done);
