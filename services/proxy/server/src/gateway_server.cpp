@@ -124,6 +124,8 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     brpc::Controller cntl;
     cntl.set_timeout_ms(FLAGS_feature_timeout_ms);
 
+    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+
     feature::FeatureService_Stub stub(feature_channel_.get());
     stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
 
@@ -158,6 +160,8 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     brpc::Controller cntl;
     cntl.set_timeout_ms(FLAGS_recall_timeout_ms);
 
+    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+
     recall::RecallService_Stub stub(recall_channel_.get());
     stub.Recall(&cntl, &recall_req, response, nullptr);
 
@@ -184,6 +188,8 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
 
     brpc::Controller cntl;
     cntl.set_timeout_ms(FLAGS_precalc_timeout_ms);
+
+    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
 
     precalc::PrecalcService_Stub stub(precalc_channel_.get());
     stub.Precalculate(&cntl, &precalc_req, response, nullptr);
@@ -216,6 +222,8 @@ common::error::Status ProxyServiceImpl::call_rank_service(
 
     brpc::Controller cntl;
     cntl.set_timeout_ms(FLAGS_rank_timeout_ms);
+
+    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
 
     rank::RankService_Stub stub(rank_channel_.get());
     rank::RankResponse rank_rsp;
