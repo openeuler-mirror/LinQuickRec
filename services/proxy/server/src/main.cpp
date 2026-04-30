@@ -10,6 +10,7 @@ int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     common::logger::AddConsoleSink();
+    common::logger::SetTraceIdGetter([]() { return proxy::get_current_trace_id(); });
 
     int cpu_cores = std::thread::hardware_concurrency();
     if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
