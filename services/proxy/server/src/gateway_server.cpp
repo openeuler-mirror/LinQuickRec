@@ -68,13 +68,7 @@ bool ProxyServiceImpl::init_channel(std::unique_ptr<brpc::Channel>& ch,
 void ProxyServiceImpl::Recommend(const RecommendRequest* request,
                                   RecommendResponse* response,
                                   google::protobuf::Closure* done) {
-    auto& pool = common::get_global_thread_pool();
-
-    auto future = pool.submit([this, request, response]() {
-        return process_recommend_request(request, response);
-    });
-
-    auto status = future.get();
+    auto status = process_recommend_request(request, response);
 
     if (!status.IsOk()) {
         LOG_ERROR_STREAM << "Request failed: " << status.ToString();
@@ -232,13 +226,15 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
     // ============================================================
     uint64_t user_id = request->user_id();
 
-    auto recall_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
+    auto& pool = common::get_global_thread_pool();
+
+    auto recall_future = pool.submit([this, user_id, &user_feat]() {
         recall::RecallResponse rsp;
         auto st = call_recall_service(user_id, user_feat, &rsp);
         return std::make_pair(st, std::move(rsp));
     });
 
-    auto precalc_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
+    auto precalc_future = pool.submit([this, user_id, &user_feat]() {
         precalc::PrecalcResponse rsp;
         auto st = call_precalc_service(user_id, user_feat, &rsp);
         return std::make_pair(st, std::move(rsp));
