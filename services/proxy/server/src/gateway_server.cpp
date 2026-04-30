@@ -62,10 +62,16 @@ namespace proxy {
 ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO_STREAM << "ProxyServiceImpl initializing...";
 
-    init_channel(feature_channel_, FLAGS_feature_service_addr, FLAGS_feature_timeout_ms);
-    init_channel(recall_channel_, FLAGS_recall_service_addr, FLAGS_recall_timeout_ms);
-    init_channel(precalc_channel_, FLAGS_precalc_service_addr, FLAGS_precalc_timeout_ms);
-    init_channel(rank_channel_, FLAGS_rank_service_addr, FLAGS_rank_timeout_ms);
+    int fail_count = 0;
+    if (!init_channel(feature_channel_, FLAGS_feature_service_addr, FLAGS_feature_timeout_ms)) ++fail_count;
+    if (!init_channel(recall_channel_, FLAGS_recall_service_addr, FLAGS_recall_timeout_ms))    ++fail_count;
+    if (!init_channel(precalc_channel_, FLAGS_precalc_service_addr, FLAGS_precalc_timeout_ms)) ++fail_count;
+    if (!init_channel(rank_channel_, FLAGS_rank_service_addr, FLAGS_rank_timeout_ms))          ++fail_count;
+
+    if (fail_count > 0) {
+        LOG_WARN_STREAM << fail_count << " channel(s) failed to initialize;"
+                        << " RPC calls will fail until the downstream becomes reachable";
+    }
 
     LOG_INFO_STREAM << "ProxyServiceImpl initialized";
     LOG_INFO_STREAM << "  FeatureService: " << FLAGS_feature_service_addr;
