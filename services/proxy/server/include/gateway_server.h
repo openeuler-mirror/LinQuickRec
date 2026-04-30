@@ -13,6 +13,7 @@
 #include <gflags/gflags.h>
 
 #include "common/logger.h"
+#include "common/error.h"
 
 #include <string>
 #include <vector>
@@ -42,23 +43,28 @@ public:
                    google::protobuf::Closure* done) override;
 
 private:
-    void process_recommend_request(const RecommendRequest* request,
-                                   RecommendResponse* response);
+    common::error::Status process_recommend_request(
+        const RecommendRequest* request,
+        RecommendResponse* response);
 
-    bool call_feature_service(const RecommendRequest* request,
-                              feature::UserFeatureResponse* response);
+    common::error::Status call_feature_service(
+        const RecommendRequest* request,
+        feature::UserFeatureResponse* response);
 
-    bool call_recall_service(uint64_t user_id,
-                             const feature::UserFeatureResponse& user_feat,
-                             recall::RecallResponse* response);
+    common::error::Status call_recall_service(
+        uint64_t user_id,
+        const feature::UserFeatureResponse& user_feat,
+        recall::RecallResponse* response);
 
-    bool call_precalc_service(uint64_t user_id,
-                               const feature::UserFeatureResponse& user_feat,
-                               precalc::PrecalcResponse* response);
+    common::error::Status call_precalc_service(
+        uint64_t user_id,
+        const feature::UserFeatureResponse& user_feat,
+        precalc::PrecalcResponse* response);
 
-    bool call_rank_service(const recall::RecallResponse& recall_rsp,
-                           const precalc::PrecalcResponse& precalc_rsp,
-                           RecommendResponse* response);
+    common::error::Status call_rank_service(
+        const recall::RecallResponse& recall_rsp,
+        const precalc::PrecalcResponse& precalc_rsp,
+        RecommendResponse* response);
 
     bool init_channel(std::unique_ptr<brpc::Channel>& ch,
                       const std::string& addr,
