@@ -8,7 +8,8 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
+
+#include "common/logger.h"
 
 #include <cassert>
 #include <chrono>
@@ -96,15 +97,15 @@ public:
 static bool start_server(brpc::Server* server, int port,
                          google::protobuf::Service* service) {
     if (server->AddService(service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add service on port " << port;
+        LOG_ERROR_STREAM << "Failed to add service on port " << port;
         return false;
     }
     std::string addr = "0.0.0.0:" + std::to_string(port);
     if (server->Start(addr.c_str(), nullptr) != 0) {
-        LOG(ERROR) << "Failed to start server on " << addr;
+        LOG_ERROR_STREAM << "Failed to start server on " << addr;
         return false;
     }
-    LOG(INFO) << "Server started on " << addr;
+    LOG_INFO_STREAM << "Server started on " << addr;
     return true;
 }
 
@@ -113,6 +114,7 @@ static bool start_server(brpc::Server* server, int port,
 // ============================================================================
 
 int main(int argc, char* argv[]) {
+    common::logger::AddConsoleSink();
     std::cout << "=== Proxy Integration Test ===" << std::endl;
 
     // -----------------------------------------------------------------------

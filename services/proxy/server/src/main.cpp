@@ -1,13 +1,15 @@
 #include "gateway_server.h"
 #include "common/global_thread_pool.h"
+#include "common/logger.h"
 
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 #include <brpc/server.h>
 #include <thread>
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
+
+    common::logger::AddConsoleSink();
 
     int cpu_cores = std::thread::hardware_concurrency();
     if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
@@ -15,8 +17,8 @@ int main(int argc, char* argv[]) {
         FLAGS_global_thread_pool_size = std::min(128, calculated_size);
     }
 
-    LOG(INFO) << "Proxy Service starting...";
-    LOG(INFO) << "CPU cores: " << cpu_cores
+    LOG_INFO_STREAM << "Proxy Service starting...";
+    LOG_INFO_STREAM << "CPU cores: " << cpu_cores
               << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
@@ -25,28 +27,28 @@ int main(int argc, char* argv[]) {
 
     if (server.AddService(static_cast<google::protobuf::Service*>(&service_impl),
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add ProxyService";
+        LOG_ERROR_STREAM << "Failed to add ProxyService";
         return -1;
     }
 
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
     if (server.Start(server_addr.c_str(), nullptr) != 0) {
-        LOG(ERROR) << "Failed to start server on " << server_addr;
+        LOG_ERROR_STREAM << "Failed to start server on " << server_addr;
         return -1;
     }
 
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Proxy Service Started";
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Listening on: " << server_addr;
-    LOG(INFO) << "FeatureService: " << FLAGS_feature_service_addr;
-    LOG(INFO) << "RecallService:  " << FLAGS_recall_service_addr;
-    LOG(INFO) << "PrecalcService: " << FLAGS_precalc_service_addr;
-    LOG(INFO) << "RankService:    " << FLAGS_rank_service_addr;
-    LOG(INFO) << "===========================================";
+    LOG_INFO_STREAM << "===========================================";
+    LOG_INFO_STREAM << "Proxy Service Started";
+    LOG_INFO_STREAM << "===========================================";
+    LOG_INFO_STREAM << "Listening on: " << server_addr;
+    LOG_INFO_STREAM << "FeatureService: " << FLAGS_feature_service_addr;
+    LOG_INFO_STREAM << "RecallService:  " << FLAGS_recall_service_addr;
+    LOG_INFO_STREAM << "PrecalcService: " << FLAGS_precalc_service_addr;
+    LOG_INFO_STREAM << "RankService:    " << FLAGS_rank_service_addr;
+    LOG_INFO_STREAM << "===========================================";
 
     server.RunUntilAskedToQuit();
 
-    LOG(INFO) << "Proxy Service stopped";
+    LOG_INFO_STREAM << "Proxy Service stopped";
     return 0;
 }
