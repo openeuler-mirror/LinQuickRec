@@ -165,12 +165,12 @@ bool parse_vllm_response(const std::string& response_body,
                 response->add_sku_ids(sku_id);
             }
         } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to parse SKU ID: " << token << ", error: " << e.what();
+            LOG(WARN) << "Failed to parse SKU ID: " << token << ", error: " << e.what();
         }
     }
 
     if (response->sku_ids_size() == 0) {
-        LOG(WARNING) << common::error::Status(recall_errors::NO_SKU_RETURNED,
+        LOG(WARN) << common::error::Status(recall_errors::NO_SKU_RETURNED,
             "No SKU IDs parsed from response").ToString();
         return false;
     }
