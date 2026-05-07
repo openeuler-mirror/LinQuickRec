@@ -20,6 +20,7 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/error.h"
+#include "vllm_client.h"
 
 DECLARE_string(vllm_base_url);
 DECLARE_string(vllm_endpoint);
@@ -103,6 +104,9 @@ private:
 
     // 使用全局线程池
     common::ThreadPool& thread_pool_;
+
+    // vLLM HTTP 客户端
+    VllmClient vllm_client_;
 };
 
 } // namespace recall

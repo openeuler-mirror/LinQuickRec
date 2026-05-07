@@ -77,22 +77,15 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
     }
 }
 
-common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
-                                                  PrecalcResponse* response) {
-
-    int64_t server_receive_us = butil::gettimeofday_us();
-
-    LOG(INFO) << "Precalculate request received";
+common::error::Status PrecalcServiceImpl::validate_and_extract_key(
+    const PrecalcRequest* request, std::string& user_feat_key) {
 
     if (request->user_feat().empty()) {
         auto status = common::error::Status(precalc_errors::EMPTY_USER_FEAT, "Empty user_feat in request");
         LOG(ERROR) << status.ToString();
-        response->set_user_feat_key("");
-        response->set_payload("");
         return status;
     }
 
-    std::string user_feat_key;
     if (request->user_feat().size() >= 16) {
         user_feat_key = request->user_feat().substr(0, 16);
     } else {
@@ -103,10 +96,11 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
               << ", size: " << user_feat_key.size() << " bytes"
               << ", user_feat_size: " << request->user_feat().size() << " bytes";
 
-    size_t precalc_size = static_cast<size_t>(FLAGS_precalc_result_size_mb * 1024 * 1024);
-    std::string precalc_result = common::generate_random_string(precalc_size);
-    LOG(INFO) << "Generated precalc result with size: " << precalc_size << " bytes ("
-              << FLAGS_precalc_result_size_mb << " MB)";
+    return common::error::Status::OK();
+}
+
+common::error::Status PrecalcServiceImpl::write_to_kvworker(
+    const std::string& user_feat_key, const std::string& precalc_result) {
 
     ConnectOptions connectOptions;
     connectOptions.host = FLAGS_kvworker_host;
@@ -119,8 +113,6 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
         auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
             "KVClient init failed: " + kv_status.ToString());
         LOG(ERROR) << status.ToString();
-        response->set_user_feat_key("");
-        response->set_payload("");
         return status;
     }
 
@@ -130,15 +122,12 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     param.existence = ExistenceOpt::NONE;
     param.cacheType = CacheType::MEMORY;
 
-    int64_t kvwrite_start_us = butil::gettimeofday_us();
-
     std::shared_ptr<Buffer> buffer;
     kv_status = kv_client.Create(user_feat_key, precalc_result.size(), param, buffer);
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_CREATE_FAILED,
             "KVClient Create failed: " + kv_status.ToString());
         LOG(ERROR) << status.ToString();
-        response->set_user_feat_key("");
         return status;
     }
 
@@ -149,6 +138,40 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
         auto status = common::error::Status(precalc_errors::KVCLIENT_SET_FAILED,
             "KVClient Set failed: " + kv_status.ToString());
         LOG(ERROR) << status.ToString();
+        return status;
+    }
+
+    LOG(INFO) << "Precalc result written to KVWorker: key=" << user_feat_key
+              << ", size=" << precalc_result.size() << " bytes ("
+              << precalc_result.size() / (1024.0 * 1024.0) << " MB)";
+
+    return common::error::Status::OK();
+}
+
+common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcRequest* request,
+                                                  PrecalcResponse* response) {
+
+    int64_t server_receive_us = butil::gettimeofday_us();
+
+    LOG(INFO) << "Precalculate request received";
+
+    std::string user_feat_key;
+    auto status = validate_and_extract_key(request, user_feat_key);
+    if (status.IsError()) {
+        response->set_user_feat_key("");
+        response->set_payload("");
+        return status;
+    }
+
+    size_t precalc_size = static_cast<size_t>(FLAGS_precalc_result_size_mb * 1024 * 1024);
+    std::string precalc_result = common::generate_random_string(precalc_size);
+    LOG(INFO) << "Generated precalc result with size: " << precalc_size << " bytes ("
+              << FLAGS_precalc_result_size_mb << " MB)";
+
+    int64_t kvwrite_start_us = butil::gettimeofday_us();
+
+    status = write_to_kvworker(user_feat_key, precalc_result);
+    if (status.IsError()) {
         response->set_user_feat_key("");
         return status;
     }
@@ -156,18 +179,11 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
 
-    LOG(INFO) << "Precalc result written to KVWorker: key=" << user_feat_key
-              << ", size=" << precalc_result.size() << " bytes ("
-              << precalc_result.size() / (1024.0 * 1024.0) << " MB)";
-
     std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
     response->set_payload(payload);
-
-    int64_t server_send_us = butil::gettimeofday_us();
-
     response->set_user_feat_key(user_feat_key);
 
-    int64_t server_process_us = server_send_us - server_receive_us;
+    int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
     LOG(INFO) << "Precalculate success:"
               << " key=" << user_feat_key

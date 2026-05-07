@@ -27,6 +27,7 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/error.h"
+#include "common/sku_utils.h"
 
 using namespace datasystem;
 
@@ -39,41 +40,17 @@ DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 
 namespace rank {
 
-std::vector<uint64_t> parse_skus_from_string(const std::string& skus_sub) {
-    std::vector<uint64_t> sku_ids;
+using common::parse_skus_from_string;
 
-    if (skus_sub.empty()) {
-        LOG(WARNING) << "Empty skus_sub string";
-        return sku_ids;
-    }
-
-    const size_t SKU_ID_LENGTH = 6;
-    size_t pos = 0;
-
-    while (pos + SKU_ID_LENGTH <= skus_sub.size()) {
-        std::string sku_str = skus_sub.substr(pos, SKU_ID_LENGTH);
-
-        try {
-            uint64_t sku_id = std::stoull(sku_str);
-            sku_ids.push_back(sku_id);
-        } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to parse SKU ID: " << sku_str
-                        << ", error: " << e.what();
-        }
-
-        pos += SKU_ID_LENGTH;
-    }
-
-    LOG(INFO) << "Parsed " << sku_ids.size() << " SKU IDs from string";
-    return sku_ids;
-}
+constexpr int SCORE_RANGE = 10000;
+constexpr int SCORE_SCALE = 100;
 
 double simulate_score(uint64_t sku_id, const std::string& user_feat) {
     std::hash<std::string> hasher;
     size_t user_hash = hasher(user_feat);
     size_t sku_hash = std::hash<uint64_t>{}(sku_id);
 
-    double score = static_cast<double>((user_hash ^ sku_hash) % 10000) / 100.0;
+    double score = static_cast<double>((user_hash ^ sku_hash) % SCORE_RANGE) / SCORE_SCALE;
 
     return score;
 }
@@ -186,7 +163,7 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
         double score = simulate_score(sku_id, user_feat);
 
         response->add_skus_id(sku_id);
-        response->add_skus_score(static_cast<uint64_t>(score * 100));
+        response->add_skus_score(static_cast<uint64_t>(score * SCORE_SCALE));
     }
 
     int64_t scoring_end_us = butil::gettimeofday_us();

@@ -15,6 +15,7 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/error.h"
+#include "common/sku_utils.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
@@ -24,13 +25,7 @@ DECLARE_bool(enable_timing_stats);
 
 namespace rank {
 
-/**
- * @brief 从字符串中提取商品 ID 列表
- * 
- * @param skus_sub 字符串格式的商品 ID，每 6 位数字是一个商品 ID
- * @return std::vector<uint64_t> 商品 ID 列表
- */
-std::vector<uint64_t> parse_skus_from_string(const std::string& skus_sub);
+using common::parse_skus_from_string;
 
 /**
  * @brief 模拟打分逻辑

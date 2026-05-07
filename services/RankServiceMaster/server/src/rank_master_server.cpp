@@ -27,6 +27,7 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/error.h"
+#include "common/sku_utils.h"
 #include "rank_sub.pb.h"
 
 DEFINE_int32(server_port, 8005, "服务器监听端口");
@@ -38,67 +39,11 @@ DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）"
 
 namespace rank {
 
-std::vector<uint64_t> parse_skus_from_string(const std::string& skus) {
-    std::vector<uint64_t> sku_ids;
+using common::parse_skus_from_string;
+using common::skus_to_string;
+using common::distribute_skus_by_hash;
 
-    if (skus.empty()) {
-        LOG(WARNING) << "Empty skus string";
-        return sku_ids;
-    }
-
-    const size_t SKU_ID_LENGTH = 6;
-    size_t pos = 0;
-
-    while (pos + SKU_ID_LENGTH <= skus.size()) {
-        std::string sku_str = skus.substr(pos, SKU_ID_LENGTH);
-
-        try {
-            uint64_t sku_id = std::stoull(sku_str);
-            sku_ids.push_back(sku_id);
-        } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to parse SKU ID: " << sku_str
-                        << ", error: " << e.what();
-        }
-
-        pos += SKU_ID_LENGTH;
-    }
-
-    LOG(INFO) << "Parsed " << sku_ids.size() << " SKU IDs from string";
-    return sku_ids;
-}
-
-std::map<int, std::vector<uint64_t>> distribute_skus_by_hash(
-    const std::vector<uint64_t>& sku_ids,
-    int n_workers) {
-
-    std::map<int, std::vector<uint64_t>> distribution;
-
-    for (int i = 0; i < n_workers; ++i) {
-        distribution[i] = std::vector<uint64_t>();
-    }
-
-    for (uint64_t sku_id : sku_ids) {
-        size_t hash = std::hash<uint64_t>{}(sku_id);
-        int worker_index = hash % n_workers;
-        distribution[worker_index].push_back(sku_id);
-    }
-
-    for (int i = 0; i < n_workers; ++i) {
-        LOG(INFO) << "Worker " << i << " assigned " << distribution[i].size() << " SKUs";
-    }
-
-    return distribution;
-}
-
-std::string skus_to_string(const std::vector<uint64_t>& sku_ids) {
-    std::string result;
-    for (uint64_t sku_id : sku_ids) {
-        char buffer[8];
-        snprintf(buffer, sizeof(buffer), "%06lu", sku_id);
-        result += buffer;
-    }
-    return result;
-}
+constexpr int SCORE_SCALE = 100;
 
 RankMasterServiceImpl::RankMasterServiceImpl()
     : sub_worker_channels_() {
@@ -247,12 +192,8 @@ void RankMasterServiceImpl::select_top_k(const std::map<uint64_t, double>& all_s
               << all_scores.size() << " candidates";
 }
 
-common::error::Status RankMasterServiceImpl::process_rank_request(const RankMasterRequest* request,
-                                                 RankMasterResponse* response) {
-
-    int64_t server_receive_us = butil::gettimeofday_us();
-
-    LOG(INFO) << "RankMaster request received";
+common::error::Status RankMasterServiceImpl::validate_and_parse(
+    const RankMasterRequest* request, std::vector<uint64_t>& sku_ids) {
 
     if (request->user_feat_key().empty()) {
         auto status = common::error::Status(rank_master_errors::EMPTY_USER_FEAT_KEY,
@@ -268,20 +209,25 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
         return status;
     }
 
-    std::vector<uint64_t> all_sku_ids = parse_skus_from_string(request->skus());
+    sku_ids = parse_skus_from_string(request->skus());
 
-    if (all_sku_ids.empty()) {
+    if (sku_ids.empty()) {
         auto status = common::error::Status(rank_master_errors::NO_SKU_PARSED,
             "No SKU IDs parsed from skus");
         LOG(ERROR) << status.ToString();
         return status;
     }
 
-    LOG(INFO) << "Total SKU count: " << all_sku_ids.size();
+    LOG(INFO) << "Total SKU count: " << sku_ids.size();
+    return common::error::Status::OK();
+}
+
+common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
+    const RankMasterRequest* request,
+    const std::vector<uint64_t>& all_sku_ids,
+    std::map<uint64_t, double>& all_scores) {
 
     auto distribution = distribute_skus_by_hash(all_sku_ids, FLAGS_sub_worker_count);
-
-    int64_t parallel_call_start_us = butil::gettimeofday_us();
 
     std::vector<std::future<std::pair<int, RankSubResponse>>> futures;
 
@@ -298,7 +244,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
         }));
     }
 
-    std::map<uint64_t, double> all_scores;
+    int failed_workers = 0;
 
     for (auto& future : futures) {
         try {
@@ -308,21 +254,57 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
 
             if (worker_index < 0) {
                 LOG(WARNING) << "Worker " << worker_index << " failed";
+                ++failed_workers;
                 continue;
             }
 
             for (int i = 0; i < sub_response.skus_id_size(); ++i) {
                 uint64_t sku_id = sub_response.skus_id(i);
                 uint64_t score_int = sub_response.skus_score(i);
-                double score = static_cast<double>(score_int) / 100.0;
+                double score = static_cast<double>(score_int) / SCORE_SCALE;
 
                 all_scores[sku_id] = score;
             }
         } catch (const std::exception& e) {
-            auto status = common::error::Status(rank_master_errors::INTERNAL_ERROR,
-                "Exception caught while collecting sub-worker result: " + std::string(e.what()));
-            LOG(ERROR) << status.ToString();
+            ++failed_workers;
+            LOG(ERROR) << common::error::Status(rank_master_errors::INTERNAL_ERROR,
+                "Exception caught while collecting sub-worker result: " + std::string(e.what())).ToString();
         }
+    }
+
+    if (failed_workers > 0 && all_scores.empty()) {
+        auto status = common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
+            "All " + std::to_string(failed_workers) + " sub-workers failed");
+        LOG(ERROR) << status.ToString();
+        return status;
+    }
+
+    if (failed_workers > 0) {
+        LOG(WARNING) << failed_workers << " sub-worker(s) failed, proceeding with partial results";
+    }
+
+    return common::error::Status::OK();
+}
+
+common::error::Status RankMasterServiceImpl::process_rank_request(const RankMasterRequest* request,
+                                                 RankMasterResponse* response) {
+
+    int64_t server_receive_us = butil::gettimeofday_us();
+
+    LOG(INFO) << "RankMaster request received";
+
+    std::vector<uint64_t> all_sku_ids;
+    auto status = validate_and_parse(request, all_sku_ids);
+    if (status.IsError()) {
+        return status;
+    }
+
+    int64_t parallel_call_start_us = butil::gettimeofday_us();
+
+    std::map<uint64_t, double> all_scores;
+    status = call_workers_and_aggregate(request, all_sku_ids, all_scores);
+    if (status.IsError()) {
+        return status;
     }
 
     int64_t parallel_call_end_us = butil::gettimeofday_us();
@@ -342,8 +324,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
         response->add_candidates(candidate);
     }
 
-    int64_t server_send_us = butil::gettimeofday_us();
-    int64_t server_process_us = server_send_us - server_receive_us;
+    int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
     LOG(INFO) << "RankMaster processing completed:"
               << " input_skus=" << all_sku_ids.size()

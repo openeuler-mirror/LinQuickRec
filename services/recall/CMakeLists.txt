@@ -80,8 +80,9 @@ include_directories(
 # ============================================================================
 # 编译 Server（使用 RapidJSON 和线程池优化）
 # ============================================================================
-add_executable(recall_server 
+add_executable(recall_server
     server/src/recall_server.cpp
+    server/src/vllm_client.cpp
     server/src/main.cpp
 )
 target_include_directories(recall_server PRIVATE 
@@ -157,6 +158,7 @@ message(STATUS "===========================================")
 add_executable(recall_test
     tests/test_recall.cpp
     server/src/recall_server.cpp
+    server/src/vllm_client.cpp
 )
 target_include_directories(recall_test PRIVATE
     ${BRPC_INCLUDE_DIR}
