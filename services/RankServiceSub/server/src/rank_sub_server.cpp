@@ -120,7 +120,7 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     KVClient kv_client(connectOptions);
 
-    Status kv_status = kv_client.Init();
+    datasystem::Status kv_status = kv_client.Init();
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(rank_sub_errors::KVCLIENT_INIT_FAILED,
             "KVClient init failed: " + kv_status.ToString());
