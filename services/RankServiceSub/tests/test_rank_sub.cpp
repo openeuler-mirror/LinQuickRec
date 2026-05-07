@@ -110,7 +110,7 @@ void test_simulate_score_zero_sku() {
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    common::logger::Initialize();
+    common::logger::InitializeDefault();
 
     std::cout << "=== RankSub Service Unit Tests ===" << std::endl;
 
