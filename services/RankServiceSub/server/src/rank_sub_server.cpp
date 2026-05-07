@@ -40,6 +40,7 @@ DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 
 namespace rank {
 
+using namespace common::error;
 using common::parse_skus_from_string;
 
 constexpr int SCORE_RANGE = 10000;

@@ -39,6 +39,7 @@ DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）"
 
 namespace rank {
 
+using namespace common::error;
 using common::parse_skus_from_string;
 using common::skus_to_string;
 using common::distribute_skus_by_hash;

@@ -42,6 +42,8 @@ DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
 
 namespace recall {
 
+using namespace common::error;
+
 constexpr int VLLM_MAX_TOKENS = 102400;
 constexpr double VLLM_TEMPERATURE = 0.7;
 constexpr double VLLM_TOP_P = 0.9;

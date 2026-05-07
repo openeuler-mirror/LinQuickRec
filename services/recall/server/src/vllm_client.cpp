@@ -9,6 +9,8 @@
 
 namespace recall {
 
+using namespace common::error;
+
 VllmClient::VllmClient(const std::string& base_url, const std::string& endpoint, int timeout_ms)
     : base_url_(base_url), endpoint_(endpoint), timeout_ms_(timeout_ms) {}
 

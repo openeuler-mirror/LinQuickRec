@@ -40,6 +40,8 @@ DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 
 namespace precalc {
 
+using namespace common::error;
+
 PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG(INFO) << "PrecalcServiceImpl initialized";
     LOG(INFO) << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
