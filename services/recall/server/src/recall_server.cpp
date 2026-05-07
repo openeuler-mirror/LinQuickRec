@@ -42,6 +42,10 @@ DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
 
 namespace recall {
 
+constexpr int VLLM_MAX_TOKENS = 102400;
+constexpr double VLLM_TEMPERATURE = 0.7;
+constexpr double VLLM_TOP_P = 0.9;
+
 std::string proto_to_json(const RecallRequest* request) {
     using namespace rapidjson;
 
@@ -105,9 +109,9 @@ std::string build_vllm_request(const std::string& request_json) {
     messages.PushBack(user_msg, allocator);
     d.AddMember("messages", messages, allocator);
 
-    d.AddMember("max_tokens", 102400, allocator);
-    d.AddMember("temperature", 0.7, allocator);
-    d.AddMember("top_p", 0.9, allocator);
+    d.AddMember("max_tokens", VLLM_MAX_TOKENS, allocator);
+    d.AddMember("temperature", VLLM_TEMPERATURE, allocator);
+    d.AddMember("top_p", VLLM_TOP_P, allocator);
     d.AddMember("stream", false, allocator);
 
     StringBuffer buffer;
@@ -178,7 +182,8 @@ bool parse_vllm_response(const std::string& response_body,
 }
 
 RecallServiceImpl::RecallServiceImpl()
-    : thread_pool_(common::get_global_thread_pool()) {
+    : thread_pool_(common::get_global_thread_pool()),
+      vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
     LOG(INFO) << "RecallServiceImpl initialized with global thread pool size: "
               << thread_pool_.size();
 }
@@ -235,43 +240,17 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     std::string vllm_json = build_vllm_request(request_json);
     LOG(INFO) << "Built vLLM request, size: " << vllm_json.size() << " bytes";
 
-    brpc::Channel channel;
-    brpc::ChannelOptions channel_opts;
-    channel_opts.timeout_ms = FLAGS_vllm_timeout_ms;
-    channel_opts.protocol = "http";
-
-    std::string url = FLAGS_vllm_base_url + FLAGS_vllm_endpoint;
-    if (channel.Init(url.c_str(), &channel_opts) != 0) {
+    auto vllm_resp = vllm_client_.SendRequest(vllm_json);
+    if (!vllm_resp.success) {
         result.success = false;
-        result.status = common::error::Status(recall_errors::VLLM_CHANNEL_INIT_FAILED,
-            "Failed to initialize vLLM channel");
-        result.error_message = result.status.ToString();
+        result.status = vllm_resp.status;
+        result.error_message = vllm_resp.status.ToString();
         return result;
     }
 
-    brpc::Controller http_cntl;
-    http_cntl.http_request().uri() = FLAGS_vllm_endpoint;
-    http_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    http_cntl.http_request().set_content_type("application/json");
-    http_cntl.http_request().SetHeader("Host", "127.0.0.1:8000");
-    http_cntl.http_request().SetHeader("User-Agent", "RecallService/1.0");
-    http_cntl.http_request().SetHeader("Connection", "close");
-    http_cntl.request_attachment().append(vllm_json);
+    LOG(INFO) << "vLLM response size: " << vllm_resp.body.size() << " bytes";
 
-    channel.CallMethod(nullptr, &http_cntl, nullptr, nullptr, nullptr);
-
-    if (http_cntl.Failed()) {
-        result.success = false;
-        result.status = common::error::Status(recall_errors::VLLM_REQUEST_FAILED,
-            "vLLM service error: " + http_cntl.ErrorText());
-        result.error_message = result.status.ToString();
-        return result;
-    }
-
-    const std::string& resp_body = http_cntl.response_attachment().to_string();
-    LOG(INFO) << "vLLM response size: " << resp_body.size() << " bytes";
-
-    if (!parse_vllm_response(resp_body, &result.response, FLAGS_sku_count)) {
+    if (!parse_vllm_response(vllm_resp.body, &result.response, FLAGS_sku_count)) {
         result.success = false;
         result.status = common::error::Status(recall_errors::VLLM_RESPONSE_PARSE_FAILED,
             "Failed to parse vLLM response");

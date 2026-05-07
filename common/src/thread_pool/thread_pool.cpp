@@ -1,4 +1,5 @@
 #include "common/thread_pool.h"
+#include "common/logger.h"
 
 namespace common {
 
@@ -17,7 +18,7 @@ ThreadPool::~ThreadPool() {
         stop_ = true;
     }
     condition_.notify_all();
-    
+
     for (std::thread& worker : workers_) {
         if (worker.joinable()) {
             worker.join();
@@ -37,23 +38,29 @@ size_t ThreadPool::pending_tasks() const {
 void ThreadPool::worker_loop() {
     while (true) {
         std::function<void()> task;
-        
+
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
-            
+
             condition_.wait(lock, [this] {
                 return stop_ || !tasks_.empty();
             });
-            
+
             if (stop_ && tasks_.empty()) {
                 return;
             }
-            
+
             task = std::move(tasks_.front());
             tasks_.pop();
         }
-        
-        task();
+
+        try {
+            task();
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "ThreadPool worker caught unhandled exception: " << e.what();
+        } catch (...) {
+            LOG(ERROR) << "ThreadPool worker caught unknown exception";
+        }
     }
 }
 

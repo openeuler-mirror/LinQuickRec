@@ -60,6 +60,12 @@ private:
      */
     common::error::Status process_precalc_request(const PrecalcRequest* request,
                                                   PrecalcResponse* response);
+
+    common::error::Status validate_and_extract_key(const PrecalcRequest* request,
+                                                    std::string& user_feat_key);
+
+    common::error::Status write_to_kvworker(const std::string& user_feat_key,
+                                             const std::string& precalc_result);
 };
 
 } // namespace precalc
