@@ -261,7 +261,7 @@ void test_select_top_k_equal_scores() {
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    common::logger::Initialize();
+    common::logger::InitializeDefault();
 
     std::cout << "=== RankMaster Service Unit Tests ===" << std::endl;
 

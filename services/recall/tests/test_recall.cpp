@@ -280,7 +280,7 @@ void test_parse_vllm_response_single_sku() {
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
-    common::logger::Initialize();
+    common::logger::InitializeDefault();
 
     std::cout << "=== Recall Service Unit Tests ===" << std::endl;
 
