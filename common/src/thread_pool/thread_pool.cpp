@@ -1,4 +1,6 @@
 #include "common/thread_pool.h"
+
+#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 namespace common {
