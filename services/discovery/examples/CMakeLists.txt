@@ -57,7 +57,6 @@ set(ABSL_LIBS
     absl_status
     absl_spinlock_wait
 )
-)
 
 function(add_test_binary name)
     add_executable(${name} tests/${name}.cpp ${PROTO_SRC})
