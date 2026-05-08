@@ -22,11 +22,11 @@ int main() {
     LOG_ERROR << "Short format error message";
 
     // ==============================
-    // Example 2b: Long format — full details (file, line, function, trace_id)
+    // Example 2b: Long format — full details (file, line, function, thread, trace_id)
     // ==============================
     {
         common::logger::LoggerConfig cfg;
-        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] [%c] [%T] %v";
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] [%c] [%t] [%T] %v";
         cfg.enable_trace_id = true;
         common::logger::Initialize(cfg);
     }
