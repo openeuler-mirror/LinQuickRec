@@ -1,9 +1,10 @@
-#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
+
+#include "common/logger.h"
 
 #include <string>
 #include <thread>
