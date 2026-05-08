@@ -1,0 +1,143 @@
+# Prerequisite: Build binaries on host first:
+#   mkdir build && cd build && cmake .. && make discovery_server discovery_client -j$(nproc)
+#   cd services/discovery/examples && mkdir build && cd build && cmake .. && make -j$(nproc)
+
+services:
+  discovery-server:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/Dockerfile
+    image: discovery-examples-server
+    ports:
+      - "8100:8100"
+    container_name: discovery-examples-server
+    networks:
+      - discovery_examples_network
+
+  pseudo-proxy:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: proxy
+      SERVICE_PORT: 8001
+    container_name: discovery-examples-proxy
+    networks:
+      - discovery_examples_network
+
+  pseudo-feature:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: feature_service
+      SERVICE_PORT: 8002
+    container_name: discovery-examples-feature
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-1:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+    container_name: discovery-examples-recall-1
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-2:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+    container_name: discovery-examples-recall-2
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-3:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+    container_name: discovery-examples-recall-3
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-1:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+    container_name: discovery-examples-rank-1
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-2:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+    container_name: discovery-examples-rank-2
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-3:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+    container_name: discovery-examples-rank-3
+    networks:
+      - discovery_examples_network
+
+  test-client:
+    build:
+      context: ../../..
+      dockerfile: services/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - discovery-server
+    container_name: discovery-examples-client
+    entrypoint: ["tail", "-f", "/dev/null"]
+    networks:
+      - discovery_examples_network
+
+networks:
+  discovery_examples_network:
+    name: discovery_examples_network
