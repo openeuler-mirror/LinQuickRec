@@ -254,7 +254,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             const RankSubResponse& sub_response = result.second;
 
             if (worker_index < 0) {
-                LOG(WARN) << "Worker " << worker_index << " failed";
+                LOG(WARNING) << "Worker " << worker_index << " failed";
                 ++failed_workers;
                 continue;
             }
@@ -281,7 +281,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     }
 
     if (failed_workers > 0) {
-        LOG(WARN) << failed_workers << " sub-worker(s) failed, proceeding with partial results";
+        LOG(WARNING) << failed_workers << " sub-worker(s) failed, proceeding with partial results";
     }
 
     return common::error::Status::OK();

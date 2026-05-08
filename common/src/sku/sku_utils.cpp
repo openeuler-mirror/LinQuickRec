@@ -12,7 +12,7 @@ std::vector<uint64_t> parse_skus_from_string(const std::string& skus) {
     std::vector<uint64_t> sku_ids;
 
     if (skus.empty()) {
-        LOG(WARN) << "Empty skus string";
+        LOG(WARNING) << "Empty skus string";
         return sku_ids;
     }
 
@@ -25,7 +25,7 @@ std::vector<uint64_t> parse_skus_from_string(const std::string& skus) {
             uint64_t sku_id = std::stoull(sku_str);
             sku_ids.push_back(sku_id);
         } catch (const std::exception& e) {
-            LOG(WARN) << "Failed to parse SKU ID: " << sku_str
+            LOG(WARNING) << "Failed to parse SKU ID: " << sku_str
                         << ", error: " << e.what();
         }
 
