@@ -1,4 +1,3 @@
-#include "common/logger.h"
 #include "discovery.pb.h"
 
 #include <brpc/channel.h>
@@ -7,6 +6,8 @@
 
 #include <string>
 #include <cstdlib>
+
+#include "common/logger.h"
 
 DEFINE_string(server, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(service_type, "", "Service type (snake_case)");
