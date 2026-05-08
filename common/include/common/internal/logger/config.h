@@ -13,7 +13,7 @@ enum class LogLevel {
     TRACE,   // 详细跟踪信息
     DEBUG,   // 调试信息
     INFO,    // 常规信息
-    WARN,    // 警告信息
+    WARNING,  // 警告信息
     ERROR,   // 错误信息
     FATAL    // 致命错误
 };
