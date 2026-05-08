@@ -10,18 +10,33 @@ int main() {
     LOG_INFO << "Service started (default config)";
 
     // ==============================
-    // Example 2: Custom configuration
+    // Example 2a: Short format — only time and level
     // ==============================
-    common::logger::LoggerConfig config;
-    config.level = common::logger::LogLevel::DEBUG;
-    config.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%T] %v";
-    config.console_output = true;
-    config.file_path = "service.log";
-    config.max_file_size = 10 * 1024 * 1024;  // 10MB
-    config.max_files = 5;
-    config.enable_trace_id = true;
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%H:%M:%S] [%l] %v";
+        common::logger::Initialize(cfg);
+    }
 
-    common::logger::Initialize(config);
+    LOG_INFO << "Short format: time + level only";
+    LOG_ERROR << "Short format error message";
+
+    // ==============================
+    // Example 2b: Long format — full details (file, line, function, trace_id)
+    // ==============================
+    {
+        common::logger::LoggerConfig cfg;
+        cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] [%c] [%T] %v";
+        cfg.enable_trace_id = true;
+        common::logger::Initialize(cfg);
+    }
+
+    common::logger::SetTraceIdGetter([]() {
+        return "trace-abc-123-def-456";
+    });
+    LOG_INFO << "Long format: file:line, function, trace_id";
+    LOG_WARN << "Long format warning with full context";
+    LOG_ERROR << "Long format error with full context";
 
     // ==============================
     // Example 3: Stream logging at various levels
@@ -40,11 +55,8 @@ int main() {
     LOG_IF(TRACE, debug_mode) << "Full state dump: {...}";
 
     // ==============================
-    // Example 5: Trace ID integration
+    // Example 5: Trace ID integration (re-use from long format init)
     // ==============================
-    common::logger::SetTraceIdGetter([]() {
-        return "trace-abc-123-def-456";
-    });
     LOG_INFO << "Request with trace context";
     LOG_ERROR << "Error in request processing";
 
