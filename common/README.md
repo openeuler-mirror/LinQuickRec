@@ -61,3 +61,47 @@ make thread_pool_example -j$(nproc)
 # 线程池示例（可通过 gflags 配置线程数和任务数）
 ./examples/thread_pool_example --global_thread_pool_size=4 --tasks=100
 ```
+
+## 日志系统占位符说明
+
+通过 `LoggerConfig::pattern` 自定义日志输出格式，支持的占位符：
+
+| 占位符 | 含义 | 输出示例 |
+|--------|------|---------|
+| `%Y` | 年（4位） | `2026` |
+| `%m` | 月（2位） | `04` |
+| `%d` | 日（2位） | `29` |
+| `%H` | 时（24小时制，2位） | `11` |
+| `%M` | 分（2位） | `14` |
+| `%S` | 秒（2位） | `17` |
+| `%e` | 毫秒（3位） | `410` |
+| `%l` | 日志级别 | `INFO` |
+| `%t` | 线程 ID | `1234567890` |
+| `%f` | 文件名（不含路径） | `logger_example.cpp` |
+| `%F` | 文件完整路径 | `/workspace/.../logger_example.cpp` |
+| `%L` | 行号 | `37` |
+| `%c` | 函数名 | `main` |
+| `%T` | Trace ID（需 `enable_trace_id=true`） | `trace-abc-123` |
+| `%v` | 日志消息内容 | `Service started` |
+
+### 常用组合示例
+
+**短格式（仅时间 + 级别）：**
+```cpp
+cfg.pattern = "[%H:%M:%S] [%l] %v";
+// [11:14:17] [INFO ] Service started
+```
+
+**默认格式（时间 + 级别 + 线程）：**
+```cpp
+cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] %v";
+// [2026-04-29 11:14:17.410] [INFO ] [1234567890] Service started
+```
+
+**长格式（完整上下文）：**
+```cpp
+cfg.pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%f:%L] [%c] [%t] [%T] %v";
+// [2026-04-29 11:14:17.410] [INFO ] [main.cpp:37] [main] [1234567890] [trace-abc] Service started
+```
+
+完整示例见 `examples/logger_example.cpp`。
