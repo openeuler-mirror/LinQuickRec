@@ -2,11 +2,11 @@ FROM brpc_base:latest
 
 # === 可配置的路径参数 ===
 # vLLM 相关
-ARG VLLM_WHL=/home/w00921547/share/vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl
-ARG START_VLLM_BACK=/home/y00909761/vllm/start_vllm_back.sh
-ARG START_VLLM=/home/y00909761/vllm/start_vllm.sh
-ARG MODEL_QWEN_06B=/home/w00921547/share/Qwen3-0.6B/
-ARG MODEL_QWEN_8B=/home/w00921547/share/Qwen3-8B/
+ARG VLLM_WHL=../vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl
+ARG START_VLLM_BACK=../vllm/start_vllm_back.sh
+ARG START_VLLM=../vllm/start_vllm.sh
+ARG MODEL_QWEN_06B=../Qwen3-0.6B/
+ARG MODEL_QWEN_8B=../Qwen3-8B/
 # 服务代码
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
