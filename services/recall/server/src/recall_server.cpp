@@ -206,7 +206,7 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
 
     LOG(INFO) << "Recall request received, user_id: " << request->user_id()
               << ", log_count: " << request->user_logs_size()
-              << ", remote=" << cntl->remote_address();
+              << ", remote=" << cntl->remote_side();
 
     try {
         auto future = thread_pool_.submit([this, request]() {
