@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(rank_sub_service)
 
+# 添加 common 库
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -36,8 +39,9 @@ link_directories(/usr/local/lib64)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
-# Abseil 库（BRPC 依赖）
+# Abseil 库（与 Recall 服务保持一致）
 set(ABSL_LIBS
+    absl_log_internal_nullguard
     absl_log_internal_check_op
     absl_log_internal_message
     absl_raw_logging_internal
@@ -45,6 +49,10 @@ set(ABSL_LIBS
     absl_base
     absl_time
     absl_synchronization
+    absl_status
+    absl_hash
+    absl_spinlock_wait
+    absl_throw_delegate
 )
 
 # 设置 proto 文件路径
@@ -58,7 +66,7 @@ if(DEFINED ENV{YR_SDK_PATH})
     message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
 else()
     # 方法 2: 默认安装路径
-    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr" CACHE PATH "Yuanrong SDK path")
+    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
     message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
 endif()
 
@@ -113,10 +121,15 @@ target_include_directories(rank_sub_server PRIVATE
 target_link_libraries(rank_sub_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
-    ${ABSL_LIBS}
     Threads::Threads
     ${YR_LIBRARY}
+    
+    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
+    -Wl,--no-as-needed
+    ${ABSL_LIBS}
+    -Wl,--as-needed
 )
 
 set_target_properties(rank_sub_server PROPERTIES
@@ -142,6 +155,7 @@ target_include_directories(rank_sub_client PRIVATE
 target_link_libraries(rank_sub_client PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
 )

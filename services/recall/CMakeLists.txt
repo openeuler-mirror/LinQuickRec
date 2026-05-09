@@ -3,6 +3,9 @@ project(vllm-brpc-gateway LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# 添加 common 库
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 # ============================================================================
 # BRPC 路径设置（根据您的实际安装路径调整）
 # ============================================================================
@@ -85,11 +88,13 @@ target_include_directories(recall_server PRIVATE
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
 )
 target_link_libraries(recall_server PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
@@ -113,6 +118,7 @@ target_link_libraries(recall_test_client PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
