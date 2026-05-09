@@ -31,7 +31,7 @@ DEFINE_uint64(user_id, 12345, "用户 ID");
 DEFINE_int32(log_count, 3, "用户日志数量（当 --user_logs 为空时使用）");
 DEFINE_string(user_logs, "", "用户日志（格式: \"1,2,3;4,5,6\"，分号分隔多个 log，逗号分隔 vec，空值时自动生成）");
 DEFINE_int32(other_size_kb, 100, "other 负载大小（KB），默认 100KB");
-
+DEFINE_int32(timeout_ms, 100000, "超时时间（毫秒），默认 100000ms");
 /**
  * @brief 解析 user_logs 字符串
  * 格式: "1,2,3;4,5,6" -> 两个 log，vec 分别为 [1,2,3] 和 [4,5,6]
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     // 2. 初始化 channel
     brpc::Channel channel;
     brpc::ChannelOptions options;
-    options.timeout_ms = 10000; // 10 秒超时
+    options.timeout_ms = FLAGS_timeout_ms; // 使用命令行参数指定的超时时间
 
     if (channel.Init(FLAGS_server.c_str(), &options) != 0) {
         std::cerr << "Fail to initialize channel to " << FLAGS_server << std::endl;
