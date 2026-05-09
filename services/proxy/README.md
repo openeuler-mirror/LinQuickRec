@@ -74,6 +74,7 @@ Proxy 通过 [discovery 服务](../discovery/) 动态获取下游实例，不再
 | **其他** | | |
 | `--server_port` | 8080 | Proxy HTTP 服务监听端口 |
 | `--enable_timing_stats` | true | 是否打印阶段时延统计 |
+| `--global_thread_pool_size` | 128 (auto) | 全局线程池大小，默认自动根据 CPU 核数计算 |
 
 ## API 接口
 
@@ -149,16 +150,47 @@ a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
 
 trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可通过 `controller->log_id()` 获取。
 
-## 启动方式
+## 构建
+
+### 前置依赖
+
+- CMake >= 3.14
+- brpc (含 protobuf、abseil、leveldb)
+- gflags
+- pthread
+
+### 编译
 
 ```bash
-# 直接启动
-./build/proxy_server \
+# 在项目根目录
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
+```
+
+产物在 `build/bin/` 下：
+- `proxy_server` — 服务端
+- `proxy_test_client` — 手动测试客户端
+- `proxy_integration_test` — 单进程集成测试
+
+## 启动方式
+
+### 直接启动
+
+```bash
+./build/bin/proxy_server \
     --server_port=8080 \
     --discovery_addr="discovery-server:8100" \
     --enable_timing_stats=true
+```
 
-# Docker
+### Docker 构建并启动
+
+```bash
+# 构建镜像
+docker build -t lingquickrec/proxy:latest services/proxy/
+
+# 运行
 docker run -p 8080:8080 lingquickrec/proxy:latest
 ```
 
@@ -180,6 +212,25 @@ cd build && cmake .. && make proxy_integration_test
 | Recall 服务失败 | 返回 error_code = 0x01030002 |
 | Precalc 服务失败 | 返回 error_code = 0x01030003 |
 | Rank 服务失败 | 返回 error_code = 0x01030004 |
+
+## 手动测试
+
+需要 proxy 运行中且 discovery 上已注册下游服务：
+
+```bash
+./build/bin/proxy_test_client \
+    --server="127.0.0.1:8080" \
+    --user_id=12345
+```
+
+输出示例：
+
+```
+Proxy Test Client starting...
+Connecting to Proxy at: 127.0.0.1:8080
+Sending Recommend request: user_id=12345 payload=test_request
+Recommend response received: candidates=3 latency=123.45ms
+```
 
 ## 可观测性
 
