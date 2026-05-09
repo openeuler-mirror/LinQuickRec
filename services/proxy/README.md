@@ -4,6 +4,28 @@
 
 Proxy 是 LingQuickRec 系统的**网关入口**，对外暴露 HTTP 接口，对内持有 FeatureService、RecallService、PrecalcService、RankServiceMaster 四个下游服务的连接。它负责接收外部推荐请求，按业务编排顺序依次调用下游服务，最终返回排序后的候选结果。
 
+## 目录结构
+
+```
+services/proxy/
+├── CMakeLists.txt                     # 构建配置
+├── Dockerfile                         # 容器镜像
+├── README.md                          # 本文档
+├── DESIGN.md                          # 详细设计文档
+├── server/
+│   ├── include/
+│   │   ├── proxy_server.h             # ProxyServiceImpl 类声明
+│   │   └── service_discovery.h        # 服务发现客户端
+│   └── src/
+│       ├── main.cpp                   # 服务入口
+│       ├── proxy_server.cpp           # 核心编排逻辑
+│       └── service_discovery.cpp      # 服务发现实现
+├── client/
+│   └── proxy_test_client.cpp          # 手动测试客户端
+└── tests/
+    └── integration_test.cpp           # 单进程集成测试
+```
+
 ## 业务调用流程
 
 ```
@@ -154,10 +176,14 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 
 ### 前置依赖
 
-- CMake >= 3.14
-- brpc (含 protobuf、abseil、leveldb)
-- gflags
-- pthread
+| 依赖 | 版本要求 | 安装参考 |
+|------|----------|----------|
+| CMake | >= 3.14 | `apt install cmake` / `brew install cmake` |
+| brpc | latest | [brpc 构建指南](https://github.com/apache/brpc/blob/master/docs/cn/getting_started.md) |
+| protobuf | >= 3.x | brpc 自带或单独安装 |
+| abseil-cpp | latest | brpc 自带或单独安装 |
+| gflags | latest | `apt install libgflags-dev` |
+| pthread | 系统自带 | — |
 
 ### 编译
 
@@ -184,14 +210,24 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
     --enable_timing_stats=true
 ```
 
-### Docker 构建并启动
+### Docker 构建
 
 ```bash
-# 构建镜像
-docker build -t lingquickrec/proxy:latest services/proxy/
+# 在项目根目录下执行（Dockerfile 中的上下文需要项目根目录）
+docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
+```
 
-# 运行
-docker run -p 8080:8080 lingquickrec/proxy:latest
+### Docker 运行
+
+```bash
+# 单容器运行（依赖外部 discovery server）
+docker run -p 8080:8080 \
+    lingquickrec/proxy:latest \
+    --discovery_addr="discovery-server:8100"
+
+# 启动集成测试容器（镜像需内置 discovery 和 mock 服务时使用）
+docker run --rm lingquickrec/proxy:latest \
+    ./build/bin/proxy_integration_test
 ```
 
 ## 测试
