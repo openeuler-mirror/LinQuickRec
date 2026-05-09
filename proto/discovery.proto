@@ -53,6 +53,7 @@ message HeartbeatResponse {
 
 message DiscoverRequest {
     string service_name = 1;
+    bool include_down = 2;
 }
 
 message DiscoverResponse {
