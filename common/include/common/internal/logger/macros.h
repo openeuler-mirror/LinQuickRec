@@ -3,6 +3,12 @@
 
 #include "logger_core.h"
 
+// 覆盖 brpc/butil/logging.h 的同名宏
+#if defined(LOG_STREAM) || defined(LOG_IF)
+#undef LOG_STREAM
+#undef LOG_IF
+#endif
+
 // 流式日志宏（兼容现有 LOG(LEVEL) << message 风格）
 #define LOG_STREAM(level) \
     common::logger::Logger::Instance().Stream( \
