@@ -39,7 +39,7 @@ std::string DiscoveryServiceImpl::generate_instance_id(
 }
 
 void DiscoveryServiceImpl::Register(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /* controller */,
     const RegisterRequest* request,
     RegisterResponse* response,
     google::protobuf::Closure* done) {
@@ -82,7 +82,7 @@ void DiscoveryServiceImpl::Register(
 }
 
 void DiscoveryServiceImpl::Deregister(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /* controller */,
     const DeregisterRequest* request,
     DeregisterResponse* response,
     google::protobuf::Closure* done) {
@@ -107,7 +107,7 @@ void DiscoveryServiceImpl::Deregister(
 }
 
 void DiscoveryServiceImpl::Heartbeat(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /* controller */,
     const HeartbeatRequest* request,
     HeartbeatResponse* response,
     google::protobuf::Closure* done) {
@@ -141,7 +141,7 @@ void DiscoveryServiceImpl::Heartbeat(
 }
 
 void DiscoveryServiceImpl::Discover(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /* controller */,
     const DiscoverRequest* request,
     DiscoverResponse* response,
     google::protobuf::Closure* done) {
@@ -151,7 +151,8 @@ void DiscoveryServiceImpl::Discover(
     auto svc_it = registry_.find(request->service_name());
     if (svc_it != registry_.end()) {
         for (const auto& [id, entry] : svc_it->second) {
-            if (entry.status == InstanceStatus::UP) {
+            if (entry.status == InstanceStatus::UP ||
+                (request->include_down() && entry.status == InstanceStatus::DOWN)) {
                 *response->add_instances() = entry.to_proto();
             }
         }
