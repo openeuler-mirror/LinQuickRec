@@ -45,7 +45,7 @@ namespace recall {
 
 using namespace common::error;
 
-constexpr int VLLM_MAX_TOKENS = 102400;
+constexpr int VLLM_MAX_TOKENS = 10240;
 constexpr double VLLM_TEMPERATURE = 0.7;
 constexpr double VLLM_TOP_P = 0.9;
 
@@ -73,7 +73,7 @@ std::string proto_to_json(const RecallRequest* request) {
     }
     d.AddMember("user_logs", user_logs, allocator);
 
-    d.AddMember("other", Value(request->other().c_str(), allocator).Move(), allocator);
+    // d.AddMember("other", Value(request->other().c_str(), allocator).Move(), allocator);
 
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
