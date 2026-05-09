@@ -49,28 +49,30 @@ Proxy 是 LingQuickRec 系统的**网关入口**，对外暴露 HTTP 接口，�
 | Stage 2b: 预计算 | **异步并行**（全局线程池） | PrecalcService | 与 Stage 2a 同时发起，互不依赖 |
 | Stage 3: 精排 | **同步阻塞** | RankServiceMaster | 必须等 Stage 2a/2b 都完成后才能执行 |
 
-## 服务依赖
+## 服务发现
 
-| 下游服务 | Proto Service | 默认地址 | 默认超时 |
-|---------|--------------|---------|---------|
-| FeatureService | `FeatureService` | `127.0.0.1:8003` | 3000ms |
-| RecallService | `RecallService` | `127.0.0.1:8001` | 5000ms |
-| PrecalcService | `PrecalcService` | `127.0.0.1:8004` | 5000ms |
-| RankServiceMaster | `RankMasterService` | `127.0.0.1:8005` | 10000ms |
+Proxy 通过 [discovery 服务](../discovery/) 动态获取下游实例，不再配置静态地址。每个请求通过 `discovery_addr` 向 discovery server 发起 `Discover()` RPC，获取 UP 实例列表，按 round-robin 选取，失败时自动重试下一实例。
 
 ## 配置参数
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--server_port` | 8080 | Proxy HTTP 服务监听端口 |
-| `--feature_service_addr` | "127.0.0.1:8003" | FeatureService 地址 |
-| `--recall_service_addr` | "127.0.0.1:8001" | RecallService 地址 |
-| `--precalc_service_addr` | "127.0.0.1:8004" | PrecalcService 地址 |
-| `--rank_service_addr` | "127.0.0.1:8005" | RankServiceMaster 地址 |
+| **服务发现** | | |
+| `--discovery_addr` | "127.0.0.1:8100" | Discovery server 地址 |
+| `--discovery_refresh_interval_ms` | 5000 | 缓存刷新间隔 (ms) |
+| `--downstream_max_retries` | 2 | 每个下游最大重试次数 |
+| **下游服务名** | | |
+| `--feature_service_name` | "feature_service" | Feature 服务注册名 |
+| `--recall_service_name` | "recall_service" | Recall 服务注册名 |
+| `--precalc_service_name` | "precalc_service" | Precalc 服务注册名 |
+| `--rank_service_name` | "rank_service" | Rank 服务注册名 |
+| **超时** | | |
 | `--feature_timeout_ms` | 3000 | Feature 调用超时 (ms) |
 | `--recall_timeout_ms` | 5000 | Recall 调用超时 (ms) |
 | `--precalc_timeout_ms` | 5000 | Precalc 调用超时 (ms) |
 | `--rank_timeout_ms` | 10000 | Rank 调用超时 (ms) |
+| **其他** | | |
+| `--server_port` | 8080 | Proxy HTTP 服务监听端口 |
 | `--enable_timing_stats` | true | 是否打印阶段时延统计 |
 
 ## API 接口
@@ -153,10 +155,7 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 # 直接启动
 ./build/proxy_server \
     --server_port=8080 \
-    --feature_service_addr="feature:8003" \
-    --recall_service_addr="recall:8001" \
-    --precalc_service_addr="precalc:8004" \
-    --rank_service_addr="rank:8005" \
+    --discovery_addr="discovery-server:8100" \
     --enable_timing_stats=true
 
 # Docker

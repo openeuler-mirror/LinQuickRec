@@ -18,10 +18,6 @@
 #include "common/global_thread_pool.h"
 
 DEFINE_int32(server_port, 8080, "Proxy HTTP 服务监听端口");
-DEFINE_string(feature_service_addr, "127.0.0.1:8003", "FeatureService 地址");
-DEFINE_string(recall_service_addr, "127.0.0.1:8001", "RecallService 地址");
-DEFINE_string(precalc_service_addr, "127.0.0.1:8004", "PrecalcService 地址");
-DEFINE_string(rank_service_addr, "127.0.0.1:8005", "RankServiceMaster 地址");
 DEFINE_int32(feature_timeout_ms, 3000, "Feature 调用超时 (ms)");
 DEFINE_int32(recall_timeout_ms, 5000, "Recall 调用超时 (ms)");
 DEFINE_int32(precalc_timeout_ms, 5000, "Precalc 调用超时 (ms)");
@@ -62,43 +58,15 @@ namespace proxy {
 ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO_STREAM << "ProxyServiceImpl initializing...";
 
-    int fail_count = 0;
-    if (!init_channel(feature_channel_, FLAGS_feature_service_addr, FLAGS_feature_timeout_ms)) ++fail_count;
-    if (!init_channel(recall_channel_, FLAGS_recall_service_addr, FLAGS_recall_timeout_ms))    ++fail_count;
-    if (!init_channel(precalc_channel_, FLAGS_precalc_service_addr, FLAGS_precalc_timeout_ms)) ++fail_count;
-    if (!init_channel(rank_channel_, FLAGS_rank_service_addr, FLAGS_rank_timeout_ms))          ++fail_count;
-
-    if (fail_count > 0) {
-        LOG_WARN_STREAM << fail_count << " channel(s) failed to initialize;"
-                        << " RPC calls will fail until the downstream becomes reachable";
-    }
+    discovery_ = std::make_unique<ServiceDiscovery>(
+        FLAGS_discovery_addr, FLAGS_discovery_refresh_interval_ms);
 
     LOG_INFO_STREAM << "ProxyServiceImpl initialized";
-    LOG_INFO_STREAM << "  FeatureService: " << FLAGS_feature_service_addr;
-    LOG_INFO_STREAM << "  RecallService:  " << FLAGS_recall_service_addr;
-    LOG_INFO_STREAM << "  PrecalcService: " << FLAGS_precalc_service_addr;
-    LOG_INFO_STREAM << "  RankService:    " << FLAGS_rank_service_addr;
+    LOG_INFO_STREAM << "  Discovery server: " << FLAGS_discovery_addr;
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {
     LOG_INFO_STREAM << "ProxyServiceImpl destroyed";
-}
-
-bool ProxyServiceImpl::init_channel(std::unique_ptr<brpc::Channel>& ch,
-                                    const std::string& addr,
-                                    int timeout_ms) {
-    ch = std::make_unique<brpc::Channel>();
-    brpc::ChannelOptions opts;
-    opts.timeout_ms = timeout_ms;
-    opts.connection_type = "pooled";
-    opts.max_retry = 2;
-
-    if (ch->Init(addr.c_str(), &opts) != 0) {
-        LOG_ERROR_STREAM << "Failed to initialize channel to " << addr;
-        return false;
-    }
-    LOG_INFO_STREAM << "Channel initialized to " << addr << " (timeout=" << timeout_ms << "ms)";
-    return true;
 }
 
 void ProxyServiceImpl::Recommend(const RecommendRequest* request,
@@ -118,6 +86,82 @@ void ProxyServiceImpl::Recommend(const RecommendRequest* request,
     brpc::ClosureGuard done_guard(done);
 }
 
+common::error::Status ProxyServiceImpl::call_with_retry(
+    const std::string& service_name,
+    int timeout_ms,
+    uint32_t error_specific_code,
+    const std::function<common::error::Status(
+        brpc::Channel&, brpc::Controller&)>& rpc_impl) {
+
+    std::vector<std::string> tried;
+
+    for (int attempt = 0; attempt <= FLAGS_downstream_max_retries; ++attempt) {
+        std::string host;
+        int port;
+        std::string instance_id;
+
+        if (!discovery_->GetInstance(service_name, host, port, instance_id)) {
+            if (attempt == 0) {
+                return common::error::Status::Error(
+                    common::error::ModuleCode::GATEWAY,
+                    common::error::ErrorType::SERVICE_ERROR, error_specific_code,
+                    service_name + ": no available instances");
+            }
+            break;
+        }
+
+        std::string addr = host + ":" + std::to_string(port);
+        tried.push_back(addr);
+
+        brpc::Channel channel;
+        brpc::ChannelOptions opts;
+        opts.timeout_ms = timeout_ms;
+        opts.connection_type = "pooled";
+        opts.max_retry = 0;
+
+        if (channel.Init(addr.c_str(), &opts) != 0) {
+            discovery_->ReportFailure(instance_id);
+            continue;
+        }
+
+        brpc::Controller cntl;
+        cntl.set_timeout_ms(timeout_ms);
+        cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+
+        auto st = rpc_impl(channel, cntl);
+
+        if (cntl.Failed()) {
+            discovery_->ReportFailure(instance_id);
+            if (attempt < FLAGS_downstream_max_retries) continue;
+            tried.clear();
+            st = common::error::Status::Error(
+                common::error::ModuleCode::GATEWAY,
+                common::error::ErrorType::SERVICE_ERROR, error_specific_code,
+                cntl.ErrorText());
+        }
+
+        if (st.IsOk()) {
+            discovery_->ReportSuccess(instance_id);
+            return st;
+        }
+
+        if (attempt >= FLAGS_downstream_max_retries) break;
+    }
+
+    std::ostringstream msg;
+    msg << service_name << ": all " << tried.size() << " instance(s) failed, tried: [";
+    for (size_t i = 0; i < tried.size(); ++i) {
+        if (i > 0) msg << ", ";
+        msg << tried[i];
+    }
+    msg << "] after " << FLAGS_downstream_max_retries << " retries";
+
+    return common::error::Status::Error(
+        common::error::ModuleCode::GATEWAY,
+        common::error::ErrorType::SERVICE_ERROR, error_specific_code,
+        msg.str());
+}
+
 common::error::Status ProxyServiceImpl::call_feature_service(
     const RecommendRequest* request,
     feature::UserFeatureResponse* response) {
@@ -127,23 +171,19 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     feat_req.mutable_kr_feat_req()->set_user_id(request->user_id());
     feat_req.mutable_kr_feat_req()->set_req_data(request->payload());
 
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_feature_timeout_ms);
+    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
+        feature::FeatureService_Stub stub(&ch);
+        stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
+        return common::error::Status::OK();
+    };
 
-    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+    auto st = call_with_retry(FLAGS_feature_service_name,
+                              FLAGS_feature_timeout_ms, 0x0001, rpc_impl);
 
-    feature::FeatureService_Stub stub(feature_channel_.get());
-    stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
-
-    if (cntl.Failed()) {
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0001,
-            std::string("FeatureService: ") + cntl.ErrorText());
-    }
+    if (!st.IsOk()) return st;
 
     LOG_INFO_STREAM << "FeatureService success: user_id=" << request->user_id()
-              << " user_logs=" << response->kr_feat_rsp().user_logs_size();
+                    << " user_logs=" << response->kr_feat_rsp().user_logs_size();
     return common::error::Status::OK();
 }
 
@@ -163,20 +203,16 @@ common::error::Status ProxyServiceImpl::call_recall_service(
         }
     }
 
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_recall_timeout_ms);
+    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
+        recall::RecallService_Stub stub(&ch);
+        stub.Recall(&cntl, &recall_req, response, nullptr);
+        return common::error::Status::OK();
+    };
 
-    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+    auto st = call_with_retry(FLAGS_recall_service_name,
+                              FLAGS_recall_timeout_ms, 0x0002, rpc_impl);
 
-    recall::RecallService_Stub stub(recall_channel_.get());
-    stub.Recall(&cntl, &recall_req, response, nullptr);
-
-    if (cntl.Failed()) {
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0002,
-            std::string("RecallService: ") + cntl.ErrorText());
-    }
+    if (!st.IsOk()) return st;
 
     LOG_INFO_STREAM << "RecallService success: sku_ids=" << response->sku_ids_size();
     return common::error::Status::OK();
@@ -192,20 +228,16 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
                               ? "user_feat_default"
                               : user_feat.kr_feat_rsp().other());
 
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_precalc_timeout_ms);
+    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
+        precalc::PrecalcService_Stub stub(&ch);
+        stub.Precalculate(&cntl, &precalc_req, response, nullptr);
+        return common::error::Status::OK();
+    };
 
-    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+    auto st = call_with_retry(FLAGS_precalc_service_name,
+                              FLAGS_precalc_timeout_ms, 0x0003, rpc_impl);
 
-    precalc::PrecalcService_Stub stub(precalc_channel_.get());
-    stub.Precalculate(&cntl, &precalc_req, response, nullptr);
-
-    if (cntl.Failed()) {
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0003,
-            std::string("PrecalcService: ") + cntl.ErrorText());
-    }
+    if (!st.IsOk()) return st;
 
     LOG_INFO_STREAM << "PrecalcService success: user_feat_key=" << response->user_feat_key();
     return common::error::Status::OK();
@@ -226,25 +258,23 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     rank_req.set_skus(skus_oss.str());
     rank_req.set_payload(precalc_rsp.payload());
 
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_rank_timeout_ms);
+    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
+        rank::RankService_Stub stub(&ch);
+        rank::RankResponse rank_rsp;
+        stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
 
-    cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+        if (!cntl.Failed()) {
+            for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
+                response->add_candidates(rank_rsp.candidates(i));
+            }
+        }
+        return common::error::Status::OK();
+    };
 
-    rank::RankService_Stub stub(rank_channel_.get());
-    rank::RankResponse rank_rsp;
-    stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
+    auto st = call_with_retry(FLAGS_rank_service_name,
+                              FLAGS_rank_timeout_ms, 0x0004, rpc_impl);
 
-    if (cntl.Failed()) {
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0004,
-            std::string("RankService: ") + cntl.ErrorText());
-    }
-
-    for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
-        response->add_candidates(rank_rsp.candidates(i));
-    }
+    if (!st.IsOk()) return st;
 
     LOG_INFO_STREAM << "RankService success: candidates=" << response->candidates_size();
     return common::error::Status::OK();
@@ -259,9 +289,7 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
     LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id()
                     << " trace_id=" << tls_trace_id;
 
-    // ============================================================
     // Stage 1: 获取特征（同步）
-    // ============================================================
     feature::UserFeatureResponse user_feat;
     auto feat_st = call_feature_service(request, &user_feat);
     auto t1 = std::chrono::steady_clock::now();
@@ -271,9 +299,7 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
         return feat_st;
     }
 
-    // ============================================================
-    // Stage 2: 召回 + 预计算（并行）
-    // ============================================================
+    // Stage 2: 召回 + 预计算（并行，复用全局线程池）
     uint64_t user_id = request->user_id();
 
     auto& pool = common::get_global_thread_pool();
@@ -303,9 +329,7 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
         return precalc_st;
     }
 
-    // ============================================================
     // Stage 3: 精排（同步）
-    // ============================================================
     auto rank_st = call_rank_service(recall_rsp, precalc_rsp, response);
     auto t3 = std::chrono::steady_clock::now();
 
@@ -314,9 +338,7 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
         return rank_st;
     }
 
-    // ============================================================
     // 时延统计
-    // ============================================================
     if (FLAGS_enable_timing_stats) {
         auto feat_us   = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
         auto stage2_us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
