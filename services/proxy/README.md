@@ -221,6 +221,29 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
     --enable_timing_stats=true
 ```
 
+## 容器搭建
+
+### 构建镜像
+
+```bash
+# 在项目根目录下执行
+docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
+```
+
+### 运行
+
+```bash
+# 单容器运行（依赖外部 discovery server）
+docker run -p 8080:8080 \
+    lingquickrec/proxy:latest \
+    --discovery_addr="discovery-server:8100"
+
+# 集成测试（镜像已内置 mock 服务时使用）
+docker run --rm lingquickrec/proxy:latest \
+    ./build/bin/proxy_integration_test
+
+## 测试方法
+
 ### 集成测试
 
 单进程集成测试，无需外部依赖：
@@ -258,25 +281,4 @@ Connecting to Proxy at: 127.0.0.1:8080
 Sending Recommend request: user_id=12345 payload=test_request
 Recommend response received: candidates=3 latency=123.45ms
 ```
-
-## 容器搭建
-
-### 构建镜像
-
-```bash
-# 在项目根目录下执行
-docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
-```
-
-### 运行
-
-```bash
-# 单容器运行（依赖外部 discovery server）
-docker run -p 8080:8080 \
-    lingquickrec/proxy:latest \
-    --discovery_addr="discovery-server:8100"
-
-# 集成测试（镜像已内置 mock 服务时使用）
-docker run --rm lingquickrec/proxy:latest \
-    ./build/bin/proxy_integration_test
 ```
