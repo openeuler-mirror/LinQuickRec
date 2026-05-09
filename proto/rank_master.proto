@@ -10,6 +10,7 @@ message RankMasterRequest {
     string user_feat_key = 1;
     string skus = 2; // 100KB
     string payload = 3; // 100KB
+    string trace_id = 4;
 }
 
 // 精排主图服务 - 响应

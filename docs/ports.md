@@ -82,7 +82,7 @@ Proxy (网关，规划中)
     ↓
 ├─→ RecallService (8001) ──→ RecallKVWorker (31501, 141.61.84.245)
 ├─→ FeatureService (8003) ──→ Redis (6379)
-├─→ PrecalcService (8004) ──→ RecallKVWorker (31501, 141.61.84.245)
+├─→ PrecalcService (8004) ──→ RankKVWorker (31502, 141.61.84.245)
 └─→ RankMaster (8005) ──┬─→ RankSub (8006) ──→ RankKVWorker (31502, 141.61.84.245)
                         ├─→ RankSub (8006) ──→ RankKVWorker (31502, 141.61.84.245)
                         └─→ RankSub (8006) ──→ RankKVWorker (31502, 141.61.84.245)

@@ -12,11 +12,12 @@ std::string ModuleToString(ModuleCode module) {
         {ModuleCode::FEATURE,   "FEATURE"},
         {ModuleCode::RECALL,    "RECALL"},
         {ModuleCode::PRECALC,   "PRECALC"},
-        {ModuleCode::RANK,      "RANK"},
+        {ModuleCode::RANK_MASTER, "RANK_MASTER"},
         {ModuleCode::KVWORKER,  "KVWORKER"},
         {ModuleCode::REDIS,     "REDIS"},
         {ModuleCode::VLLM,      "VLLM"},
         {ModuleCode::DISCOVERY, "DISCOVERY"},
+        {ModuleCode::RANK_SUB,  "RANK_SUB"},
         {ModuleCode::UNKNOWN,   "UNKNOWN"}
     };
     
