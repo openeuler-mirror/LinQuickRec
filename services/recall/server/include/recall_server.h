@@ -63,23 +63,6 @@ bool parse_vllm_response(const std::string& response_body,
 class RecallServiceImpl : public RecallService {
 public:
     /**
-     * @brief 构造函数
-     */
-    RecallServiceImpl();
-
-    /**
-     * @brief 处理召回请求
-     * 
-     * @param request 请求对象
-     * @param response 响应对象
-     * @param done 完成回调
-     */
-    void Recall(const RecallRequest* request,
-                RecallResponse* response,
-                google::protobuf::Closure* done) override;
-
-private:
-    /**
      * @brief 召回请求处理结果
      */
     struct RecallResult {
@@ -88,6 +71,25 @@ private:
         std::string error_message;
     };
 
+    /**
+     * @brief 构造函数
+     */
+    RecallServiceImpl();
+
+    /**
+     * @brief 处理召回请求
+     * 
+     * @param controller RPC 控制器
+     * @param request 请求对象
+     * @param response 响应对象
+     * @param done 完成回调
+     */
+    void Recall(google::protobuf::RpcController* controller,
+                const RecallRequest* request,
+                RecallResponse* response,
+                google::protobuf::Closure* done) override;
+
+private:
     /**
      * @brief 处理召回请求（在线程池中执行）
      * 

@@ -29,17 +29,18 @@ DEFINE_string(server, "127.0.0.1:8004", "服务器地址 (ip:port)");
 DEFINE_int32(user_feat_size_kb, 100, "用户特征数据大小（KB）");
 DEFINE_double(precalc_result_size_mb, 8.5, "期望的前置计算结果大小（MB）");
 DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB）");
+DEFINE_int32(payload_size_kb, 100, "payload 大小（KB）");
 
 /**
- * @brief 生成指定大小的随机数据
+ * @brief 生成指定大小的随机数据（纯数字字符串）
  * 
  * @param size_kb 数据大小（KB）
- * @return std::string 生成的随机数据
+ * @return std::string 生成的随机字符串（只包含数字 0-9）
  */
 std::string generate_random_data(int size_kb) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 255);
+    std::uniform_int_distribution<> dis('0', '9');  // 数字字符范围（0-9）
     
     size_t total_bytes = static_cast<size_t>(size_kb) * 1024;
     std::string data;
@@ -106,12 +107,13 @@ int main(int argc, char* argv[]) {
     std::cout << "Response:" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "user_feat_key: " << response.user_feat_key() << std::endl;
-    std::cout << "key size: " << response.user_feat_key().size() << " bytes ("
-              << response.user_feat_key().size() / 1024.0 << " KB)" << std::endl;
-    std::cout << "expected key size: " << FLAGS_user_feat_key_size_kb << " KB" << std::endl;
+    std::cout << "key size: " << response.user_feat_key().size() << " bytes" << std::endl;
+    std::cout << "payload size: " << response.payload().size() << " bytes (" 
+              << response.payload().size() / 1024.0 << " KB)" << std::endl;
+    std::cout << "expected payload size: " << FLAGS_payload_size_kb << " KB" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "Note: Precalc result (8.5 MB) is stored in KVWorker" << std::endl;
-    std::cout << "Response only contains user_feat_key" << std::endl;
+    std::cout << "Response contains user_feat_key (16 bytes) and payload" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "Test completed successfully!" << std::endl;
     std::cout << "========================================" << std::endl;

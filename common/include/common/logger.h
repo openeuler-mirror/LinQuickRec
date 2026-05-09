@@ -74,6 +74,10 @@ inline void AddFileSink(const std::string& file_path,
         file_path, level, max_file_size, max_files));
 }
 
+inline void ClearSinks() {
+    Logger::Instance().ClearSinks();
+}
+
 } // namespace logger
 } // namespace common
 
