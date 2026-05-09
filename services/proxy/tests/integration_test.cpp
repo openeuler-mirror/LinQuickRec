@@ -1,9 +1,11 @@
 #include "gateway_server.h"
+#include "service_discovery.h"
 
 #include "feature.pb.h"
 #include "recall.pb.h"
 #include "precalc.pb.h"
 #include "rank_master.pb.h"
+#include "discovery.pb.h"
 
 #include <brpc/server.h>
 #include <brpc/channel.h>
@@ -14,14 +16,75 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
+constexpr int DISCOVERY_PORT   = 18100;
 constexpr int MOCK_FEATURE_PORT = 18001;
 constexpr int MOCK_RECALL_PORT  = 18002;
 constexpr int MOCK_PRECALC_PORT = 18003;
 constexpr int MOCK_RANK_PORT    = 18004;
 constexpr int PROXY_PORT        = 18000;
+
+// ============================================================================
+// Mock Discovery Service
+// ============================================================================
+
+class MockDiscoveryService : public discovery::DiscoveryService {
+public:
+    void Register(google::protobuf::RpcController* cntl,
+                  const discovery::RegisterRequest* request,
+                  discovery::RegisterResponse* response,
+                  google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        const auto& inst = request->instance();
+        std::lock_guard<std::mutex> lock(mutex_);
+        instances_[inst.service_name()].push_back(inst);
+        response->set_success(true);
+        response->set_instance_id(inst.service_name() + "_" + inst.host() + "_" + std::to_string(inst.port()) + "_1");
+        LOG_INFO_STREAM << "Discovery Register: " << inst.service_name()
+                        << " at " << inst.host() << ":" << inst.port();
+    }
+
+    void Deregister(google::protobuf::RpcController* cntl,
+                    const discovery::DeregisterRequest* request,
+                    discovery::DeregisterResponse* response,
+                    google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        response->set_success(true);
+    }
+
+    void Heartbeat(google::protobuf::RpcController* cntl,
+                   const discovery::HeartbeatRequest* request,
+                   discovery::HeartbeatResponse* response,
+                   google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        response->set_success(true);
+        response->set_needs_reregister(false);
+    }
+
+    void Discover(google::protobuf::RpcController* cntl,
+                  const discovery::DiscoverRequest* request,
+                  discovery::DiscoverResponse* response,
+                  google::protobuf::Closure* done) override {
+        brpc::ClosureGuard guard(done);
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = instances_.find(request->service_name());
+        if (it != instances_.end()) {
+            for (const auto& inst : it->second) {
+                auto* added = response->add_instances();
+                added->CopyFrom(inst);
+                added->set_status(discovery::UP);
+            }
+        }
+    }
+
+private:
+    std::mutex mutex_;
+    std::unordered_map<std::string, std::vector<discovery::ServiceInstance>> instances_;
+};
 
 // ============================================================================
 // Passing Mock Implementations
@@ -146,10 +209,11 @@ public:
 };
 
 // ============================================================================
-// Helper: start a brpc server on a given port
+// Helpers
 // ============================================================================
 
 struct ServerSet {
+    brpc::Server discovery_svr;
     brpc::Server feature_svr;
     brpc::Server recall_svr;
     brpc::Server precalc_svr;
@@ -172,15 +236,40 @@ static bool start_server(brpc::Server* server, int port,
 }
 
 static void stop_all(ServerSet& svrs) {
-    svrs.proxy_svr.Stop(0);    svrs.proxy_svr.Join();
-    svrs.feature_svr.Stop(0);  svrs.feature_svr.Join();
-    svrs.recall_svr.Stop(0);   svrs.recall_svr.Join();
-    svrs.precalc_svr.Stop(0);  svrs.precalc_svr.Join();
-    svrs.rank_svr.Stop(0);     svrs.rank_svr.Join();
+    svrs.proxy_svr.Stop(0);     svrs.proxy_svr.Join();
+    svrs.discovery_svr.Stop(0); svrs.discovery_svr.Join();
+    svrs.feature_svr.Stop(0);   svrs.feature_svr.Join();
+    svrs.recall_svr.Stop(0);    svrs.recall_svr.Join();
+    svrs.precalc_svr.Stop(0);   svrs.precalc_svr.Join();
+    svrs.rank_svr.Stop(0);      svrs.rank_svr.Join();
+}
+
+static void register_to_discovery(discovery::DiscoveryService_Stub& stub,
+                                   const std::string& service_name,
+                                   const std::string& host, int port) {
+    discovery::RegisterRequest req;
+    req.mutable_instance()->set_service_name(service_name);
+    req.mutable_instance()->set_host(host);
+    req.mutable_instance()->set_port(port);
+    req.mutable_instance()->set_status(discovery::UP);
+    req.set_heartbeat_interval_sec(60);
+
+    discovery::RegisterResponse rsp;
+    brpc::Controller cntl;
+    stub.Register(&cntl, &req, &rsp, nullptr);
+    assert(cntl.Failed() == false);
+    assert(rsp.success());
+}
+
+static void discovery_register_all(discovery::DiscoveryService_Stub& stub) {
+    register_to_discovery(stub, FLAGS_feature_service_name, "127.0.0.1", MOCK_FEATURE_PORT);
+    register_to_discovery(stub, FLAGS_recall_service_name,  "127.0.0.1", MOCK_RECALL_PORT);
+    register_to_discovery(stub, FLAGS_precalc_service_name, "127.0.0.1", MOCK_PRECALC_PORT);
+    register_to_discovery(stub, FLAGS_rank_service_name,    "127.0.0.1", MOCK_RANK_PORT);
 }
 
 // ============================================================================
-// Test runner: start mocks + proxy, send request, assert response
+// Test runner
 // ============================================================================
 
 struct TestScenario {
@@ -190,7 +279,7 @@ struct TestScenario {
     precalc::PrecalcService* precalc;
     rank::RankService*       rank;
     int                      expect_candidates;
-    int                      expect_error_code;  // 0 = success
+    int                      expect_error_code;
 };
 
 static void run_scenario(const TestScenario& s) {
@@ -200,6 +289,7 @@ static void run_scenario(const TestScenario& s) {
     MockRecallService     pass_recall;
     MockPrecalcService    pass_precalc;
     MockRankService       pass_rank;
+    MockDiscoveryService  mock_discovery;
 
     auto* f = s.feature ? s.feature : static_cast<feature::FeatureService*>(&pass_feat);
     auto* r = s.recall   ? s.recall   : static_cast<recall::RecallService*>(&pass_recall);
@@ -207,11 +297,26 @@ static void run_scenario(const TestScenario& s) {
     auto* k = s.rank     ? s.rank     : static_cast<rank::RankService*>(&pass_rank);
 
     ServerSet svrs;
+    assert(start_server(&svrs.discovery_svr, DISCOVERY_PORT, &mock_discovery));
     assert(start_server(&svrs.feature_svr, MOCK_FEATURE_PORT, f));
     assert(start_server(&svrs.recall_svr,  MOCK_RECALL_PORT,  r));
     assert(start_server(&svrs.precalc_svr, MOCK_PRECALC_PORT, p));
     assert(start_server(&svrs.rank_svr,    MOCK_RANK_PORT,    k));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
+    // Register mock services with discovery
+    {
+        brpc::Channel ch;
+        brpc::ChannelOptions copts;
+        copts.timeout_ms = 3000;
+        copts.protocol = "http";
+        ch.Init(("127.0.0.1:" + std::to_string(DISCOVERY_PORT)).c_str(), &copts);
+        discovery::DiscoveryService_Stub stub(&ch);
+        discovery_register_all(stub);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    // Start proxy
     proxy::ProxyServiceImpl proxy_impl;
     assert(start_server(&svrs.proxy_svr, PROXY_PORT, &proxy_impl));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -241,8 +346,8 @@ static void run_scenario(const TestScenario& s) {
 
     if (s.expect_error_code != 0) {
         assert(!rsp.error_message().empty());
-        std::cout << "[PASS] error_code=" << rsp.error_code()
-                  << " error_message=" << rsp.error_message() << std::endl;
+        std::cout << "[PASS] error_code=" << std::hex << rsp.error_code()
+                  << std::dec << " error_message=" << rsp.error_message() << std::endl;
     } else {
         std::cout << "[PASS] candidates=[" << rsp.candidates(0) << ","
                   << rsp.candidates(1) << "," << rsp.candidates(2) << "]"
@@ -260,8 +365,16 @@ int main(int argc, char* argv[]) {
     common::logger::AddConsoleSink();
     std::cout << "=== Proxy Integration Test ===" << std::endl;
 
-    FLAGS_enable_timing_stats  = false;
-    FLAGS_global_thread_pool_size = 4;
+    FLAGS_discovery_addr             = "127.0.0.1:" + std::to_string(DISCOVERY_PORT);
+    FLAGS_feature_service_name       = "feature_service";
+    FLAGS_recall_service_name        = "recall_service";
+    FLAGS_precalc_service_name       = "precalc_service";
+    FLAGS_rank_service_name          = "rank_service";
+    FLAGS_discovery_refresh_interval_ms = 100;
+    FLAGS_downstream_max_retries     = 0;
+    FLAGS_enable_timing_stats        = false;
+    FLAGS_global_thread_pool_size    = 4;
+    FLAGS_server_port                = PROXY_PORT;
 
     // Happy path
     run_scenario({
@@ -276,8 +389,8 @@ int main(int argc, char* argv[]) {
     run_scenario({
         "Feature service fails",
         &fail_feat, nullptr, nullptr, nullptr,
-        0,                     // expect 0 candidates
-        0x01030001             // GATEWAY | SERVICE_ERROR | 0x0001
+        0,
+        0x01030001
     });
 
     // Recall fails

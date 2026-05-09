@@ -6,6 +6,14 @@
 #include <brpc/server.h>
 #include <thread>
 
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");
+DEFINE_string(recall_service_name, "recall_service", "Recall service name in discovery");
+DEFINE_string(precalc_service_name, "precalc_service", "Precalc service name in discovery");
+DEFINE_string(rank_service_name, "rank_service", "Rank service name in discovery");
+DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
+DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC");
+
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -20,7 +28,7 @@ int main(int argc, char* argv[]) {
 
     LOG_INFO_STREAM << "Proxy Service starting...";
     LOG_INFO_STREAM << "CPU cores: " << cpu_cores
-              << ", Thread pool size: " << FLAGS_global_thread_pool_size;
+                    << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
 
@@ -42,10 +50,14 @@ int main(int argc, char* argv[]) {
     LOG_INFO_STREAM << "Proxy Service Started";
     LOG_INFO_STREAM << "===========================================";
     LOG_INFO_STREAM << "Listening on: " << server_addr;
-    LOG_INFO_STREAM << "FeatureService: " << FLAGS_feature_service_addr;
-    LOG_INFO_STREAM << "RecallService:  " << FLAGS_recall_service_addr;
-    LOG_INFO_STREAM << "PrecalcService: " << FLAGS_precalc_service_addr;
-    LOG_INFO_STREAM << "RankService:    " << FLAGS_rank_service_addr;
+    LOG_INFO_STREAM << "Discovery:    " << FLAGS_discovery_addr;
+    LOG_INFO_STREAM << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
+    LOG_INFO_STREAM << "Downstream max retries: " << FLAGS_downstream_max_retries;
+    LOG_INFO_STREAM << "Service names:"
+                    << " feature=" << FLAGS_feature_service_name
+                    << " recall=" << FLAGS_recall_service_name
+                    << " precalc=" << FLAGS_precalc_service_name
+                    << " rank=" << FLAGS_rank_service_name;
     LOG_INFO_STREAM << "===========================================";
 
     server.RunUntilAskedToQuit();

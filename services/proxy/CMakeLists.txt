@@ -59,17 +59,27 @@ add_custom_command(
     DEPENDS ${PROTO_DIR}/rank_master.proto
 )
 
+# discovery.proto
+add_custom_command(
+    OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/discovery.pb.h
+    COMMAND protobuf::protoc
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto
+)
+
 # ============================================================================
 # 编译 Server
 # ============================================================================
 add_executable(proxy_server
     server/src/proxy_server.cpp
     server/src/main.cpp
+    server/src/service_discovery.cpp
     ${PROTO_OUT_DIR}/proxy.pb.cc
     ${PROTO_OUT_DIR}/feature.pb.cc
     ${PROTO_OUT_DIR}/recall.pb.cc
     ${PROTO_OUT_DIR}/precalc.pb.cc
     ${PROTO_OUT_DIR}/rank_master.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(proxy_server PRIVATE
@@ -125,11 +135,13 @@ set_target_properties(proxy_test_client PROPERTIES
 # ============================================================================
 add_executable(proxy_integration_test
     tests/integration_test.cpp
+    server/src/service_discovery.cpp
     ${PROTO_OUT_DIR}/proxy.pb.cc
     ${PROTO_OUT_DIR}/feature.pb.cc
     ${PROTO_OUT_DIR}/recall.pb.cc
     ${PROTO_OUT_DIR}/precalc.pb.cc
     ${PROTO_OUT_DIR}/rank_master.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(proxy_integration_test PRIVATE
@@ -168,6 +180,7 @@ message(STATUS "  - feature.proto")
 message(STATUS "  - recall.proto")
 message(STATUS "  - precalc.proto")
 message(STATUS "  - rank_master.proto")
+message(STATUS "  - discovery.proto")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "=====================================")
 message(STATUS "")
