@@ -1,10 +1,11 @@
-#include "common/logger.h"
 #include "discovery_server.h"
 
 #include <gflags/gflags.h>
 #include <brpc/server.h>
 
 #include <thread>
+
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     {
