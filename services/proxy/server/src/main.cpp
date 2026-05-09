@@ -1,4 +1,4 @@
-#include "gateway_server.h"
+#include "proxy_server.h"
 #include "common/global_thread_pool.h"
 #include "common/logger.h"
 

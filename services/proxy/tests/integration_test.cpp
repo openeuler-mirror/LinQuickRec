@@ -1,4 +1,4 @@
-#include "gateway_server.h"
+#include "proxy_server.h"
 #include "service_discovery.h"
 
 #include "feature.pb.h"
