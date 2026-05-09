@@ -98,7 +98,11 @@ std::string build_vllm_request(const std::string& request_json) {
     std::ostringstream system_prompt_ss;
     system_prompt_ss << "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。\n"
                      << "请恰好生成 " << FLAGS_sku_count << " 个 SKU ID，不要多也不要少。\n"
+<<<<<<< HEAD
                      << "每个SKU ID 都是一个 64 位无符号整数，范围在 100000 到 1000000 之间。\n"
+=======
+                     << "每个SKU ID 都是一个 64 位无符号整数，范围在 0 到 1000000 之间。\n"
+>>>>>>> 6e31f527675099662049e4d3af9dd6787c643088
                      << "返回格式：用逗号分隔的数字，例如：12345,67890,11111,...";
     system_msg.AddMember("content", Value(system_prompt_ss.str().c_str(), allocator).Move(), allocator);
     messages.PushBack(system_msg, allocator);
