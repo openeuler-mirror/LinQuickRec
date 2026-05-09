@@ -151,7 +151,7 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 
 ```bash
 # 直接启动
-./build/gateway_server \
+./build/proxy_server \
     --server_port=8080 \
     --feature_service_addr="feature:8003" \
     --recall_service_addr="recall:8001" \
@@ -168,8 +168,8 @@ docker run -p 8080:8080 lingquickrec/proxy:latest
 无需外部依赖，提供单进程集成测试：
 
 ```bash
-cd build && cmake .. && make gateway_integration_test
-./bin/gateway_integration_test
+cd build && cmake .. && make proxy_integration_test
+./bin/proxy_integration_test
 ```
 
 测试覆盖 5 个场景：
