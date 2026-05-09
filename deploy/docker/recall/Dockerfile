@@ -31,8 +31,14 @@ RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 COPY ${VLLM_WHL} /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
 RUN pip3 install /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl && rm /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
 
-COPY ${TORCH_WHL} /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl && rm /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+
+RUN pip3 install pytorch-triton==3.3.0+gitab727c40 \
+--index-url https://download.pytorch.org/whl/nightly/cu129 \
+--trusted-host download.pytorch.org \
+--trusted-host download-r2.pytorch.org
+
+RUN pip uninstall -y transformers && pip install "transformers>=4.51.1,<5"
 
 COPY ${START_VLLM_BACK} /app/start_vllm_back.sh
 RUN chmod +x /app/start_vllm_back.sh
