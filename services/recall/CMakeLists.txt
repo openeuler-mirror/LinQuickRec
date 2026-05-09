@@ -57,6 +57,7 @@ target_link_libraries(recall_proto PUBLIC ${Protobuf_LIBRARIES})
 # Abseil 库
 # ============================================================================
 set(ABSL_LIBS
+    absl_log_internal_nullguard
     absl_log_internal_check_op
     absl_log_internal_message
     absl_raw_logging_internal
@@ -64,6 +65,10 @@ set(ABSL_LIBS
     absl_base
     absl_time
     absl_synchronization
+    absl_status
+    absl_hash
+    absl_spinlock_wait
+    absl_throw_delegate
 )
 
 # ============================================================================

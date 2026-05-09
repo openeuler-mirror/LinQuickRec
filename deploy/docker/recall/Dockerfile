@@ -1,5 +1,14 @@
 FROM brpc_base:latest
 
+ENV PROXY_IP="141.1.95.55"
+ENV PROXY_PORT="3128"
+
+ENV http_proxy=http://${PROXY_IP}:${PROXY_PORT}
+ENV https_proxy="${http_proxy}"
+ENV HTTP_PROXY="${http_proxy}"
+ENV HTTPS_PROXY="${https_proxy}"
+ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
+
 # === 可配置的路径参数 ===
 # vLLM 相关
 ARG VLLM_WHL=share/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
@@ -17,7 +26,7 @@ ARG ENTRYPOINT_FILE=deploy/docker/recall/entrypoint.sh
 WORKDIR /app
 
 COPY ${TORCH_WHL} /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
-RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl && rm /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 
 COPY ${VLLM_WHL} /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
 RUN pip3 install /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl && rm /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
