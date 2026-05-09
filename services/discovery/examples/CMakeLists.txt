@@ -55,6 +55,7 @@ set(ABSL_LIBS
     absl_log_internal_nullguard
     absl_hash
     absl_status
+    absl_spinlock_wait
 )
 
 function(add_test_binary name)

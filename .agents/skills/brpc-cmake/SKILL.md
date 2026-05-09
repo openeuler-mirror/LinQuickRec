@@ -1,6 +1,6 @@
 ---
 name: brpc-cmake
-description: All CMakeLists.txt involving brpc MUST reference this skill. brpc/absl installed via make install — no CMake config files. find_package(brpc) and find_package(absl) are forbidden. Use hardcoded BRPC_INCLUDE_DIR, BRPC_LIBRARIES (incl. leveldb), and the complete 10-item ABSL_LIBS. Includes error table & checklist.
+description: All CMakeLists.txt involving brpc MUST reference this skill. brpc/absl installed via make install — no CMake config files. find_package(brpc) and find_package(absl) are forbidden. Use hardcoded BRPC_INCLUDE_DIR, BRPC_LIBRARIES (incl. leveldb), and the complete 11-item ABSL_LIBS. Includes error table & checklist.
 ---
 
 ## Standard CMake Template
@@ -32,6 +32,7 @@ set(ABSL_LIBS
     absl_log_internal_nullguard
     absl_hash
     absl_status
+    absl_spinlock_wait
 )
 
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/xxx.proto)
@@ -77,6 +78,7 @@ endif()
 | `absl::log_internal::kCharNull` | `absl_log_internal_nullguard` | protoc-generated `.pb.cc` |
 | `absl::hash_internal::MixingHashState::kSeed` | `absl_hash` | protoc-generated `.pb.cc` |
 | `absl::status_internal::StatusRep::Unref` | `absl_status` | `libbrpc.a` (json_to_pb.cpp.o) |
+| `absl::base_internal::SpinLockWait` | `absl_spinlock_wait` | `libbrpc.a` (protobufs_service.cpp.o) |
 | `leveldb::DB::Open` / `leveldb::Options::Options` | `leveldb` | `libbrpc.a` (span.cpp.o, tracing) |
 
 ## Pre-Commit Checklist
@@ -88,5 +90,5 @@ endif()
 - [ ] `link_directories(/usr/local/lib64)` added
 - [ ] `BRPC_INCLUDE_DIR` set
 - [ ] `BRPC_LIBRARIES` includes `leveldb`
-- [ ] `ABSL_LIBS` includes all 10 items
+- [ ] `ABSL_LIBS` includes all 11 items (incl. `absl_spinlock_wait`)
 - [ ] Every target linking brpc + proto + absl also links `${ABSL_LIBS}`

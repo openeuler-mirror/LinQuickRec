@@ -21,6 +21,7 @@ static bool discover_count(const std::string& server,
                            int expected_count,
                            const std::string& expected_status,
                            int timeout_sec) {
+    bool include_down = (expected_status == "DOWN");
     auto start = std::chrono::steady_clock::now();
     while (true) {
         brpc::Channel channel;
@@ -38,6 +39,7 @@ static bool discover_count(const std::string& server,
             discovery::DiscoverResponse rsp;
             brpc::Controller cntl;
             req.set_service_name(service_type);
+            req.set_include_down(include_down);
             stub.Discover(&cntl, &req, &rsp, nullptr);
 
             if (!cntl.Failed()) {
