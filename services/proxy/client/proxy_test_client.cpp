@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
 
     common::logger::AddConsoleSink();
 
-    LOG_INFO_STREAM << "Gateway Test Client starting...";
-    LOG_INFO_STREAM << "Connecting to Proxy at: " << FLAGS_server;
+LOG_INFO_STREAM << "Proxy Test Client starting...";
+LOG_INFO_STREAM << "Connecting to Proxy at: " << FLAGS_server;
 
     brpc::Channel channel;
     brpc::ChannelOptions opts;
@@ -73,6 +73,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    LOG_INFO_STREAM << "Gateway Test Client finished successfully";
+    LOG_INFO_STREAM << "Proxy Test Client finished successfully";
     return 0;
 }

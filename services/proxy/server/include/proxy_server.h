@@ -1,5 +1,5 @@
-#ifndef GATEWAY_SERVER_H
-#define GATEWAY_SERVER_H
+#ifndef PROXY_SERVER_H
+#define PROXY_SERVER_H
 
 #include "proxy.pb.h"
 #include "feature.pb.h"
@@ -85,4 +85,4 @@ const std::string& get_current_trace_id();
 
 } // namespace proxy
 
-#endif // GATEWAY_SERVER_H
+#endif // PROXY_SERVER_H

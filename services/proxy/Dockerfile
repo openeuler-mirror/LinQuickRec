@@ -19,4 +19,4 @@ RUN mkdir -p build && \
 
 EXPOSE 8080
 
-CMD ["./build/gateway_server", "--server_port=8080", "--logtostderr"]
+CMD ["./build/proxy_server", "--server_port=8080", "--logtostderr"]
