@@ -29,8 +29,8 @@ cd /app/build
     --vllm_base_url=${VLLM_BASE_URL:-http://127.0.0.1:8000} \
     --vllm_endpoint=${VLLM_ENDPOINT:-/v1/chat/completions} \
     --model_name=${MODEL_NAME:-/app/models/Qwen3-0.6B/} \
-    --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-5000} \
-    --sku_count=${SKU_COUNT:-1000} \
+    --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-100000} \
+    --sku_count=${SKU_COUNT:-100} \
     "$@"
 
 kill $VLLM_PID 2>/dev/null
