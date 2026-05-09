@@ -15,6 +15,7 @@ message RecallRequest {
     uint64 user_id = 1;
     repeated KRUserLog user_logs = 2;
     string other = 3;
+    string trace_id = 4;
 }
 
 // 召回服务 - 响应

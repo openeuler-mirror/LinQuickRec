@@ -71,6 +71,11 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
     auto& pool = common::get_global_thread_pool();
 
     auto future = pool.submit([this, request]() {
@@ -145,7 +150,7 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     std::string user_feat(reinterpret_cast<const char*>(buffer->ImmutableData()), buffer->GetSize());
 
-    LOG(INFO) << "Retrieved user_feat from KVWorker: key="
+    LOG(DEBUG) << "Retrieved user_feat from KVWorker: key="
               << request->user_feat_key()
               << ", size=" << user_feat.size() << " bytes";
 

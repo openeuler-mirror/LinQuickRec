@@ -103,6 +103,11 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
     auto& pool = common::get_global_thread_pool();
 
     auto future = pool.submit([this, request]() {
@@ -128,6 +133,7 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
 bool RankMasterServiceImpl::call_sub_worker(int worker_index,
                                            const std::string& user_feat_key,
                                            const std::vector<uint64_t>& sku_ids,
+                                           const std::string& trace_id,
                                            RankSubResponse* response) {
 
     if (worker_index >= static_cast<int>(sub_worker_channels_.size()) ||
@@ -140,12 +146,15 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
     RankSubRequest request;
     request.set_user_feat_key(user_feat_key);
     request.set_skus_sub(skus_to_string(sku_ids));
+    request.set_trace_id(trace_id);
 
     brpc::Controller cntl;
 
     rank::RankSubService_Stub stub(sub_worker_channels_[worker_index].get());
 
+    int64_t start_us = butil::gettimeofday_us();
     stub.Rank(&cntl, &request, response, nullptr);
+    int64_t end_us = butil::gettimeofday_us();
 
     if (cntl.Failed()) {
         LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
@@ -153,8 +162,10 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
         return false;
     }
 
-    LOG(INFO) << "Sub-worker " << worker_index << " returned "
-              << response->skus_score_size() << " scores";
+    LOG(INFO) << "Sub-worker " << worker_index
+              << " returned " << response->skus_score_size() << " scores"
+              << ", cost=" << (end_us - start_us) / 1000.0 << " ms"
+              << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms";
 
     return true;
 }
@@ -219,14 +230,15 @@ common::error::Status RankMasterServiceImpl::validate_and_parse(
         return status;
     }
 
-    LOG(INFO) << "Total SKU count: " << sku_ids.size();
+    LOG(DEBUG) << "Total SKU count: " << sku_ids.size();
     return common::error::Status::OK();
 }
 
 common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     const RankMasterRequest* request,
     const std::vector<uint64_t>& all_sku_ids,
-    std::map<uint64_t, double>& all_scores) {
+    std::map<uint64_t, double>& all_scores,
+    const std::string& trace_id) {
 
     auto distribution = distribute_skus_by_hash(all_sku_ids, FLAGS_sub_worker_count);
 
@@ -237,10 +249,10 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             continue;
         }
 
-        futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution]() {
+        futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution, &trace_id]() {
             RankSubResponse sub_response;
             bool success = call_sub_worker(i, request->user_feat_key(),
-                                          distribution[i], &sub_response);
+                                          distribution[i], trace_id, &sub_response);
             return std::make_pair(success ? i : -1, sub_response);
         }));
     }
@@ -303,7 +315,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     int64_t parallel_call_start_us = butil::gettimeofday_us();
 
     std::map<uint64_t, double> all_scores;
-    status = call_workers_and_aggregate(request, all_sku_ids, all_scores);
+    status = call_workers_and_aggregate(request, all_sku_ids, all_scores, request->trace_id());
     if (status.IsError()) {
         return status;
     }

@@ -2,6 +2,7 @@
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <butil/time.h>
 
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
@@ -38,9 +39,16 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
     cntl.http_request().SetHeader("Connection", "close");
     cntl.request_attachment().append(json_body);
 
+    int64_t start_us = butil::gettimeofday_us();
+
     channel.CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
 
+    int64_t end_us = butil::gettimeofday_us();
+    double cost_ms = (end_us - start_us) / 1000.0;
+
     if (cntl.Failed()) {
+        LOG(ERROR) << "vLLM call failed: cost=" << cost_ms << " ms"
+                   << ", error=" << cntl.ErrorText();
         result.status = common::error::Status(recall_errors::VLLM_REQUEST_FAILED,
             "vLLM service error: " + cntl.ErrorText());
         return result;
@@ -48,6 +56,9 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
 
     result.body = cntl.response_attachment().to_string();
     result.success = true;
+    LOG(INFO) << "vLLM call completed: cost=" << cost_ms << " ms"
+              << ", status=" << cntl.http_response().status_code()
+              << ", response_size=" << result.body.size() << " bytes";
     return result;
 }
 

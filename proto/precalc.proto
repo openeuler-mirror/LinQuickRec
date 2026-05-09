@@ -8,6 +8,7 @@ option cc_generic_services = true;
 // 前置计算服务 - 请求
 message PrecalcRequest {
     string user_feat = 1; // 100KB
+    string trace_id = 2;
 }
 
 // 前置计算服务 - 响应
