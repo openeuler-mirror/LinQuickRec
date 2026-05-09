@@ -21,7 +21,7 @@ static bool discover_count(const std::string& server,
                            int expected_count,
                            const std::string& expected_status,
                            int timeout_sec) {
-    bool include_down = (expected_status == "DOWN");
+    bool include_down = (expected_status == "DOWN" || expected_count == 0);
     auto start = std::chrono::steady_clock::now();
     while (true) {
         brpc::Channel channel;
