@@ -151,7 +151,8 @@ void DiscoveryServiceImpl::Discover(
     auto svc_it = registry_.find(request->service_name());
     if (svc_it != registry_.end()) {
         for (const auto& [id, entry] : svc_it->second) {
-            if (entry.status == InstanceStatus::UP) {
+            if (entry.status == InstanceStatus::UP ||
+                (request->include_down() && entry.status == InstanceStatus::DOWN)) {
                 *response->add_instances() = entry.to_proto();
             }
         }
