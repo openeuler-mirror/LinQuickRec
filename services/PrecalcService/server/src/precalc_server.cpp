@@ -57,6 +57,11 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
     auto& pool = common::get_global_thread_pool();
 
     auto future = pool.submit([this, request]() {
@@ -94,7 +99,7 @@ common::error::Status PrecalcServiceImpl::validate_and_extract_key(
         user_feat_key = request->user_feat();
     }
 
-    LOG(INFO) << "Generated user_feat_key: " << user_feat_key
+    LOG(DEBUG) << "Generated user_feat_key: " << user_feat_key
               << ", size: " << user_feat_key.size() << " bytes"
               << ", user_feat_size: " << request->user_feat().size() << " bytes";
 
@@ -167,7 +172,7 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
 
     size_t precalc_size = static_cast<size_t>(FLAGS_precalc_result_size_mb * 1024 * 1024);
     std::string precalc_result = common::generate_random_string(precalc_size);
-    LOG(INFO) << "Generated precalc result with size: " << precalc_size << " bytes ("
+    LOG(DEBUG) << "Generated precalc result with size: " << precalc_size << " bytes ("
               << FLAGS_precalc_result_size_mb << " MB)";
 
     int64_t kvwrite_start_us = butil::gettimeofday_us();

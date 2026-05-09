@@ -53,17 +53,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Recall Service Started";
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Listening on port: " << FLAGS_server_port;
-    LOG(INFO) << "vLLM Base URL: " << FLAGS_vllm_base_url;
-    LOG(INFO) << "vLLM Endpoint: " << FLAGS_vllm_endpoint;
-    LOG(INFO) << "Model Name: " << FLAGS_model_name;
-    LOG(INFO) << "Thread Pool Size: " << FLAGS_global_thread_pool_size;
-    LOG(INFO) << "SKU Count: " << FLAGS_sku_count << " (default: 1000)";
-    LOG(INFO) << "vLLM Timeout: " << FLAGS_vllm_timeout_ms << "ms";
-    LOG(INFO) << "===========================================";
+    LOG(INFO) << "RecallService started on port " << FLAGS_server_port;
 
     server.RunUntilAskedToQuit();
 

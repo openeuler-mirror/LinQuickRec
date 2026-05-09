@@ -79,14 +79,16 @@ private:
     common::error::Status call_workers_and_aggregate(
         const RankMasterRequest* request,
         const std::vector<uint64_t>& all_sku_ids,
-        std::map<uint64_t, double>& all_scores);
+        std::map<uint64_t, double>& all_scores,
+        const std::string& trace_id);
 
     /**
      * @brief 调用子图服务
-     * 
+     *
      * @param worker_index 子图索引
      * @param user_feat_key 用户特征 key
      * @param sku_ids 分配给该子图的 SKU ID 列表
+     * @param trace_id 追踪 ID（传播到子图）
      * @param response 子图返回的响应
      * @return true 调用成功
      * @return false 调用失败
@@ -94,6 +96,7 @@ private:
     bool call_sub_worker(int worker_index,
                         const std::string& user_feat_key,
                         const std::vector<uint64_t>& sku_ids,
+                        const std::string& trace_id,
                         RankSubResponse* response);
 
     /**

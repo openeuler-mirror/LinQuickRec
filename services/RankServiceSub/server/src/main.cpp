@@ -36,10 +36,6 @@ int main(int argc, char* argv[]) {
     }
     
     LOG(INFO) << "RankSubService started on port " << FLAGS_server_port;
-    LOG(INFO) << "KVWorker Host: " << FLAGS_kvworker_host;
-    LOG(INFO) << "KVWorker Port: " << FLAGS_kvworker_port;
-    LOG(INFO) << "Thread Pool Size: " << FLAGS_global_thread_pool_size;
-    LOG(INFO) << "Timing Stats: " << (FLAGS_enable_timing_stats ? "enabled" : "disabled");
     
     server.RunUntilAskedToQuit();
     

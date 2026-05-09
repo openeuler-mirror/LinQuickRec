@@ -36,11 +36,6 @@ int main(int argc, char* argv[]) {
     }
     
     LOG(INFO) << "RankMasterService started on port " << FLAGS_server_port;
-    LOG(INFO) << "Sub-worker Count: " << FLAGS_sub_worker_count;
-    LOG(INFO) << "Sub-worker Addresses: " << FLAGS_sub_worker_addresses;
-    LOG(INFO) << "Top-K: " << FLAGS_top_k;
-    LOG(INFO) << "Thread Pool Size: " << FLAGS_global_thread_pool_size;
-    LOG(INFO) << "Timing Stats: " << (FLAGS_enable_timing_stats ? "enabled" : "disabled");
     
     server.RunUntilAskedToQuit();
     

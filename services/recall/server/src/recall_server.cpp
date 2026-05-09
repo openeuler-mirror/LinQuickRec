@@ -39,6 +39,7 @@ DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
 DEFINE_int32(server_port, 8001, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 5000, "vLLM 请求超时时间（毫秒）");
 DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
+DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 
 namespace recall {
 
@@ -198,8 +199,14 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
     LOG(INFO) << "Recall request received, user_id: " << request->user_id()
-              << ", log_count: " << request->user_logs_size();
+              << ", log_count: " << request->user_logs_size()
+              << ", remote=" << cntl->remote_address();
 
     try {
         auto future = thread_pool_.submit([this, request]() {
@@ -228,6 +235,7 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
 
 RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const RecallRequest* request) {
     RecallServiceImpl::RecallResult result;
+    int64_t server_receive_us = butil::gettimeofday_us();
 
     if (request->user_id() == 0) {
         result.success = false;
@@ -237,12 +245,15 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     }
 
     std::string request_json = proto_to_json(request);
-    LOG(INFO) << "Request JSON size: " << request_json.size() << " bytes";
+    LOG(DEBUG) << "Request JSON size: " << request_json.size() << " bytes";
 
     std::string vllm_json = build_vllm_request(request_json);
-    LOG(INFO) << "Built vLLM request, size: " << vllm_json.size() << " bytes";
+    LOG(DEBUG) << "Built vLLM request, size: " << vllm_json.size() << " bytes";
 
+    int64_t vllm_start_us = butil::gettimeofday_us();
     auto vllm_resp = vllm_client_.SendRequest(vllm_json);
+    int64_t vllm_end_us = butil::gettimeofday_us();
+
     if (!vllm_resp.success) {
         result.success = false;
         result.status = vllm_resp.status;
@@ -250,8 +261,9 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         return result;
     }
 
-    LOG(INFO) << "vLLM response size: " << vllm_resp.body.size() << " bytes";
+    LOG(DEBUG) << "vLLM response size: " << vllm_resp.body.size() << " bytes";
 
+    int64_t parse_start_us = butil::gettimeofday_us();
     if (!parse_vllm_response(vllm_resp.body, &result.response, FLAGS_sku_count)) {
         result.success = false;
         result.status = common::error::Status(recall_errors::VLLM_RESPONSE_PARSE_FAILED,
@@ -259,6 +271,18 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         result.error_message = result.status.ToString();
         return result;
     }
+    int64_t parse_end_us = butil::gettimeofday_us();
+
+    int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
+
+    if (FLAGS_enable_timing_stats) {
+        LOG(INFO) << "Server timing breakdown:"
+                  << " vllm_call_cost=" << (vllm_end_us - vllm_start_us) / 1000.0 << " ms"
+                  << " parse_cost=" << (parse_end_us - parse_start_us) / 1000.0 << " ms"
+                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
+    }
+
+    LOG(INFO) << "Recall completed, cost=" << server_process_us / 1000.0 << " ms";
 
     result.success = true;
     return result;
