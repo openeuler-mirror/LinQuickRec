@@ -1,27 +1,62 @@
-FROM brpc_base:v1.3
+FROM brpc_base:latest
 
-ARG VLLM_WHL_PATH=/path/to/vllm.whl
-ARG VLLM_SCRIPT_PATH=/path/to/run_vllm.sh
-ARG QWEN_MODEL_PATH=/path/to/Qwen3-0.6B
+ENV PROXY_IP="141.1.95.55"
+ENV PROXY_PORT="3128"
+
+ENV http_proxy=http://${PROXY_IP}:${PROXY_PORT}
+ENV https_proxy="${http_proxy}"
+ENV HTTP_PROXY="${http_proxy}"
+ENV HTTPS_PROXY="${https_proxy}"
+ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
+
+# === 可配置的路径参数 ===
+# vLLM 相关
+ARG VLLM_WHL=share/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
+ARG START_VLLM_BACK=share/vllm/start_vllm_back.sh
+ARG START_VLLM=share/vllm/start_vllm.sh
+ARG MODEL_QWEN_06B=share/Qwen3-0.6B/
+ARG MODEL_QWEN_8B=share/Qwen3-8B/
+ARG TORCH_WHL=share/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+# 服务代码
+ARG PROTO_DIR=proto/
+ARG COMMON_DIR=common/
+ARG SERVICE_DIR=services/recall/
+ARG ENTRYPOINT_FILE=deploy/docker/recall/entrypoint.sh
 
 WORKDIR /app
 
-COPY ${VLLM_WHL_PATH} /tmp/vllm.whl
-RUN pip3 install /tmp/vllm.whl && rm /tmp/vllm.whl
+COPY ${TORCH_WHL} /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 
-COPY ${VLLM_SCRIPT_PATH} /app/run_vllm.sh
-RUN chmod +x /app/run_vllm.sh
+COPY ${VLLM_WHL} /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
+RUN pip3 install /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl && rm /tmp/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
 
-COPY ${QWEN_MODEL_PATH} /app/models/Qwen3-0.6B/
+RUN pip3 install /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl && rm /tmp/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 
-COPY proto/ /app/proto/
-COPY common/ /app/common/
-COPY services/recall/ /app/services/recall/
+RUN pip3 install pytorch-triton==3.3.0+gitab727c40 \
+--index-url https://download.pytorch.org/whl/nightly/cu129 \
+--trusted-host download.pytorch.org \
+--trusted-host download-r2.pytorch.org
+
+RUN pip uninstall -y transformers && pip install "transformers>=4.51.1,<5"
+
+COPY ${START_VLLM_BACK} /app/start_vllm_back.sh
+RUN chmod +x /app/start_vllm_back.sh
+
+COPY ${START_VLLM} /app/start_vllm.sh
+RUN chmod +x /app/start_vllm.sh
+
+COPY ${MODEL_QWEN_06B} /app/models/Qwen3-0.6B/
+COPY ${MODEL_QWEN_8B} /app/models/Qwen3-8B/
+
+COPY ${PROTO_DIR} /app/proto/
+COPY ${COMMON_DIR} /app/common/
+COPY ${SERVICE_DIR} /app/services/recall/
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/recall -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-COPY deploy/docker/recall/entrypoint.sh /app/entrypoint.sh
+COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8001 8000
