@@ -5,7 +5,6 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
@@ -18,6 +17,10 @@
 #include <atomic>
 
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+#include "vllm_client.h"
 
 DECLARE_string(vllm_base_url);
 DECLARE_string(vllm_endpoint);
@@ -69,6 +72,7 @@ public:
         bool success = false;
         RecallResponse response;
         std::string error_message;
+        common::error::Status status;
     };
 
     /**
@@ -100,6 +104,9 @@ private:
 
     // 使用全局线程池
     common::ThreadPool& thread_pool_;
+
+    // vLLM HTTP 客户端
+    VllmClient vllm_client_;
 };
 
 } // namespace recall

@@ -6,7 +6,6 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
@@ -16,40 +15,24 @@
 #include <memory>
 #include <cstdint>
 
+#include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+#include "common/sku_utils.h"
+
 DECLARE_int32(server_port);
 DECLARE_int32(sub_worker_count);
 DECLARE_string(sub_worker_addresses);
 DECLARE_int32(top_k);
 DECLARE_bool(enable_timing_stats);
+DECLARE_int32(sub_worker_timeout_ms);
 
 namespace rank {
 
-/**
- * @brief 从字符串中提取商品 ID 列表
- * 
- * @param skus 字符串格式的商品 ID，每 6 位数字是一个商品 ID
- * @return std::vector<uint64_t> 商品 ID 列表
- */
-std::vector<uint64_t> parse_skus_from_string(const std::string& skus);
-
-/**
- * @brief 使用哈希分配策略将 SKU 分配给子图
- * 
- * @param sku_ids 商品 ID 列表
- * @param n_workers 子图数量
- * @return std::map<int, std::vector<uint64_t>> 子图索引 -> SKU ID 列表
- */
-std::map<int, std::vector<uint64_t>> distribute_skus_by_hash(
-    const std::vector<uint64_t>& sku_ids, 
-    int n_workers);
-
-/**
- * @brief 将 SKU ID 列表转换为字符串（每 6 位一个商品 ID）
- * 
- * @param sku_ids SKU ID 列表
- * @return std::string 商品 ID 字符串
- */
-std::string skus_to_string(const std::vector<uint64_t>& sku_ids);
+using common::parse_skus_from_string;
+using common::skus_to_string;
+using common::distribute_skus_by_hash;
 
 /**
  * @brief 精排主图服务实现类
@@ -82,19 +65,30 @@ public:
 private:
     /**
      * @brief 实际处理精排请求的内部方法
-     * 
+     *
      * @param request 请求对象
      * @param response 响应对象
+     * @return common::error::Status 处理状态
      */
-    void process_rank_request(const RankMasterRequest* request,
-                              RankMasterResponse* response);
+    common::error::Status process_rank_request(const RankMasterRequest* request,
+                                              RankMasterResponse* response);
+
+    common::error::Status validate_and_parse(const RankMasterRequest* request,
+                                              std::vector<uint64_t>& sku_ids);
+
+    common::error::Status call_workers_and_aggregate(
+        const RankMasterRequest* request,
+        const std::vector<uint64_t>& all_sku_ids,
+        std::map<uint64_t, double>& all_scores,
+        const std::string& trace_id);
 
     /**
      * @brief 调用子图服务
-     * 
+     *
      * @param worker_index 子图索引
      * @param user_feat_key 用户特征 key
      * @param sku_ids 分配给该子图的 SKU ID 列表
+     * @param trace_id 追踪 ID（传播到子图）
      * @param response 子图返回的响应
      * @return true 调用成功
      * @return false 调用失败
@@ -102,6 +96,7 @@ private:
     bool call_sub_worker(int worker_index,
                         const std::string& user_feat_key,
                         const std::vector<uint64_t>& sku_ids,
+                        const std::string& trace_id,
                         RankSubResponse* response);
 
     /**
