@@ -95,6 +95,12 @@ common::error::Status ProxyServiceImpl::call_with_retry(
     const std::function<common::error::Status(
         brpc::Channel&, brpc::Controller&)>& rpc_impl) {
 
+    // Capture trace_id from the calling thread (handles both brpc worker threads and thread pool)
+    uint64_t trace_log_id = 0;
+    if (!tls_trace_id.empty()) {
+        trace_log_id = std::stoull(tls_trace_id.substr(0, 16), nullptr, 16);
+    }
+
     std::vector<std::string> tried;
 
     for (int attempt = 0; attempt <= FLAGS_downstream_max_retries; ++attempt) {
@@ -128,7 +134,9 @@ common::error::Status ProxyServiceImpl::call_with_retry(
 
         brpc::Controller cntl;
         cntl.set_timeout_ms(timeout_ms);
-        cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
+        if (trace_log_id != 0) {
+            cntl.set_log_id(trace_log_id);
+        }
 
         auto st = rpc_impl(channel, cntl);
 
