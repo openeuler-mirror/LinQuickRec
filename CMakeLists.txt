@@ -17,17 +17,8 @@ else()
     add_compile_options(-O2)
 endif()
 
-# 查找必要的包
-find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
-find_package(brpc REQUIRED)
-find_package(absl REQUIRED)
-find_package(CURL REQUIRED)
-
 # 包含目录
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${PROTOBUF_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # 添加公共库子目录
 add_subdirectory(common)
@@ -38,7 +29,8 @@ add_subdirectory(services/PrecalcService)
 add_subdirectory(services/RankService)
 add_subdirectory(services/RankServiceMaster)
 add_subdirectory(services/RankServiceSub)
-add_subdirectory(services/Proxy)
+add_subdirectory(services/proxy)
+add_subdirectory(services/discovery)
 add_subdirectory(services/FeatureService)
 
 # 其他子目录
@@ -55,6 +47,7 @@ message(STATUS "  - services/PrecalcService/")
 message(STATUS "  - services/RankService/")
 message(STATUS "  - services/RankServiceMaster/")
 message(STATUS "  - services/RankServiceSub/")
-message(STATUS "  - services/Proxy/")
+message(STATUS "  - services/proxy/")
+message(STATUS "  - services/discovery/")
 message(STATUS "  - services/FeatureService/")
 message(STATUS "===========================================")

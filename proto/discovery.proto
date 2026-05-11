@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package discovery;
+
+option cc_generic_services = true;
+
+enum InstanceStatus {
+    UP = 0;
+    DOWN = 1;
+}
+
+message ServiceInstance {
+    string service_name = 1;
+    string host = 2;
+    int32 port = 3;
+    string instance_id = 4;
+    map<string, string> metadata = 5;
+    InstanceStatus status = 6;
+    int64 last_heartbeat = 7;
+}
+
+message RegisterRequest {
+    ServiceInstance instance = 1;
+    int32 heartbeat_interval_sec = 2;
+}
+
+message RegisterResponse {
+    bool success = 1;
+    string message = 2;
+    string instance_id = 3;
+    int32 heartbeat_interval_sec = 4;
+}
+
+message DeregisterRequest {
+    string service_name = 1;
+    string instance_id = 2;
+}
+
+message DeregisterResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message HeartbeatRequest {
+    string service_name = 1;
+    string instance_id = 2;
+}
+
+message HeartbeatResponse {
+    bool success = 1;
+    bool needs_reregister = 2;
+}
+
+message DiscoverRequest {
+    string service_name = 1;
+    bool include_down = 2;
+}
+
+message DiscoverResponse {
+    repeated ServiceInstance instances = 1;
+}
+
+service DiscoveryService {
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    rpc Discover(DiscoverRequest) returns (DiscoverResponse);
+}

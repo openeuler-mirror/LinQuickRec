@@ -21,7 +21,6 @@
 // 4. 其他库头文件
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 #include <rapidjson/document.h>
@@ -30,127 +29,141 @@
 
 // 5. 本项目内其他头文件
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
 
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
 DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");
 DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
 DEFINE_int32(server_port, 8001, "服务器监听端口");
-DEFINE_int32(vllm_timeout_ms, 5000, "vLLM 请求超时时间（毫秒）");
-DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
+DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
+DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
+DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 
 namespace recall {
 
+using namespace common::error;
+
+constexpr int VLLM_MAX_TOKENS = 10240;
+constexpr double VLLM_TEMPERATURE = 0.7;
+constexpr double VLLM_TOP_P = 0.9;
+
 std::string proto_to_json(const RecallRequest* request) {
     using namespace rapidjson;
-    
+
     Document d;
     d.SetObject();
     Document::AllocatorType& allocator = d.GetAllocator();
-    
+
     d.AddMember("user_id", static_cast<uint64_t>(request->user_id()), allocator);
-    
+
     Value user_logs(kArrayType);
     for (int i = 0; i < request->user_logs_size(); ++i) {
         const auto& log = request->user_logs(i);
         Value log_obj(kObjectType);
-        
+
         Value vec(kArrayType);
         for (int j = 0; j < log.vec_size(); ++j) {
             vec.PushBack(log.vec(j), allocator);
         }
-        
+
         log_obj.AddMember("vec", vec, allocator);
         user_logs.PushBack(log_obj, allocator);
     }
     d.AddMember("user_logs", user_logs, allocator);
-    
-    d.AddMember("other", Value(request->other().c_str(), allocator).Move(), allocator);
-    
+
+    // d.AddMember("other", Value(request->other().c_str(), allocator).Move(), allocator);
+
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
     d.Accept(writer);
-    
+
     return buffer.GetString();
 }
 
 std::string build_vllm_request(const std::string& request_json) {
     using namespace rapidjson;
-    
+
     Document d;
     d.SetObject();
     Document::AllocatorType& allocator = d.GetAllocator();
-    
+
     d.AddMember("model", Value(FLAGS_model_name.c_str(), allocator).Move(), allocator);
-    
+
     Value messages(kArrayType);
-    
+
     Value system_msg(kObjectType);
     system_msg.AddMember("role", "system", allocator);
     std::ostringstream system_prompt_ss;
     system_prompt_ss << "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。\n"
                      << "请恰好生成 " << FLAGS_sku_count << " 个 SKU ID，不要多也不要少。\n"
+                     << "每个SKU ID 都是一个 64 位无符号整数，范围在 100000 到 1000000 之间。\n"
                      << "返回格式：用逗号分隔的数字，例如：12345,67890,11111,...";
     system_msg.AddMember("content", Value(system_prompt_ss.str().c_str(), allocator).Move(), allocator);
     messages.PushBack(system_msg, allocator);
-    
+
     Value user_msg(kObjectType);
     user_msg.AddMember("role", "user", allocator);
-    
+
     std::ostringstream prompt_ss;
     prompt_ss << "用户请求数据：" << request_json;
     user_msg.AddMember("content", Value(prompt_ss.str().c_str(), allocator).Move(), allocator);
-    
+
     messages.PushBack(user_msg, allocator);
     d.AddMember("messages", messages, allocator);
-    
-    d.AddMember("max_tokens", 1024, allocator);
-    d.AddMember("temperature", 0.7, allocator);
-    d.AddMember("top_p", 0.9, allocator);
+
+    d.AddMember("max_tokens", VLLM_MAX_TOKENS, allocator);
+    d.AddMember("temperature", VLLM_TEMPERATURE, allocator);
+    d.AddMember("top_p", VLLM_TOP_P, allocator);
     d.AddMember("stream", false, allocator);
-    
+
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
     d.Accept(writer);
-    
+
     return buffer.GetString();
 }
 
-bool parse_vllm_response(const std::string& response_body, 
+bool parse_vllm_response(const std::string& response_body,
                         RecallResponse* response,
                         int max_sku_count) {
     using namespace rapidjson;
-    
+
     Document d;
     d.Parse(response_body.c_str());
-    
+
     if (d.HasParseError()) {
-        LOG(ERROR) << "JSON parse error at offset: " << d.GetErrorOffset();
+        LOG(ERROR) << common::error::Status(recall_errors::VLLM_RESPONSE_PARSE_FAILED,
+            "JSON parse error at offset: " + std::to_string(d.GetErrorOffset())).ToString();
         return false;
     }
-    
+
     if (!d.HasMember("choices") || !d["choices"].IsArray() || d["choices"].Size() == 0) {
-        LOG(ERROR) << "No choices in response";
+        LOG(ERROR) << common::error::Status(recall_errors::VLLM_NO_CHOICES,
+            "No choices in vLLM response").ToString();
         return false;
     }
-    
+
     const Value& first_choice = d["choices"][0];
-    
-    if (!first_choice.HasMember("message") || 
+
+    if (!first_choice.HasMember("message") ||
         !first_choice["message"].HasMember("content")) {
-        LOG(ERROR) << "No message content in response";
+        LOG(ERROR) << common::error::Status(recall_errors::VLLM_NO_CONTENT,
+            "No message content in vLLM response").ToString();
         return false;
     }
-    
+
     const std::string content = first_choice["message"]["content"].GetString();
-    
+
     std::istringstream iss(content);
     std::string token;
     while (std::getline(iss, token, ',')) {
         try {
-            token.erase(std::remove_if(token.begin(), token.end(), 
-                                       [](char c) { return std::isspace(c) || c == '"'; }), 
+            token.erase(std::remove_if(token.begin(), token.end(),
+                                       [](char c) { return std::isspace(c) || c == '"'; }),
                        token.end());
-            
+
             if (!token.empty()) {
                 uint64_t sku_id = std::stoull(token);
                 response->add_sku_ids(sku_id);
@@ -159,31 +172,42 @@ bool parse_vllm_response(const std::string& response_body,
             LOG(WARNING) << "Failed to parse SKU ID: " << token << ", error: " << e.what();
         }
     }
-    
+
     if (response->sku_ids_size() == 0) {
-        LOG(WARNING) << "No SKU IDs parsed from response content: " << content;
+        LOG(WARNING) << common::error::Status(recall_errors::NO_SKU_RETURNED,
+            "No SKU IDs parsed from response").ToString();
         return false;
     }
-    
-    LOG(INFO) << "Successfully parsed " << response->sku_ids_size() 
+
+    LOG(INFO) << "Successfully parsed " << response->sku_ids_size()
               << " SKU IDs from response (target: " << max_sku_count << ")";
-    
+
     return true;
 }
 
-RecallServiceImpl::RecallServiceImpl() 
-    : thread_pool_(common::get_global_thread_pool()) {
-    LOG(INFO) << "RecallServiceImpl initialized with global thread pool size: " 
+RecallServiceImpl::RecallServiceImpl()
+    : thread_pool_(common::get_global_thread_pool()),
+      vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
+    LOG(INFO) << "RecallServiceImpl initialized with global thread pool size: "
               << thread_pool_.size();
 }
 
-void RecallServiceImpl::Recall(const RecallRequest* request,
+void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
+                              const RecallRequest* request,
                               RecallResponse* response,
                               google::protobuf::Closure* done) {
-    
-    brpc::ClosureGuard done_guard(done);
 
-    LOG(INFO) << "Recall request received, user_id: " << request->user_id();
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
+    LOG(INFO) << "Recall request received, user_id: " << request->user_id()
+              << ", log_count: " << request->user_logs_size()
+              << ", remote=" << cntl->remote_side();
 
     try {
         auto future = thread_pool_.submit([this, request]() {
@@ -194,64 +218,72 @@ void RecallServiceImpl::Recall(const RecallRequest* request,
 
         if (result.success) {
             response->CopyFrom(result.response);
-            LOG(INFO) << "Recall request processed successfully, user_id: " 
-                     << request->user_id() 
+            LOG(INFO) << "Recall request processed successfully, user_id: "
+                     << request->user_id()
                      << ", sku_count: " << response->sku_ids_size();
         } else {
-            LOG(ERROR) << "Recall request failed: " << result.error_message;
+            LOG(ERROR) << result.error_message;
+            cntl->SetFailed(result.error_message);
         }
 
     } catch (const std::exception& e) {
-        LOG(ERROR) << "Exception caught: " << e.what();
+        auto status = common::error::Status(recall_errors::INTERNAL_ERROR,
+            "Exception caught: " + std::string(e.what()));
+        LOG(ERROR) << status.ToString();
+        cntl->SetFailed(status.ToString());
     }
 }
 
-RecallServiceImpl::RecallResult process_recall_request(const RecallRequest* request) {
-    RecallResult result;
+RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const RecallRequest* request) {
+    RecallServiceImpl::RecallResult result;
+    int64_t server_receive_us = butil::gettimeofday_us();
+
+    if (request->user_id() == 0) {
+        result.success = false;
+        result.status = common::error::Status(recall_errors::EMPTY_USER_ID, "Empty user_id in request");
+        result.error_message = result.status.ToString();
+        return result;
+    }
 
     std::string request_json = proto_to_json(request);
-    LOG(INFO) << "Converted request to JSON: " << request_json;
+    LOG(DEBUG) << "Request JSON size: " << request_json.size() << " bytes";
 
     std::string vllm_json = build_vllm_request(request_json);
-    LOG(INFO) << "Built vLLM request: " << vllm_json;
+    LOG(DEBUG) << "Built vLLM request, size: " << vllm_json.size() << " bytes";
 
-    brpc::Channel channel;
-    brpc::ChannelOptions channel_opts;
-    channel_opts.timeout_ms = FLAGS_vllm_timeout_ms;
-    channel_opts.protocol = "http";
+    int64_t vllm_start_us = butil::gettimeofday_us();
+    auto vllm_resp = vllm_client_.SendRequest(vllm_json);
+    int64_t vllm_end_us = butil::gettimeofday_us();
 
-    std::string url = FLAGS_vllm_base_url + FLAGS_vllm_endpoint;
-    if (channel.Init(url.c_str(), &channel_opts) != 0) {
+    if (!vllm_resp.success) {
         result.success = false;
-        result.error_message = "Failed to initialize vLLM channel";
+        result.status = vllm_resp.status;
+        result.error_message = vllm_resp.status.ToString();
         return result;
     }
 
-    brpc::Controller http_cntl;
-    http_cntl.http_request().uri() = FLAGS_vllm_endpoint;
-    http_cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
-    http_cntl.http_request().set_content_type("application/json");
-    http_cntl.http_request().SetHeader("Host", "127.0.0.1:8000");
-    http_cntl.http_request().SetHeader("User-Agent", "RecallService/1.0");
-    http_cntl.http_request().SetHeader("Connection", "close");
-    http_cntl.request_attachment().append(vllm_json);
+    LOG(DEBUG) << "vLLM response size: " << vllm_resp.body.size() << " bytes";
 
-    channel.CallMethod(nullptr, &http_cntl, nullptr, nullptr, nullptr);
-
-    if (http_cntl.Failed()) {
+    int64_t parse_start_us = butil::gettimeofday_us();
+    if (!parse_vllm_response(vllm_resp.body, &result.response, FLAGS_sku_count)) {
         result.success = false;
-        result.error_message = "vLLM service error: " + http_cntl.ErrorText();
+        result.status = common::error::Status(recall_errors::VLLM_RESPONSE_PARSE_FAILED,
+            "Failed to parse vLLM response");
+        result.error_message = result.status.ToString();
         return result;
     }
+    int64_t parse_end_us = butil::gettimeofday_us();
 
-    const std::string& resp_body = http_cntl.response_attachment().to_string();
-    LOG(INFO) << "vLLM response: " << resp_body;
+    int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
-    if (!parse_vllm_response(resp_body, &result.response, FLAGS_sku_count)) {
-        result.success = false;
-        result.error_message = "Failed to parse vLLM response";
-        return result;
+    if (FLAGS_enable_timing_stats) {
+        LOG(INFO) << "Server timing breakdown:"
+                  << " vllm_call_cost=" << (vllm_end_us - vllm_start_us) / 1000.0 << " ms"
+                  << " parse_cost=" << (parse_end_us - parse_start_us) / 1000.0 << " ms"
+                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
     }
+
+    LOG(INFO) << "Recall completed, cost=" << server_process_us / 1000.0 << " ms";
 
     result.success = true;
     return result;

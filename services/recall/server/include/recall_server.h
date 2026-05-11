@@ -5,7 +5,6 @@
 #include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
@@ -18,6 +17,10 @@
 #include <atomic>
 
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+#include "vllm_client.h"
 
 DECLARE_string(vllm_base_url);
 DECLARE_string(vllm_endpoint);
@@ -63,6 +66,16 @@ bool parse_vllm_response(const std::string& response_body,
 class RecallServiceImpl : public RecallService {
 public:
     /**
+     * @brief 召回请求处理结果
+     */
+    struct RecallResult {
+        bool success = false;
+        RecallResponse response;
+        std::string error_message;
+        common::error::Status status;
+    };
+
+    /**
      * @brief 构造函数
      */
     RecallServiceImpl();
@@ -70,24 +83,17 @@ public:
     /**
      * @brief 处理召回请求
      * 
+     * @param controller RPC 控制器
      * @param request 请求对象
      * @param response 响应对象
      * @param done 完成回调
      */
-    void Recall(const RecallRequest* request,
+    void Recall(google::protobuf::RpcController* controller,
+                const RecallRequest* request,
                 RecallResponse* response,
                 google::protobuf::Closure* done) override;
 
 private:
-    /**
-     * @brief 召回请求处理结果
-     */
-    struct RecallResult {
-        bool success = false;
-        RecallResponse response;
-        std::string error_message;
-    };
-
     /**
      * @brief 处理召回请求（在线程池中执行）
      * 
@@ -98,6 +104,9 @@ private:
 
     // 使用全局线程池
     common::ThreadPool& thread_pool_;
+
+    // vLLM HTTP 客户端
+    VllmClient vllm_client_;
 };
 
 } // namespace recall

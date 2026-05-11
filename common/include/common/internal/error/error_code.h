@@ -21,11 +21,12 @@ enum class ModuleCode : uint8_t {
     FEATURE    = 0x02,
     RECALL     = 0x03,
     PRECALC    = 0x04,
-    RANK       = 0x05,
+    RANK_MASTER = 0x05,
     KVWORKER   = 0x06,
     REDIS      = 0x07,
     VLLM       = 0x08,
-    // 保留 0x09-0x0F 供未来使用
+    DISCOVERY  = 0x09,
+    RANK_SUB   = 0x0A,
     UNKNOWN    = 0xFF
 };
 
@@ -106,7 +107,7 @@ std::string ErrorCodeToString(uint32_t code);
 // 常用成功错误码
 constexpr uint32_t OK_CODE = MakeErrorCode(ModuleCode::COMMON, ErrorType::SUCCESS, 0);
 
-// 通用错误码定义 (模块: COMMON)
+// 通用错误码
 namespace common_errors {
     constexpr uint32_t SUCCESS = OK_CODE;
     constexpr uint32_t UNKNOWN_ERROR = MakeErrorCode(ModuleCode::COMMON, ErrorType::INTERNAL, 0x0001);
@@ -117,6 +118,44 @@ namespace common_errors {
     constexpr uint32_t TIMEOUT_ERROR = MakeErrorCode(ModuleCode::COMMON, ErrorType::TIMEOUT, 0x0006);
     constexpr uint32_t NETWORK_ERROR = MakeErrorCode(ModuleCode::COMMON, ErrorType::NETWORK_ERROR, 0x0007);
     constexpr uint32_t CONFIG_ERROR = MakeErrorCode(ModuleCode::COMMON, ErrorType::CONFIG_ERROR, 0x0008);
+}
+
+namespace recall_errors {
+    constexpr uint32_t VLLM_CHANNEL_INIT_FAILED  = MakeErrorCode(ModuleCode::RECALL, ErrorType::NETWORK_ERROR, 0x0001);
+    constexpr uint32_t VLLM_REQUEST_FAILED       = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR,  0x0002);
+    constexpr uint32_t VLLM_RESPONSE_PARSE_FAILED = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR, 0x0003);
+    constexpr uint32_t VLLM_NO_CHOICES            = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR, 0x0004);
+    constexpr uint32_t VLLM_NO_CONTENT            = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR, 0x0005);
+    constexpr uint32_t SKU_PARSE_FAILED           = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR, 0x0006);
+    constexpr uint32_t NO_SKU_RETURNED            = MakeErrorCode(ModuleCode::RECALL, ErrorType::NOT_FOUND,     0x0007);
+    constexpr uint32_t EMPTY_USER_ID              = MakeErrorCode(ModuleCode::RECALL, ErrorType::INVALID_INPUT,  0x0008);
+    constexpr uint32_t INTERNAL_ERROR             = MakeErrorCode(ModuleCode::RECALL, ErrorType::INTERNAL,      0x0009);
+}
+
+namespace precalc_errors {
+    constexpr uint32_t EMPTY_USER_FEAT           = MakeErrorCode(ModuleCode::PRECALC, ErrorType::INVALID_INPUT,  0x0001);
+    constexpr uint32_t KVCLIENT_INIT_FAILED      = MakeErrorCode(ModuleCode::PRECALC, ErrorType::SERVICE_ERROR,  0x0002);
+    constexpr uint32_t KVCLIENT_CREATE_FAILED    = MakeErrorCode(ModuleCode::PRECALC, ErrorType::SERVICE_ERROR,  0x0003);
+    constexpr uint32_t KVCLIENT_SET_FAILED       = MakeErrorCode(ModuleCode::PRECALC, ErrorType::SERVICE_ERROR,  0x0004);
+    constexpr uint32_t INTERNAL_ERROR            = MakeErrorCode(ModuleCode::PRECALC, ErrorType::INTERNAL,      0x0005);
+}
+
+namespace rank_master_errors {
+    constexpr uint32_t EMPTY_USER_FEAT_KEY        = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::INVALID_INPUT,  0x0001);
+    constexpr uint32_t EMPTY_SKUS                 = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::INVALID_INPUT,  0x0002);
+    constexpr uint32_t NO_SKU_PARSED              = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::NOT_FOUND,     0x0003);
+    constexpr uint32_t SUB_WORKER_CALL_FAILED     = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::SERVICE_ERROR,  0x0004);
+    constexpr uint32_t SUB_WORKER_CHANNEL_INVALID = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::RESOURCE_ERROR, 0x0005);
+    constexpr uint32_t INTERNAL_ERROR             = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::INTERNAL,      0x0006);
+}
+
+namespace rank_sub_errors {
+    constexpr uint32_t EMPTY_USER_FEAT_KEY   = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::INVALID_INPUT,  0x0001);
+    constexpr uint32_t EMPTY_SKUS_SUB        = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::INVALID_INPUT,  0x0002);
+    constexpr uint32_t KVCLIENT_INIT_FAILED  = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::SERVICE_ERROR,  0x0003);
+    constexpr uint32_t KVCLIENT_GET_FAILED   = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::SERVICE_ERROR,  0x0004);
+    constexpr uint32_t NO_SKU_PARSED         = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::NOT_FOUND,     0x0005);
+    constexpr uint32_t INTERNAL_ERROR        = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::INTERNAL,      0x0006);
 }
 
 } // namespace error

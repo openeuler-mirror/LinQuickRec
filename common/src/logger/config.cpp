@@ -9,8 +9,8 @@ const char* LogLevelToString(LogLevel level) {
     switch (level) {
         case LogLevel::TRACE: return "TRACE";
         case LogLevel::DEBUG: return "DEBUG";
-        case LogLevel::INFO:  return "INFO";
-        case LogLevel::WARN:  return "WARN";
+        case LogLevel::INFO:  return "INFO ";
+        case LogLevel::WARNING:  return "WARN ";
         case LogLevel::ERROR: return "ERROR";
         case LogLevel::FATAL: return "FATAL";
         default: return "UNKNOWN";
@@ -27,7 +27,7 @@ LogLevel LogLevelFromString(const std::string& level_str) {
     if (upper == "TRACE") return LogLevel::TRACE;
     if (upper == "DEBUG") return LogLevel::DEBUG;
     if (upper == "INFO")  return LogLevel::INFO;
-    if (upper == "WARN")  return LogLevel::WARN;
+    if (upper == "WARN")  return LogLevel::WARNING;
     if (upper == "ERROR") return LogLevel::ERROR;
     if (upper == "FATAL") return LogLevel::FATAL;
     

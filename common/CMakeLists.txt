@@ -4,6 +4,8 @@ project(common_lib)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # 查找必要的包
 find_package(Threads REQUIRED)
 find_package(gflags REQUIRED)
@@ -24,6 +26,10 @@ add_library(common_lib STATIC
     src/thread_pool/global_thread_pool.cpp
     # 错误码体系
     src/error/error_code.cpp
+    # 随机工具
+    src/random/random_utils.cpp
+    # SKU 工具
+    src/sku/sku_utils.cpp
     # 日志系统
     src/logger/config.cpp
     src/logger/logger.cpp
@@ -55,16 +61,20 @@ message(STATUS "Include directory: ${CMAKE_CURRENT_SOURCE_DIR}/include")
 message(STATUS "=====================================")
 message(STATUS "")
 
-# === Tests ===
-add_executable(test_error tests/test_error.cpp)
-target_link_libraries(test_error PRIVATE common_lib)
+# === Tests & Examples（仅在独立构建时编译）===
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    add_executable(test_error tests/test_error.cpp)
+    target_link_libraries(test_error PRIVATE common_lib)
 
-add_executable(test_thread_pool tests/test_thread_pool.cpp)
-target_link_libraries(test_thread_pool PRIVATE common_lib)
+    add_executable(test_thread_pool tests/test_thread_pool.cpp)
+    target_link_libraries(test_thread_pool PRIVATE common_lib)
 
-# === Examples ===
-add_executable(error_example examples/error_example.cpp)
-target_link_libraries(error_example PRIVATE common_lib)
+    add_executable(error_example examples/error_example.cpp)
+    target_link_libraries(error_example PRIVATE common_lib)
 
-add_executable(logger_example examples/logger_example.cpp)
-target_link_libraries(logger_example PRIVATE common_lib)
+    add_executable(logger_example examples/logger_example.cpp)
+    target_link_libraries(logger_example PRIVATE common_lib)
+
+    add_executable(thread_pool_example examples/thread_pool_example.cpp)
+    target_link_libraries(thread_pool_example PRIVATE common_lib)
+endif()

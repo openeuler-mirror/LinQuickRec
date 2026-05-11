@@ -3,10 +3,12 @@
 
 #include "config.h"
 #include "sink/sink.h"
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <mutex>
 #include <string>
+#include <functional>
 #include <sstream>
 
 namespace common {
@@ -117,7 +119,9 @@ private:
                               const char* file,
                               int line,
                               const char* func,
-                              const std::string& message) const;
+                              const std::string& message,
+                              const std::string& pattern,
+                              bool enable_trace_id) const;
     
     /**
      * @brief 应用日志模式
@@ -127,14 +131,17 @@ private:
                              const char* file,
                              int line,
                              const char* func,
-                             const std::string& message) const;
+                             const std::string& message,
+                             bool enable_trace_id) const;
     
-private:
+    void addSinkUnsafe(LogSinkPtr sink);
+    void clearSinksUnsafe();
+
     LoggerConfig config_;
     std::vector<LogSinkPtr> sinks_;
     mutable std::mutex mutex_;
     std::function<std::string()> trace_id_getter_;
-    bool initialized_ = false;
+    std::atomic<bool> initialized_{false};
 };
 
 /**
