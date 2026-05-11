@@ -45,7 +45,7 @@ make -j$(nproc)
 ### 启动 RecallService
 
 ```bash
-./recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
+./bin/recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
 ```
 
 参数说明：
@@ -62,7 +62,7 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./recall_test_client --server=127.0.0.1:8001 --user_id=12345
+./bin/recall_test_client --server=127.0.0.1:8001 --user_id=12345
 ```
 
 ## 容器搭建

@@ -2,11 +2,11 @@
 
 ################################################################################
 # RankServiceSub 编译脚本
-# 使用方法�?
+# 使用方法�?
 #   ./build.sh                    # Release 模式编译
 #   ./build.sh debug              # Debug 模式编译
 #   ./build.sh clean              # 清理构建
-#   ./build.sh clean release      # 清理并重新编�?
+#   ./build.sh clean release      # 清理并重新编�?
 ################################################################################
 
 set -e
@@ -39,7 +39,7 @@ print_error() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 
-# 检�?CPU 核心�?
+# 检�?CPU 核心�?
 if [[ "$OSTYPE" == "darwin"* ]]; then
     CPU_CORES=$(sysctl -n hw.ncpu)
 else
@@ -49,7 +49,7 @@ fi
 # 默认构建类型
 BUILD_TYPE="Release"
 
-# 解析命令行参�?
+# 解析命令行参�?
 CLEAN=false
 for arg in "$@"; do
     case $arg in
@@ -116,22 +116,22 @@ cmake .. \
 print_info "Building with ${CPU_CORES} parallel jobs..."
 cmake --build . --config ${BUILD_TYPE} -j${CPU_CORES}
 
-# 检查编译结�?
+# 检查编译结�?
 if [ $? -eq 0 ]; then
     print_success "========================================"
     print_success "Build completed successfully!"
     print_success "========================================"
-    print_info "Executables location: ${BUILD_DIR}"
+    print_info "Executables location: ${BUILD_DIR}/bin"
     print_info "Available executables:"
-    ls -lh *.exe 2>/dev/null || ls -lh rank_sub_server rank_sub_client 2>/dev/null || true
+    ls -lh bin/ 2>/dev/null || true
     echo ""
     print_info "To run the server:"
     print_info "  cd ${BUILD_DIR}"
-    print_info "  ./rank_sub_server --server_port=8006"
+    print_info "  ./bin/rank_sub_server --server_port=8006"
     echo ""
     print_info "To run the client:"
     print_info "  cd ${BUILD_DIR}"
-    print_info "  ./rank_sub_client --server=127.0.0.1:8006"
+    print_info "  ./bin/rank_sub_client --server=127.0.0.1:8006"
     echo ""
 else
     print_error "Build failed!"

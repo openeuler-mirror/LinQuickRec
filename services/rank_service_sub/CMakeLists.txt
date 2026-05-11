@@ -2,14 +2,14 @@
 cmake_minimum_required(VERSION 3.14)
 project(rank_sub_service)
 
-# 添加 common �?
+# 添加 common �?
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 设置默认构建类型�?Release
+# 设置默认构建类型�?Release
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
@@ -20,7 +20,7 @@ message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 
 # ============================================================================
-# BRPC 路径设置（参�?Recall 服务�?
+# BRPC 路径设置（参�?Recall 服务�?
 # ============================================================================
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES
@@ -39,7 +39,7 @@ link_directories(/usr/local/lib64)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
-# Abseil 库（�?Recall 服务保持一致）
+# Abseil 库（�?Recall 服务保持一致）
 set(ABSL_LIBS
     absl_log_internal_nullguard
     absl_log_internal_check_op
@@ -126,14 +126,14 @@ target_link_libraries(rank_sub_server PRIVATE
     Threads::Threads
     ${YR_LIBRARY}
     
-    # Abseil �?- 使用 --no-as-needed 避免 DSO missing 问题
+    # Abseil �?- 使用 --no-as-needed 避免 DSO missing 问题
     -Wl,--no-as-needed
     ${ABSL_LIBS}
     -Wl,--as-needed
 )
 
 set_target_properties(rank_sub_server PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
 # ============================================================================
@@ -161,7 +161,7 @@ target_link_libraries(rank_sub_client PRIVATE
 )
 
 set_target_properties(rank_sub_client PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
 # ============================================================================
@@ -213,5 +213,5 @@ target_link_libraries(rank_sub_test PRIVATE
 )
 
 set_target_properties(rank_sub_test PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )

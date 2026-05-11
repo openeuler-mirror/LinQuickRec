@@ -64,7 +64,7 @@ target_link_libraries(feature_server PRIVATE
 )
 
 set_target_properties(feature_server PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
 message(STATUS "=== Feature Service Configuration ===")
