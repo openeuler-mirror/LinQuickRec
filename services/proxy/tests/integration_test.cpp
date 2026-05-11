@@ -14,6 +14,16 @@
 #include "common/logger.h"
 #include "common/global_thread_pool.h"
 
+#include <gflags/gflags.h>
+
+DEFINE_string(discovery_addr, "127.0.0.1:18100", "");
+DEFINE_string(feature_service_name, "feature_service", "");
+DEFINE_string(recall_service_name, "recall_service", "");
+DEFINE_string(precalc_service_name, "precalc_service", "");
+DEFINE_string(rank_service_name, "rank_service", "");
+DEFINE_int32(discovery_refresh_interval_ms, 100, "");
+DEFINE_int32(downstream_max_retries, 0, "");
+
 #include <cassert>
 #include <chrono>
 #include <iostream>
