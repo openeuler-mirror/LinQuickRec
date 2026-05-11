@@ -1,5 +1,5 @@
 # Feature 服务 Dockerfile
-FROM lingquickrec/base:latest
+FROM linquickrec/base:latest
 
 # === 可配置的路径参数 ===
 ARG PROTO_FILE=proto/feature.proto
