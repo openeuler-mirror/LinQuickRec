@@ -24,7 +24,7 @@ services/precalc_service/
     └── precalc_test_client.cpp  # 测试客户端
 ```
 
-## 编译
+## 编译命令
 
 ```bash
 cd services/precalc_service
@@ -40,7 +40,7 @@ make -j$(nproc)
 | `precalc_server`      | 前置计算服务主程序 |
 | `precalc_test_client` | 测试客户端     |
 
-## 使用方法
+## 启动方式
 
 ### 启动 PrecalcService
 
@@ -72,7 +72,7 @@ make -j$(nproc)
 ./precalc_test_client --server=127.0.0.1:8004
 ```
 
-## Docker 集成
+## 容器搭建
 
 ```bash
 docker run --name precalc-service precalc-image
@@ -87,7 +87,7 @@ docker run --name precalc-service precalc-image
 | `KVWORKER_PORT` | 31502         | KVWorker 端口 |
 | `TTL_SECONDS`   | 5             | 数据 TTL      |
 
-## 工作流程
+## 业务流程
 
 ```
        Upstream (FeatureService)
