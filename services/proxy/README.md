@@ -269,42 +269,42 @@ cd build && cmake .. && make proxy_integration_test
 **单进程、零外部依赖。** 测试在一个进程内启动 6 个 brpc Server，模拟完整的 discovery + 下游服务链路，然后发送真实 RPC 请求并用 `assert()` 断言结果。
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    单进程 (test binary)                       │
-│                                                              │
-│  ┌────────────────────────────────────────────────────┐     │
-│  │  MockDiscoveryService  (:18100)                     │     │
-│  │  Register("feature_service", 127.0.0.1:18001)       │     │
-│  │  Register("recall_service",  127.0.0.1:18002)       │     │
-│  │  Register("precalc_service", 127.0.0.1:18003)       │     │
-│  │  Register("rank_service",    127.0.0.1:18004)       │     │
-│  └────────────────────────────────────────────────────┘     │
-│                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ MockFeat │ │MockRecall│ │MockPrecal│ │MockRank  │       │
-│  │(:18001)  │ │(:18002)  │ │(:18003)  │ │(:18004)  │       │
-│  └─────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘       │
-│        │           │           │           │              │
-│        └─────┬─────┴─────┬─────┘           │              │
-│              │           │                 │              │
-│        ┌─────▼───────────▼─────────────────▼──────────┐   │
-│        │     ProxyServiceImpl (:18000)                │   │
-│        │     ServiceDiscovery -> discover 4 instances │   │
-│        │     call_feature_service -> MockFeat         │   │
-│        │     call_recall_service  -> MockRecall  ∥    │   │
-│        │     call_precalc_service -> MockPrecalc ∥    │   │
-│        │     call_rank_service    -> MockRank         │   │
-│        └─────────────────┬────────────────────────────┘   │
-│                          │                                 │
-│        ┌─────────────────▼────────────────────────────┐   │
-│        │  stub.Recommend()  ← assert 5 项             │   │
-│        │  assert(rsp.error_code == 0)                 │   │
-│        │  assert(rsp.candidates_size == 3)            │   │
-│        │  assert(rsp.candidates[0] == 1003)           │   │
-│        │  ...                                         │   │
-│        │  std::cout << "[PASS]"                       │   │
-│        └──────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                Single Process (test binary)              │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  MockDiscoveryService  (:18100)                    │  │
+│  │  Register("feature_service", 127.0.0.1:18001)      │  │
+│  │  Register("recall_service",  127.0.0.1:18002)      │  │
+│  │  Register("precalc_service", 127.0.0.1:18003)      │  │
+│  │  Register("rank_service",    127.0.0.1:18004)      │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│  │ MockFeat │ │MockRecall│ │MockPrecal│ │MockRank  │     │
+│  │(:18001)  │ │(:18002)  │ │(:18003)  │ │(:18004)  │     │
+│  └─────┬────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘     │
+│        │           │            │            │           │
+│        └─────┬─────┴─────┬──────┘            │           │
+│              │           │                   │           │
+│        ┌─────▼───────────▼─────────────────▼─────────┐   │
+│        │    ProxyServiceImpl (:18000)                │   │
+│        │    ServiceDiscovery -> discover 4 instances │   │
+│        │    call_feature_service -> MockFeat         │   │
+│        │    call_recall_service  -> MockRecall       │   │
+│        │    call_precalc_service -> MockPrecalc      │   │
+│        │    call_rank_service    -> MockRank         │   │
+│        └─────────────────┬───────────────────────────┘   │
+│                          │                               │
+│        ┌─────────────────▼───────────────────────────┐   │
+│        │  stub.Recommend()  ← assert 5               │   │
+│        │  assert(rsp.error_code == 0)                │   │
+│        │  assert(rsp.candidates_size == 3)           │   │
+│        │  assert(rsp.candidates[0] == 1003)          │   │
+│        │  ...                                        │   │
+│        │  std::cout << "[PASS]"                      │   │
+│        └─────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────┘
 ```
 
 每个场景内部：
