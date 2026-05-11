@@ -260,7 +260,8 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     rank_req.set_skus(skus_oss.str());
     rank_req.set_payload(precalc_rsp.payload());
 
-    auto rpc_impl = [&](brpc::Channel& /*ch*/, brpc::Controller& cntl) {
+    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
+        (void)ch;
         rank::RankMasterService_Stub stub(&ch);
         rank::RankMasterResponse rank_rsp;
         stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
