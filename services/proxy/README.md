@@ -227,7 +227,7 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 
 ```bash
 # 在项目根目录下执行
-docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
+docker build -t linquickrec/proxy:latest -f services/proxy/Dockerfile .
 ```
 
 ### 运行容器
@@ -235,11 +235,11 @@ docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
 ```bash
 # 单容器运行（依赖外部 discovery server）
 docker run -p 8080:8080 \
-    lingquickrec/proxy:latest \
+    linquickrec/proxy:latest \
     --discovery_addr="discovery-server:8100"
 
 # 集成测试（镜像已内置 mock 服务时使用）
-docker run --rm lingquickrec/proxy:latest \
+docker run --rm linquickrec/proxy:latest \
     ./build/bin/proxy_integration_test
 ```
 
