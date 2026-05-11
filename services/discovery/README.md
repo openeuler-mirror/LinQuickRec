@@ -112,23 +112,11 @@ make discovery_server discovery_client -j$(nproc)
 
 ### Docker 镜像构建
 
-构建前需先完成编译。
-
-**Discovery Server** 镜像（默认从项目根目录构建）：
+**Discovery Server** 镜像：
 
 ```bash
-docker build -t discovery-server \
+docker build -t linquickrec/discovery:latest \
   -f services/discovery/Dockerfile .
-```
-
-若在 `services/discovery/` 目录下单独构建，需指定 `DISCOVERY_SERVER_BIN` 参数：
-
-```bash
-cd services/discovery
-docker build -t discovery-server \
-  -f Dockerfile \
-  --build-arg DISCOVERY_SERVER_BIN=build/bin/discovery_server \
-  .
 ```
 
 ### 获取已注册的服务列表

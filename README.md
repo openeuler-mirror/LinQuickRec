@@ -24,11 +24,11 @@
 │  Recall 服务    │  Precalc 服务   │  Rank 服务      │
 │  (召回服务)     │  (前置计算)     │  (精排服务)     │
 │  端口：8001     │  端口：8004     │  Master:8005    │
-│  RecallKVWorker │  8.5MB tensor   │  Sub:8006       │
-│  端口：31501    │                 │  RankKVWorker   │
-│  (远程)         │                 │  端口：31502    │
+│  RecallKVWorker │  RankKVWorker   │  Sub:8006       │
+│  端口：31501    │  端口：31502    │  RankKVWorker   │
+│  (远程)         │  (远程)         │  端口：31502    │
 └─────────────────┴─────────────────┴─────────────────┘
-              ↓                           ↓
+       ↓                  ↓                  ↓
     ┌─────────────────┐         ┌─────────────────┐
     │ RecallKVWorker  │         │  RankKVWorker   │
     │ (元戎 KVCache)  │         │ (元戎 KVCache)  │
@@ -44,7 +44,7 @@
 | Proxy          | -    | Proxy           | 规划中   | feature(8003), recall(8001), precalc(8004), rank(8005) |
 | FeatureService | 8003 | FeatureService  | 规划中   | redis(6379)                                            |
 | RecallService  | 8001 | RecallService   | ✅ 已完成 | recall\_kvworker(31501)                                |
-| PrecalcService | 8004 | PrecalcService  | 进行中   | recall\_kvworker(31501)                                |
+| PrecalcService | 8004 | PrecalcService  | 进行中   | rank\_kvworker(31502)                                  |
 | RankMaster     | 8005 | RankMasterService | ✅ 已完成 | rank\_kvworker(31502), precalc(8004)                   |
 | RankSub        | 8006 | RankSubService  | ✅ 已完成 | rank\_kvworker(31502)                                  |
 | RecallKVWorker | 31501 | KVWorkerService | 元戎提供 (远程) | 无                                                      |

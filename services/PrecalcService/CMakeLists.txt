@@ -146,6 +146,7 @@ target_include_directories(precalc_test_client PRIVATE
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
     ${BRPC_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
 target_link_libraries(precalc_test_client PRIVATE
@@ -170,7 +171,27 @@ message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - precalc_server (with Yuanrong SDK)")
 message(STATUS "  - precalc_test_client")
+message(STATUS "  - precalc_test (unit tests)")
 message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
 message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
+
+# ============================================================================
+# 编译单元测试
+# ============================================================================
+add_executable(precalc_test
+    tests/test_precalc.cpp
+)
+
+target_include_directories(precalc_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+)
+
+target_link_libraries(precalc_test PRIVATE
+    common_lib
+)
+
+set_target_properties(precalc_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

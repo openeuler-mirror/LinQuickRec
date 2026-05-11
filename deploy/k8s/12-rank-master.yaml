@@ -1,0 +1,73 @@
+# RankMaster 精排主图服务
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rank-master-service
+  namespace: lingquickrec
+  labels:
+    app: rank-master-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rank-master-service
+  template:
+    metadata:
+      labels:
+        app: rank-master-service
+    spec:
+      containers:
+      - name: rank-master
+        image: lingquickrec/rank-master:latest
+        ports:
+        - containerPort: 8005
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: lingquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8005"
+        - name: RANK_SUB_HOST
+          value: "rank-sub-service"
+        - name: RANK_SUB_PORT
+          value: "8006"
+        - name: SUB_WORKER_ADDRESSES
+          value: "rank-sub-service:8006"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8005
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8005
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rank-master-service
+  namespace: lingquickrec
+spec:
+  selector:
+    app: rank-master-service
+  ports:
+  - name: rpc
+    port: 8005
+    targetPort: 8005
+  type: ClusterIP

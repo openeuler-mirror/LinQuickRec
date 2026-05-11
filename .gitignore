@@ -36,3 +36,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
+
+#claude code
+CLAUDE.md
