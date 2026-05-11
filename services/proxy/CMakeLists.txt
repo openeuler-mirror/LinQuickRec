@@ -54,7 +54,7 @@ add_proto(discovery)
 # 编译 common 库（支持独立构建，如 Docker 单服务场景）
 # ============================================================================
 if(NOT TARGET common_lib)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/common ${CMAKE_BINARY_DIR}/common)
 endif()
 
 # ============================================================================
@@ -69,7 +69,7 @@ set(PROTO_SRCS
     ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
-set(COMMON_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include)
+set(COMMON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/common/include)
 
 include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
