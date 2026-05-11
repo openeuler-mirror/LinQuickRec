@@ -43,7 +43,8 @@ public:
     ProxyServiceImpl();
     ~ProxyServiceImpl();
 
-    void Recommend(const RecommendRequest* request,
+    void Recommend(google::protobuf::RpcController* controller,
+                   const RecommendRequest* request,
                    RecommendResponse* response,
                    google::protobuf::Closure* done) override;
 

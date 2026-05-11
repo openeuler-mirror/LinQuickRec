@@ -69,9 +69,11 @@ ProxyServiceImpl::~ProxyServiceImpl() {
     LOG_INFO << "ProxyServiceImpl destroyed";
 }
 
-void ProxyServiceImpl::Recommend(const RecommendRequest* request,
+void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
+                                  const RecommendRequest* request,
                                   RecommendResponse* response,
                                   google::protobuf::Closure* done) {
+    (void)controller;
     tls_trace_id = generate_trace_id();
 
     auto status = process_recommend_request(request, response);
@@ -219,7 +221,7 @@ common::error::Status ProxyServiceImpl::call_recall_service(
 }
 
 common::error::Status ProxyServiceImpl::call_precalc_service(
-    uint64_t user_id,
+    uint64_t /*user_id*/,
     const feature::UserFeatureResponse& user_feat,
     precalc::PrecalcResponse* response) {
 
@@ -248,7 +250,7 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     const precalc::PrecalcResponse& precalc_rsp,
     RecommendResponse* response) {
 
-    rank::RankRequest rank_req;
+    rank::RankMasterRequest rank_req;
     rank_req.set_user_feat_key(precalc_rsp.user_feat_key());
 
     std::ostringstream skus_oss;
@@ -258,9 +260,9 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     rank_req.set_skus(skus_oss.str());
     rank_req.set_payload(precalc_rsp.payload());
 
-    auto rpc_impl = [&](brpc::Channel& ch, brpc::Controller& cntl) {
-        rank::RankService_Stub stub(&ch);
-        rank::RankResponse rank_rsp;
+    auto rpc_impl = [&](brpc::Channel& /*ch*/, brpc::Controller& cntl) {
+        rank::RankMasterService_Stub stub(&ch);
+        rank::RankMasterResponse rank_rsp;
         stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
 
         if (!cntl.Failed()) {
