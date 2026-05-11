@@ -1,0 +1,75 @@
+# Proxy 网关服务
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-service
+  namespace: lingquickrec
+  labels:
+    app: proxy-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy-service
+  template:
+    metadata:
+      labels:
+        app: proxy-service
+    spec:
+      containers:
+      - name: proxy
+        image: lingquickrec/proxy:latest
+        ports:
+        - containerPort: 8080
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: lingquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8080"
+        - name: FEATURE_SERVICE_ADDR
+          value: "feature-service:8003"
+        - name: RECALL_SERVICE_ADDR
+          value: "recall-service:8001"
+        - name: PRECALC_SERVICE_ADDR
+          value: "precalc-service:8004"
+        - name: RANK_SERVICE_ADDR
+          value: "rank-master-service:8005"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-service
+  namespace: lingquickrec
+spec:
+  selector:
+    app: proxy-service
+  ports:
+  - name: rpc
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

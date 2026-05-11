@@ -31,6 +31,15 @@ cd /app/build
     --model_name=${MODEL_NAME:-/app/models/Qwen3-0.6B/} \
     --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-100000} \
     --sku_count=${SKU_COUNT:-100} \
-    "$@"
+    "$@" &
+RECALL_PID=$!
 
-kill $VLLM_PID 2>/dev/null
+echo "Starting Discovery Client..."
+/app/discovery_client \
+    --service_type=recall_service \
+    --service_port=${SERVER_PORT:-8001} \
+    --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} &
+DISCOVERY_PID=$!
+
+echo "All services started, waiting for any process to exit..."
+wait -n $RECALL_PID $DISCOVERY_PID $VLLM_PID

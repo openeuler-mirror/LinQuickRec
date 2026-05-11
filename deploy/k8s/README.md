@@ -127,17 +127,21 @@ kubectl get nodes -o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.
 ### 4. 准备镜像
 
 ```bash
-# 构建镜像（在项目根目录执行，详见 deploy/docker/README.md）
+# 构建镜像（在项目根目录执行）
+docker build -f deploy/docker/feature/Dockerfile -t lingquickrec/feature:latest .
 docker build -f deploy/docker/recall/Dockerfile -t lingquickrec/recall:latest .
 docker build -f deploy/docker/precalc/Dockerfile -t lingquickrec/precalc:latest .
 docker build -f deploy/docker/rank-master/Dockerfile -t lingquickrec/rank-master:latest .
 docker build -f deploy/docker/rank-sub/Dockerfile -t lingquickrec/rank-sub:latest .
+docker build -f deploy/docker/proxy/Dockerfile -t lingquickrec/proxy:latest .
 
 # 如果使用 minikube，直接加载到 minikube 的 Docker 中
+minikube image load lingquickrec/feature:latest
 minikube image load lingquickrec/recall:latest
 minikube image load lingquickrec/precalc:latest
 minikube image load lingquickrec/rank-master:latest
 minikube image load lingquickrec/rank-sub:latest
+minikube image load lingquickrec/proxy:latest
 
 # 如果使用远程集群，推送到镜像仓库
 docker tag lingquickrec/recall:latest <registry>/lingquickrec/recall:latest
@@ -145,11 +149,16 @@ docker push <registry>/lingquickrec/recall:latest
 # 然后修改 YAML 中的 image 为完整仓库地址
 ```
 
+> Discovery 服务镜像需单独构建：`docker build -f services/discovery/Dockerfile -t lingquickrec/discovery:latest .`
+
 ## 集群结构
 
 ```
 namespace: lingquickrec
 ├── ConfigMap: lingquickrec-config          # 共享配置
+├── Deployment: discovery-server (1 Pod)    # 服务发现中心
+├── Deployment: feature-service (1 Pod)     # 特征服务 (Mock)
+├── Deployment: proxy-service (1 Pod)       # 网关服务
 ├── Deployment: recall-service (1 Pod)      # 召回服务，需要 GPU
 ├── Deployment: precalc-service (1 Pod)     # 前置计算服务
 ├── Deployment: rank-master-service (1 Pod) # 精排主图服务
@@ -161,24 +170,26 @@ namespace: lingquickrec
 ```
 Client
   ↓
-Proxy（规划中）
-  ├─→ RecallService (8001) ──→ vLLM (容器内 8000) ──→ Qwen3-0.6B      ← 并行调用
-  ├─→ PrecalcService (8004) ──→ RankKVWorker (141.61.84.245:31502)     ← 并行调用
-  └─→ 等待两者完成
-       ↓
-  RankMaster (8005) ──→ K8s Service 负载均衡 ──→ RankSub ×10 (8006) ──→ RankKVWorker (31502)
+Proxy (8080)
+  ├─ Stage 1: FeatureService (8003) ──→ 返回用户特征 (Mock)       ← 同步
+  ├─ Stage 2: RecallService (8001) ──→ vLLM (8000) ──→ Qwen3-0.6B ← 并行
+  │          PrecalcService (8004) ──→ RankKVWorker (31502)         ← 并行
+  └─ Stage 3: RankMaster (8005) ──→ K8s 负载均衡 ──→ RankSub ×10 (8006) ──→ RankKVWorker (31502)
        ↓
   Proxy → Client
 ```
 
-服务间通过 K8s ClusterIP Service 发现，无需映射端口到宿主机。RankMaster 创建 10 个 brpc Channel 连接 `rank-sub-service:8006`，由 kube-proxy 自动负载均衡到 10 个 RankSub Pod。
+所有服务启动时向 Discovery Server 注册，并通过心跳维持在线状态。服务间通过 K8s ClusterIP Service 发现，无需映射端口到宿主机。RankMaster 创建 10 个 brpc Channel 连接 `rank-sub-service:8006`，由 kube-proxy 自动负载均衡到 10 个 RankSub Pod。
 
 ### 文件说明
 
 | 文件 | 资源 | 说明 |
 |------|------|------|
 | `00-namespace.yaml` | Namespace | 创建 `lingquickrec` 命名空间 |
-| `01-configmap.yaml` | ConfigMap | 共享环境变量（KVWorker 地址、超时、模型路径等） |
+| `01-configmap.yaml` | ConfigMap | 共享环境变量（服务地址、KVWorker、超时、模型路径等） |
+| `09-discovery.yaml` | Deployment + Service | Discovery 服务发现中心，端口 8100 |
+| `09-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8003 |
+| `09-proxy.yaml` | Deployment + Service | Proxy 网关服务，端口 8080 |
 | `10-recall.yaml` | Deployment + Service | Recall 服务，需要 GPU 节点，readinessProbe 120s |
 | `11-precalc.yaml` | Deployment + Service | Precalc 服务，1 副本 |
 | `12-rank-master.yaml` | Deployment + Service | RankMaster 服务，1 副本，配置 `SUB_WORKER_ADDRESSES` |
@@ -198,6 +209,9 @@ Proxy（规划中）
 # 按编号顺序应用所有资源
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
+kubectl apply -f 09-discovery.yaml
+kubectl apply -f 09-feature.yaml
+kubectl apply -f 09-proxy.yaml
 kubectl apply -f 10-recall.yaml
 kubectl apply -f 11-precalc.yaml
 kubectl apply -f 12-rank-master.yaml
@@ -214,6 +228,9 @@ kubectl get all -n lingquickrec
 kubectl get pods -n lingquickrec -o wide
 
 # 查看某个服务的日志
+kubectl logs -f deployment/discovery-server -n lingquickrec
+kubectl logs -f deployment/feature-service -n lingquickrec
+kubectl logs -f deployment/proxy-service -n lingquickrec
 kubectl logs -f deployment/recall-service -n lingquickrec
 kubectl logs -f deployment/rank-master-service -n lingquickrec
 
@@ -265,6 +282,9 @@ kubectl delete -f 13-rank-sub.yaml
 kubectl delete -f 12-rank-master.yaml
 kubectl delete -f 11-precalc.yaml
 kubectl delete -f 10-recall.yaml
+kubectl delete -f 09-proxy.yaml
+kubectl delete -f 09-feature.yaml
+kubectl delete -f 09-discovery.yaml
 kubectl delete -f 01-configmap.yaml
 kubectl delete -f 00-namespace.yaml
 ```
@@ -275,6 +295,11 @@ kubectl delete -f 00-namespace.yaml
 
 | 配置项 | 值 | 使用者 |
 |--------|-----|--------|
+| `DISCOVERY_ADDR` | discovery-server:8100 | 所有服务 (discovery_client) |
+| `FEATURE_SERVICE_ADDR` | feature-service:8003 | Proxy |
+| `RECALL_SERVICE_ADDR` | recall-service:8001 | Proxy |
+| `PRECALC_SERVICE_ADDR` | precalc-service:8004 | Proxy |
+| `RANK_SERVICE_ADDR` | rank-master-service:8005 | Proxy |
 | `KVWORKER_HOST` | 141.61.84.245 | Precalc, RankSub |
 | `KVWORKER_PORT` | 31502 | Precalc, RankSub |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | Precalc, RankSub |
@@ -290,8 +315,9 @@ kubectl delete -f 00-namespace.yaml
 
 ## 注意事项
 
+- **FeatureService (Mock)**：当前为 Mock 实现，返回随机用户特征和 SKU 特征。替换为真实实现时，只需修改 `services/FeatureService/` 下的源码并重新构建镜像
 - **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
 - **RankSub 扩容**：修改副本数后需同步更新 ConfigMap 中的 `SUB_WORKER_COUNT` 并重启 RankMaster
 - **镜像版本**：当前使用 `lingquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/lingquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
-- **网关服务**：Proxy 服务规划中，加入后只需新增 `09-proxy.yaml`，通过 K8s Service 名称调用 Recall、Precalc、RankMaster
+- **启动顺序**：Discovery Server 应最先启动，其他服务依赖它进行注册和心跳
