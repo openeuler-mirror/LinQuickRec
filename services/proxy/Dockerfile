@@ -10,6 +10,7 @@ ARG PROTO_DISCOVERY=proto/discovery.proto
 ARG CMAKELISTS_FILE=services/proxy/CMakeLists.txt
 ARG CLIENT_DIR=services/proxy/client
 ARG SERVER_DIR=services/proxy/server
+ARG TESTS_DIR=services/proxy/tests
 ARG COMMON_DIR=common
 
 WORKDIR /app
@@ -24,6 +25,7 @@ COPY ${PROTO_DISCOVERY} /app/proto/
 COPY ${CMAKELISTS_FILE} /app/
 COPY ${CLIENT_DIR} /app/client/
 COPY ${SERVER_DIR} /app/server/
+COPY ${TESTS_DIR} /app/tests/
 COPY ${COMMON_DIR} /app/common/
 
 RUN mkdir -p build && \
