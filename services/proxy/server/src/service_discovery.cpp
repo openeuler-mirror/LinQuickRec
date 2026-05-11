@@ -26,14 +26,14 @@ ServiceDiscovery::ServiceDiscovery(const std::string& discovery_addr,
     opts.max_retry = 1;
 
     if (ch->Init(discovery_addr.c_str(), &opts) != 0) {
-        LOG_ERROR_STREAM << "Failed to connect to discovery server at "
+        LOG_ERROR << "Failed to connect to discovery server at "
                          << discovery_addr;
         delete ch;
         return;
     }
 
     stub_ = std::make_unique<discovery::DiscoveryService_Stub>(ch);
-    LOG_INFO_STREAM << "ServiceDiscovery connected to " << discovery_addr;
+    LOG_INFO << "ServiceDiscovery connected to " << discovery_addr;
 
     refresh_thread_ = std::thread(&ServiceDiscovery::refresh_loop, this);
 }
@@ -77,7 +77,7 @@ void ServiceDiscovery::refresh_all() {
         stub_->Discover(&cntl, &req, &rsp, nullptr);
 
         if (cntl.Failed()) {
-            LOG_WARN_STREAM << "Discover(" << svc << ") failed: "
+            LOG_WARN << "Discover(" << svc << ") failed: "
                             << cntl.ErrorText();
             continue;
         }
@@ -90,7 +90,7 @@ void ServiceDiscovery::refresh_all() {
             }
         }
 
-        LOG_INFO_STREAM << "Discover(" << svc << "): "
+        LOG_INFO << "Discover(" << svc << "): "
                         << rsp.instances_size() << " instance(s)";
     }
 }
@@ -139,7 +139,7 @@ void ServiceDiscovery::ReportFailure(const std::string& instance_id) {
     if (state.consecutive_failures >= MAX_CONSECUTIVE_FAILURES) {
         state.cooldown_until = std::chrono::steady_clock::now()
                                + std::chrono::seconds(COOLDOWN_SECONDS);
-        LOG_WARN_STREAM << "Circuit breaker opened for instance "
+        LOG_WARN << "Circuit breaker opened for instance "
                         << instance_id
                         << " (cooldown " << COOLDOWN_SECONDS << "s)";
     }

@@ -17,12 +17,12 @@
 
 #include "common/global_thread_pool.h"
 
-DEFINE_int32(server_port, 8080, "Proxy HTTP 服务监听端口");
-DEFINE_int32(feature_timeout_ms, 3000, "Feature 调用超时 (ms)");
-DEFINE_int32(recall_timeout_ms, 5000, "Recall 调用超时 (ms)");
-DEFINE_int32(precalc_timeout_ms, 5000, "Precalc 调用超时 (ms)");
-DEFINE_int32(rank_timeout_ms, 10000, "Rank 调用超时 (ms)");
-DEFINE_bool(enable_timing_stats, true, "是否打印阶段时延统计");
+DEFINE_int32(server_port, 8080, "Proxy HTTP ?????????");
+DEFINE_int32(feature_timeout_ms, 3000, "Feature ?????? (ms)");
+DEFINE_int32(recall_timeout_ms, 5000, "Recall ?????? (ms)");
+DEFINE_int32(precalc_timeout_ms, 5000, "Precalc ?????? (ms)");
+DEFINE_int32(rank_timeout_ms, 10000, "Rank ?????? (ms)");
+DEFINE_bool(enable_timing_stats, true, "???????????????");
 
 namespace {
 
@@ -56,17 +56,17 @@ const std::string& get_current_trace_id() {
 namespace proxy {
 
 ProxyServiceImpl::ProxyServiceImpl() {
-    LOG_INFO_STREAM << "ProxyServiceImpl initializing...";
+    LOG_INFO << "ProxyServiceImpl initializing...";
 
     discovery_ = std::make_unique<ServiceDiscovery>(
         FLAGS_discovery_addr, FLAGS_discovery_refresh_interval_ms);
 
-    LOG_INFO_STREAM << "ProxyServiceImpl initialized";
-    LOG_INFO_STREAM << "  Discovery server: " << FLAGS_discovery_addr;
+    LOG_INFO << "ProxyServiceImpl initialized";
+    LOG_INFO << "  Discovery server: " << FLAGS_discovery_addr;
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {
-    LOG_INFO_STREAM << "ProxyServiceImpl destroyed";
+    LOG_INFO << "ProxyServiceImpl destroyed";
 }
 
 void ProxyServiceImpl::Recommend(const RecommendRequest* request,
@@ -79,7 +79,7 @@ void ProxyServiceImpl::Recommend(const RecommendRequest* request,
     if (!status.IsOk()) {
         response->set_error_code(static_cast<int32_t>(status.Code()));
         response->set_error_message(status.ToString());
-        LOG_ERROR_STREAM << "Request failed: trace_id=" << tls_trace_id
+        LOG_ERROR << "Request failed: trace_id=" << tls_trace_id
                          << " error=" << status.ToString();
     }
 
@@ -182,7 +182,7 @@ common::error::Status ProxyServiceImpl::call_feature_service(
 
     if (!st.IsOk()) return st;
 
-    LOG_INFO_STREAM << "FeatureService success: user_id=" << request->user_id()
+    LOG_INFO << "FeatureService success: user_id=" << request->user_id()
                     << " user_logs=" << response->kr_feat_rsp().user_logs_size();
     return common::error::Status::OK();
 }
@@ -214,7 +214,7 @@ common::error::Status ProxyServiceImpl::call_recall_service(
 
     if (!st.IsOk()) return st;
 
-    LOG_INFO_STREAM << "RecallService success: sku_ids=" << response->sku_ids_size();
+    LOG_INFO << "RecallService success: sku_ids=" << response->sku_ids_size();
     return common::error::Status::OK();
 }
 
@@ -239,7 +239,7 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
 
     if (!st.IsOk()) return st;
 
-    LOG_INFO_STREAM << "PrecalcService success: user_feat_key=" << response->user_feat_key();
+    LOG_INFO << "PrecalcService success: user_feat_key=" << response->user_feat_key();
     return common::error::Status::OK();
 }
 
@@ -276,7 +276,7 @@ common::error::Status ProxyServiceImpl::call_rank_service(
 
     if (!st.IsOk()) return st;
 
-    LOG_INFO_STREAM << "RankService success: candidates=" << response->candidates_size();
+    LOG_INFO << "RankService success: candidates=" << response->candidates_size();
     return common::error::Status::OK();
 }
 
@@ -286,20 +286,20 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
 
     auto t0 = std::chrono::steady_clock::now();
 
-    LOG_INFO_STREAM << "Proxy request received: user_id=" << request->user_id()
+    LOG_INFO << "Proxy request received: user_id=" << request->user_id()
                     << " trace_id=" << tls_trace_id;
 
-    // Stage 1: 获取特征（同步）
+    // Stage 1: ????????????
     feature::UserFeatureResponse user_feat;
     auto feat_st = call_feature_service(request, &user_feat);
     auto t1 = std::chrono::steady_clock::now();
 
     if (!feat_st.IsOk()) {
-        LOG_ERROR_STREAM << "Stage 1 (Feature) failed: " << feat_st.ToString();
+        LOG_ERROR << "Stage 1 (Feature) failed: " << feat_st.ToString();
         return feat_st;
     }
 
-    // Stage 2: 召回 + 预计算（并行，复用全局线程池）
+    // Stage 2: ??? + ???????????????????????
     uint64_t user_id = request->user_id();
 
     auto& pool = common::get_global_thread_pool();
@@ -321,7 +321,7 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
     auto t2 = std::chrono::steady_clock::now();
 
     if (!recall_st.IsOk() || !precalc_st.IsOk()) {
-        LOG_ERROR_STREAM << "Stage 2 failed: recall="
+        LOG_ERROR << "Stage 2 failed: recall="
                          << (recall_st.IsOk() ? "ok" : recall_st.ToString())
                          << " precalc="
                          << (precalc_st.IsOk() ? "ok" : precalc_st.ToString());
@@ -329,30 +329,30 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
         return precalc_st;
     }
 
-    // Stage 3: 精排（同步）
+    // Stage 3: ?????????
     auto rank_st = call_rank_service(recall_rsp, precalc_rsp, response);
     auto t3 = std::chrono::steady_clock::now();
 
     if (!rank_st.IsOk()) {
-        LOG_ERROR_STREAM << "Stage 3 (Rank) failed: " << rank_st.ToString();
+        LOG_ERROR << "Stage 3 (Rank) failed: " << rank_st.ToString();
         return rank_st;
     }
 
-    // 时延统计
+    // ??????
     if (FLAGS_enable_timing_stats) {
         auto feat_us   = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
         auto stage2_us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
         auto rank_us   = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
         auto total_us  = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t0).count();
 
-        LOG_INFO_STREAM << "[Proxy Timing] "
+        LOG_INFO << "[Proxy Timing] "
                    << " feature=" << feat_us / 1000.0 << "ms"
                    << " recall+precalc=" << stage2_us / 1000.0 << "ms"
                    << " rank=" << rank_us / 1000.0 << "ms"
                    << " total=" << total_us / 1000.0 << "ms";
     }
 
-    LOG_INFO_STREAM << "Proxy request completed: user_id=" << request->user_id()
+    LOG_INFO << "Proxy request completed: user_id=" << request->user_id()
               << " candidates=" << response->candidates_size();
     return common::error::Status::OK();
 }
