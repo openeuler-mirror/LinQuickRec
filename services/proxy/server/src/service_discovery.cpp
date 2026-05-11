@@ -84,14 +84,22 @@ void ServiceDiscovery::refresh_all() {
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            int old_count = static_cast<int>(cache_[svc].size());
+            int new_count = rsp.instances_size();
+
             cache_[svc] = {rsp.instances().begin(), rsp.instances().end()};
             if (rr_index_.find(svc) == rr_index_.end()) {
                 rr_index_[svc] = 0;
             }
-        }
 
-        LOG_INFO << "Discover(" << svc << "): "
-                        << rsp.instances_size() << " instance(s)";
+            if (new_count != old_count) {
+                LOG_INFO << "Discover(" << svc << "): "
+                         << old_count << " -> " << new_count << " instance(s)";
+            } else {
+                LOG_DEBUG << "Discover(" << svc << "): "
+                          << new_count << " instance(s)";
+            }
+        }
     }
 }
 
