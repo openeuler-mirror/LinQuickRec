@@ -4,7 +4,7 @@
 
 Proxy 是 LingQuickRec 系统的**网关入口**，对外暴露 HTTP 接口，对内持有 FeatureService、RecallService、PrecalcService、RankServiceMaster 四个下游服务的连接。它负责接收外部推荐请求，按业务编排顺序依次调用下游服务，最终返回排序后的候选结果。
 
-Proxy 通过 [discovery 服务](../discovery/) 动态获取下游实例，不配置静态地址。每个请求向 discovery server 发起 `Discover()` RPC 获取 UP 实例列表，按 round-robin 选取，失败时自动重试下一实例。连续 3 次失败触发熔断（10s cooldown）。所有下游调用携带 trace_id 以支持全链路追踪。
+Proxy 通过 [discovery 服务](../discovery/README.md) 动态获取下游实例，不配置静态地址。每个请求向 discovery server 发起 `Discover()` RPC 获取 UP 实例列表，按 round-robin 选取，失败时自动重试下一实例。连续 3 次失败触发熔断（10s cooldown）。所有下游调用携带 trace_id 以支持全链路追踪。
 
 ### 可观测性
 
@@ -45,7 +45,7 @@ services/proxy/
          │
          ▼
    ┌───────────────────────────────────────────────────────────────────┐
-   │  Stage 1: Get Features (sync)                                    │
+   │  Stage 1: Get Features (sync)                                     │
    │  ┌────────────────────────────────────────────────────────────┐   │
    │  │  POST -> FeatureService -> GetUserFeatures                 │   │
    │  └────────────────────────────────────────────────────────────┘   │
@@ -53,16 +53,16 @@ services/proxy/
          │
          ▼
    ┌───────────────────────────────────────────────────────────────────┐
-   │  Stage 2: Recall & Precalc (parallel, global thread pool)        │
-   │  ┌─────────────────────────────┐  ┌───────────────────────────┐  │
-   │  │  POST -> RecallService      │  │  POST -> PrecalcService   │  │
-   │  │  -> Recall(sku_ids)         │  │  -> Precalculate(key)     │  │
-   │  └─────────────────────────────┘  └───────────────────────────┘  │
+   │  Stage 2: Recall & Precalc (parallel, global thread pool)         │
+   │  ┌─────────────────────────────┐  ┌───────────────────────────┐   │
+   │  │  POST -> RecallService      │  │  POST -> PrecalcService   │   │
+   │  │  -> Recall(sku_ids)         │  │  -> Precalculate(key)     │   │
+   │  └─────────────────────────────┘  └───────────────────────────┘   │
    └───────────────────────────────────────────────────────────────────┘
          │
          ▼
    ┌───────────────────────────────────────────────────────────────────┐
-   │  Stage 3: Rank (sync)                                            │
+   │  Stage 3: Rank (sync)                                             │
    │  ┌────────────────────────────────────────────────────────────┐   │
    │  │  POST -> RankServiceMaster -> Rank                         │   │
    │  │  Input: user_feat_key + skus(candidates)                   │   │
@@ -83,7 +83,7 @@ services/proxy/
 | Stage 2b: 预计算 | **异步并行**（全局线程池） | PrecalcService | 与 Stage 2a 同时发起，互不依赖 |
 | Stage 3: 精排 | **同步阻塞** | RankServiceMaster | 必须等 Stage 2a/2b 都完成后才能执行 |
 
-### API 接口
+### HTTP API 接口
 
 ```
 POST /Proxy/Recommend
@@ -140,8 +140,8 @@ Content-Type: application/json
 
 | 场景 | error_code | 行为 |
 |------|-----------|------|
-| Feature 调用失败/超时 | 0x01030001 | 终止请求，不执行后续阶段 |
-| Recall 调用失败/超时 | 0x01030002 | 终止请求（Rank 同时依赖 Recall + Precalc 的结果） |
+| Feature 调用失败/超时 | 0x01030001 | 终止请求 |
+| Recall 调用失败/超时 | 0x01030002 | 终止请求 |
 | Precalc 调用失败/超时 | 0x01030003 | 终止请求 |
 | Rank 调用失败/超时 | 0x01030004 | 终止请求，无候选结果 |
 | 全部成功 | 0 | 正常返回 candidates |
@@ -230,7 +230,7 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 docker build -t lingquickrec/proxy:latest -f services/proxy/Dockerfile .
 ```
 
-### 运行
+### 运行容器
 
 ```bash
 # 单容器运行（依赖外部 discovery server）
@@ -241,6 +241,7 @@ docker run -p 8080:8080 \
 # 集成测试（镜像已内置 mock 服务时使用）
 docker run --rm lingquickrec/proxy:latest \
     ./build/bin/proxy_integration_test
+```
 
 ## 测试方法
 
@@ -280,5 +281,4 @@ Proxy Test Client starting...
 Connecting to Proxy at: 127.0.0.1:8080
 Sending Recommend request: user_id=12345 payload=test_request
 Recommend response received: candidates=3 latency=123.45ms
-```
 ```
