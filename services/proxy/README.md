@@ -264,7 +264,7 @@ cd build && cmake .. && make proxy_integration_test
 | Precalc 服务失败 | 返回 error_code = 0x01030003 |
 | Rank 服务失败 | 返回 error_code = 0x01030004 |
 
-#### 原理
+#### 测试原理
 
 **单进程、零外部依赖。** 测试在一个进程内启动 6 个 brpc Server，模拟完整的 discovery + 下游服务链路，然后发送真实 RPC 请求并用 `assert()` 断言结果。
 
@@ -316,6 +316,40 @@ cd build && cmake .. && make proxy_integration_test
 5. 连续调用 `assert()` 逐一验证：`cntl.Failed()`、`error_code`、`candidates` 数量与顺序
 6. 任意 `assert` 失败 → 程序立即 abort，不会输出 `[PASS]`
 7. 停止所有 Server，清理
+
+#### 测试流程
+
+```
+测试流程（run_scenario()）
+run_scenario(TestScenario)
+  │
+  ├── 1. start_server(MockDiscoveryService, :18100)     ← 模拟 discovery
+  ├── 2. start_server(MockFeature, :18001)               ← 模拟下游
+  ├── 3. start_server(MockRecall, :18002)
+  ├── 4. start_server(MockPrecalc, :18003)
+  ├── 5. start_server(MockRank, :18004)
+  │
+  ├── 6. discovery_register_all(stub)                    ← 向 MockDiscovery 注册 4 个服务
+  │      Register(feature_service, 127.0.0.1:18001)
+  │      Register(recall_service,  127.0.0.1:18002)
+  │      Register(precalc_service, 127.0.0.1:18003)
+  │      Register(rank_service,    127.0.0.1:18004)
+  │
+  ├── 7. start_server(ProxyServiceImpl, :18000)          ← 启动真实 Proxy
+  │      ProxyServiceImpl 构造时创建 ServiceDiscovery
+  │      ServiceDiscovery 连接 MockDiscovery (:18100)
+  │      首轮 refresh → 发现 4 个下游各 1 个实例
+  │
+  ├── 8. stub.Recommend(&cntl, &req, &rsp)              ← 发送真实 RPC
+  │      Proxy 内部执行完整编排:
+  │        call_feature_service → MockFeature(:18001)
+  │        call_recall_service  → MockRecall(:18002)  ← 并行
+  │        call_precalc_service → MockPrecalc(:18003) ← 并行
+  │        call_rank_service    → MockRank(:18004)
+  │
+  └── 9. assert(rsp.candidates_size() == expect)         ← 断言结果
+       assert(rsp.error_code() == expect_error)
+```
 
 ### 手动测试
 
