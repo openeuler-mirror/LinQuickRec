@@ -12,7 +12,7 @@ for arg in "$@"; do
     esac
 done
 
-/app/build/proxy_server --server_port="$SERVICE_PORT" "$@" &
+/app/build/bin/proxy_server --server_port="$SERVICE_PORT" "$@" &
 PID_PROXY=$!
 
 /app/build/discovery/bin/discovery_client \
