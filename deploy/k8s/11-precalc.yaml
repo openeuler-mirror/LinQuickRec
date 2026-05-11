@@ -1,0 +1,67 @@
+# Precalc 前置计算服务
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: precalc-service
+  namespace: lingquickrec
+  labels:
+    app: precalc-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: precalc-service
+  template:
+    metadata:
+      labels:
+        app: precalc-service
+    spec:
+      containers:
+      - name: precalc
+        image: lingquickrec/precalc:latest
+        ports:
+        - containerPort: 8004
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: lingquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8004"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8004
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8004
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: precalc-service
+  namespace: lingquickrec
+spec:
+  selector:
+    app: precalc-service
+  ports:
+  - name: rpc
+    port: 8004
+    targetPort: 8004
+  type: ClusterIP

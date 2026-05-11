@@ -1,15 +1,21 @@
-FROM brpc_base:v1.3
+FROM brpc_base:latest
+
+# === 可配置的路径参数 ===
+ARG PROTO_DIR=proto/
+ARG COMMON_DIR=common/
+ARG SERVICE_DIR=services/RankServiceMaster/
+ARG ENTRYPOINT_FILE=deploy/docker/rank-master/entrypoint.sh
 
 WORKDIR /app
 
-COPY proto/ /app/proto/
-COPY common/ /app/common/
-COPY services/RankServiceMaster/ /app/services/RankServiceMaster/
+COPY ${PROTO_DIR} /app/proto/
+COPY ${COMMON_DIR} /app/common/
+COPY ${SERVICE_DIR} /app/services/RankServiceMaster/
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/RankServiceMaster -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-COPY deploy/docker/rank-master/entrypoint.sh /app/entrypoint.sh
+COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8005

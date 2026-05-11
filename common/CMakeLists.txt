@@ -26,6 +26,10 @@ add_library(common_lib STATIC
     src/thread_pool/global_thread_pool.cpp
     # 错误码体系
     src/error/error_code.cpp
+    # 随机工具
+    src/random/random_utils.cpp
+    # SKU 工具
+    src/sku/sku_utils.cpp
     # 日志系统
     src/logger/config.cpp
     src/logger/logger.cpp
