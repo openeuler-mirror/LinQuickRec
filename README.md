@@ -69,13 +69,13 @@ Vllm-brpc-Gateway/
 │   ├── Proxy/                  # 网关服务
 │   │   ├── CMakeLists.txt
 │   │   └── Dockerfile
-│   ├── FeatureService/         # 特征服务
+│   ├── feature_service/        # 特征服务
 │   │   ├── CMakeLists.txt
 │   │   └── Dockerfile
 │   ├── RankService/            # 精排服务
 │   │   ├── CMakeLists.txt
 │   │   └── Dockerfile
-│   ├── PrecalcService/         # 前置计算服务
+│   ├── precalc_service/        # 前置计算服务
 │   │   ├── CMakeLists.txt
 │   │   └── Dockerfile
 │   └── recall/                 # 召回服务（已实现）

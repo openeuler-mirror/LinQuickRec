@@ -2,11 +2,11 @@
 
 ################################################################################
 # RankServiceMaster 编译脚本
-# 使用方法：
+# 使用方法�?
 #   ./build.sh                    # Release 模式编译
 #   ./build.sh debug              # Debug 模式编译
 #   ./build.sh clean              # 清理构建
-#   ./build.sh clean release      # 清理并重新编译
+#   ./build.sh clean release      # 清理并重新编�?
 ################################################################################
 
 set -e
@@ -39,7 +39,7 @@ print_error() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 
-# 检测 CPU 核心数
+# 检�?CPU 核心�?
 if [[ "$OSTYPE" == "darwin"* ]]; then
     CPU_CORES=$(sysctl -n hw.ncpu)
 else
@@ -49,7 +49,7 @@ fi
 # 默认构建类型
 BUILD_TYPE="Release"
 
-# 解析命令行参数
+# 解析命令行参�?
 CLEAN=false
 for arg in "$@"; do
     case $arg in
@@ -115,7 +115,7 @@ cmake .. \
 print_info "Building with ${CPU_CORES} parallel jobs..."
 cmake --build . --config ${BUILD_TYPE} -j${CPU_CORES}
 
-# 检查编译结果
+# 检查编译结�?
 if [ $? -eq 0 ]; then
     print_success "========================================"
     print_success "Build completed successfully!"

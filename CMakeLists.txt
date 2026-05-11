@@ -23,17 +23,17 @@ include_directories(${CMAKE_SOURCE_DIR})
 # 添加公共库子目录
 add_subdirectory(common)
 
-# 添加子目录
+# 添加子目�?
 add_subdirectory(services/recall)
-add_subdirectory(services/PrecalcService)
+add_subdirectory(services/precalc_service)
 add_subdirectory(services/RankService)
-add_subdirectory(services/RankServiceMaster)
-add_subdirectory(services/RankServiceSub)
+add_subdirectory(services/rank_service_master)
+add_subdirectory(services/rank_service_sub)
 add_subdirectory(services/proxy)
 add_subdirectory(services/discovery)
-add_subdirectory(services/FeatureService)
+add_subdirectory(services/feature_service)
 
-# 其他子目录
+# 其他子目�?
 add_subdirectory(kvworker)
 
 # 打印配置信息
@@ -43,11 +43,11 @@ message(STATUS "===========================================")
 message(STATUS "Project Structure:")
 message(STATUS "  - common/ (ThreadPool, utilities)")
 message(STATUS "  - services/recall/")
-message(STATUS "  - services/PrecalcService/")
+message(STATUS "  - services/precalc_service/")
 message(STATUS "  - services/RankService/")
-message(STATUS "  - services/RankServiceMaster/")
-message(STATUS "  - services/RankServiceSub/")
+message(STATUS "  - services/rank_service_master/")
+message(STATUS "  - services/rank_service_sub/")
 message(STATUS "  - services/proxy/")
 message(STATUS "  - services/discovery/")
-message(STATUS "  - services/FeatureService/")
+message(STATUS "  - services/feature_service/")
 message(STATUS "===========================================")

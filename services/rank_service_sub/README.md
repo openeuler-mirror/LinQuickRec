@@ -9,7 +9,7 @@ RankServiceSub 是推荐系统精排层的工作节点，负责从元戎 KVWorke
 ## 目录结构
 
 ```
-services/RankServiceSub/
+services/rank_service_sub/
 ├── DESIGN.md                    # 详细设计文档
 ├── README.md                    # 本文件
 ├── CMakeLists.txt               # CMake 构建配置
@@ -27,7 +27,7 @@ services/RankServiceSub/
 ## 编译
 
 ```bash
-cd services/RankServiceSub
+cd services/rank_service_sub
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)

@@ -9,7 +9,7 @@ RankServiceMaster 是推荐系统精排层的主控节点，采用 Scatter-Gathe
 ## 目录结构
 
 ```
-services/RankServiceMaster/
+services/rank_service_master/
 ├── DESIGN.md                        # 详细设计文档
 ├── README.md                        # 本文件
 ├── CMakeLists.txt                   # CMake 构建配置
@@ -27,7 +27,7 @@ services/RankServiceMaster/
 ## 编译
 
 ```bash
-cd services/RankServiceMaster
+cd services/rank_service_master
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)

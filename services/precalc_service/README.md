@@ -9,7 +9,7 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 ## 目录结构
 
 ```
-services/PrecalcService/
+services/precalc_service/
 ├── DESIGN.md                    # 详细设计文档
 ├── README.md                    # 本文件
 ├── CMakeLists.txt               # CMake 构建配置
@@ -27,7 +27,7 @@ services/PrecalcService/
 ## 编译
 
 ```bash
-cd services/PrecalcService
+cd services/precalc_service
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
