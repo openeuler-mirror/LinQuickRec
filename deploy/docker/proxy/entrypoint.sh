@@ -9,7 +9,6 @@ fi
 SERVICE_TYPE="${SERVICE_TYPE:-proxy}"
 SERVICE_PORT="${SERVICE_PORT:-8080}"
 
-# 从命令行参数中提取 discovery_addr（若存在），否则使用环境变量默认值
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 for arg in "$@"; do
     case "$arg" in

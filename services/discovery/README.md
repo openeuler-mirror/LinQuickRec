@@ -161,7 +161,7 @@ make discovery_server discovery_client -j$(nproc)
 
 ```bash
 docker build -t linquickrec/discovery:latest \
-  -f services/discovery/Dockerfile .
+  -f deploy/docker/discovery/Dockerfile .
 ```
 
 ### 启动服务

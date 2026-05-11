@@ -227,7 +227,7 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 
 ```bash
 # 在项目根目录下执行
-docker build -t linquickrec/proxy:latest -f services/proxy/Dockerfile .
+docker build -t linquickrec/proxy:latest -f deploy/docker/proxy/Dockerfile .
 ```
 
 ### 运行容器
