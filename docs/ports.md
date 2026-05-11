@@ -42,20 +42,20 @@
 
 ```bash
 # Recall 服务
-./recall_server --server_port=8001
+./bin/recall_server --server_port=8001
 
 # Precalc 服务（使用远程 Recall KVWorker）
-./precalc_server --server_port=8004 \
+./bin/precalc_server --server_port=8004 \
     --kvworker_host=141.61.84.245 \
     --kvworker_port=31501 \
     --etcd_address=141.61.84.245:2379
 
 # RankMaster 服务
-./rank_master_server --server_port=8005 \
+./bin/rank_master_server --server_port=8005 \
     --sub_worker_count=10
 
 # RankSub 服务（使用远程 Rank KVWorker）
-./rank_sub_server --server_port=8006 \
+./bin/rank_sub_server --server_port=8006 \
     --kvworker_host=141.61.84.245 \
     --kvworker_port=31502 \
     --etcd_address=141.61.84.245:2379

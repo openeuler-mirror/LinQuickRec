@@ -45,7 +45,7 @@ make -j$(nproc)
 ### 启动 RankServiceSub
 
 ```bash
-./rank_sub_server \
+./bin/rank_sub_server \
   --server_port=8006 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31502 \
@@ -66,7 +66,7 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./rank_sub_client --server=127.0.0.1:8006
+./bin/rank_sub_client --server=127.0.0.1:8006
 ```
 
 ## 容器搭建

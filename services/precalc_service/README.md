@@ -45,7 +45,7 @@ make -j$(nproc)
 ### 启动 PrecalcService
 
 ```bash
-./precalc_server \
+./bin/precalc_server \
   --server_port=8004 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31501 \
@@ -69,7 +69,7 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./precalc_test_client --server=127.0.0.1:8004
+./bin/precalc_test_client --server=127.0.0.1:8004
 ```
 
 ## 容器搭建

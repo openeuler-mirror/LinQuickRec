@@ -189,7 +189,7 @@ RecallService ◀──JSON──── vLLM
    curl http://127.0.0.1:8000/health
    
 3. 启动 RecallService（前台进程）
-   ./recall_server --server_port=8001 ...
+   ./bin/recall_server --server_port=8001 ...
    
 4. RecallService 退出时，终止 vLLM
 ```

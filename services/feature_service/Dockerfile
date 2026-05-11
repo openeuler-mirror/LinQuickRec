@@ -27,4 +27,4 @@ RUN mkdir -p build && \
 EXPOSE 8003
 
 # 启动命令
-CMD ["./build/feature_server", "--server_port=8003"]
+CMD ["./build/bin/feature_server", "--server_port=8003"]

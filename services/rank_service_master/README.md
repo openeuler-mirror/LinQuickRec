@@ -45,7 +45,7 @@ make -j$(nproc)
 ### 启动 RankServiceMaster
 
 ```bash
-./rank_master_server \
+./bin/rank_master_server \
   --server_port=8005 \
   --sub_worker_count=10 \
   --sub_worker_addresses=rank-sub-service:8006 \
@@ -65,7 +65,7 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./rank_master_test_client \
+./bin/rank_master_test_client \
   --server=127.0.0.1:8005 \
   --sku_count=1000 \
   --payload_size_kb=100 \

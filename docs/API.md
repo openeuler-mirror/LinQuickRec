@@ -271,7 +271,7 @@ for (int i = 0; i < response.sku_ids_size(); ++i) {
 
 ```bash
 # 启动 Recall 服务
-./recall_server \
+./bin/recall_server \
     --server_port=8001 \
     --vllm_base_url="http://127.0.0.1:8000" \
     --vllm_endpoint="/v1/chat/completions" \
@@ -367,7 +367,7 @@ LOG(INFO) << "  Payload size: " << response.payload().size() << " bytes";
 
 ```bash
 # 启动 Precalc 服务
-./precalc_server \
+./bin/precalc_server \
     --server_port=8004 \
     --result_size_mb=8.5 \
     --ttl_seconds=5 \
