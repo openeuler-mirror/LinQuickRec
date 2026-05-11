@@ -14,6 +14,7 @@ ARG TESTS_DIR=services/proxy/tests
 ARG COMMON_DIR=common
 ARG DISCOVERY_CMAKE=services/discovery/CMakeLists.txt
 ARG DISCOVERY_CLIENT_DIR=services/discovery/client
+ARG DISCOVERY_SERVER_DIR=services/discovery/server
 
 WORKDIR /app
 
@@ -37,6 +38,7 @@ RUN mkdir -p build && cd build && cmake .. && make -j$(nproc)
 # ── 编译 discovery_client ─────────────────────────────────────
 COPY ${DISCOVERY_CMAKE} /app/services/discovery/
 COPY ${DISCOVERY_CLIENT_DIR} /app/services/discovery/client/
+COPY ${DISCOVERY_SERVER_DIR} /app/services/discovery/server/
 RUN mkdir -p build/discovery && cd build/discovery && \
     cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
     make discovery_client -j$(nproc)
