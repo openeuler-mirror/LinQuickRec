@@ -220,7 +220,7 @@ int main(int argc, char* argv[]) {
                     LOG_WARN << "Server lost state, re-registering";
                     g_registered = false;
                 } else {
-                    LOG_INFO << "Heartbeat OK";
+                    LOG_DEBUG << "Heartbeat OK";
                 }
             }
         } else {
