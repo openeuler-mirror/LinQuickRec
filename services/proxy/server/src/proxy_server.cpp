@@ -304,16 +304,19 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
 
     // Stage 2: ??? + ???????????????????????
     uint64_t user_id = request->user_id();
+    std::string current_trace_id = tls_trace_id;
 
     auto& pool = common::get_global_thread_pool();
 
-    auto recall_future = pool.submit([this, user_id, &user_feat]() {
+    auto recall_future = pool.submit([this, user_id, &user_feat, current_trace_id]() {
+        tls_trace_id = current_trace_id;
         recall::RecallResponse rsp;
         auto st = call_recall_service(user_id, user_feat, &rsp);
         return std::make_pair(st, std::move(rsp));
     });
 
-    auto precalc_future = pool.submit([this, user_id, &user_feat]() {
+    auto precalc_future = pool.submit([this, user_id, &user_feat, current_trace_id]() {
+        tls_trace_id = current_trace_id;
         precalc::PrecalcResponse rsp;
         auto st = call_precalc_service(user_id, user_feat, &rsp);
         return std::make_pair(st, std::move(rsp));
