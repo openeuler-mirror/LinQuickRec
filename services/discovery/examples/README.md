@@ -21,7 +21,7 @@ services/discovery/examples/
 
 ## 前置条件
 
-- 编译机已安装 brpc、abseil、protobuf
+- Docker 基础镜像 `linquickrec/base:latest` 已内置 brpc、abseil、protobuf
 - 编译机已安装 docker 及 docker compose
 
 ## 编译
@@ -60,17 +60,6 @@ make -j$(nproc)
 docker compose -f services/discovery/examples/docker-compose.yml build --no-cache
 docker compose -f services/discovery/examples/docker-compose.yml up -d
 ```
-
-> **覆盖二进制路径**：若编译产物位置与默认不同，可通过 `--build-arg` 指定：
->
-> ```bash
-> # 例如从 services/discovery/ 目录单独编译后，在 project root 执行：
-> docker compose -f services/discovery/examples/docker-compose.yml build \
->   --build-arg DISCOVERY_SERVER_BIN=services/discovery/build/bin/discovery_server \
->   --build-arg DISCOVERY_CLIENT_BIN=services/discovery/build/bin/discovery_client
-> ```
->
-> 完整参数列表见 [examples/Dockerfile](Dockerfile) 中的 `ARG` 定义。
 
 ### 2. 容器一览
 
