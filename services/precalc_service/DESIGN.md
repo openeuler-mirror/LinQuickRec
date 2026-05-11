@@ -60,7 +60,7 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 ## 3. 目录结构
 
 ```
-services/PrecalcService/
+services/precalc_service/
 ├── DESIGN.md                    # 本文档
 ├── README.md                    # 模块介绍与使用说明
 ├── CMakeLists.txt               # CMake 构建配置

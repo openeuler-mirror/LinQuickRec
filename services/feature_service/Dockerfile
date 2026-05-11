@@ -3,9 +3,9 @@ FROM lingquickrec/base:latest
 
 # === 可配置的路径参数 ===
 ARG PROTO_FILE=proto/feature.proto
-ARG CMAKELISTS_FILE=services/feature/CMakeLists.txt
-ARG CLIENT_DIR=services/feature/client
-ARG SERVER_DIR=services/feature/server
+ARG CMAKELISTS_FILE=services/feature_service/CMakeLists.txt
+ARG CLIENT_DIR=services/feature_service/client
+ARG SERVER_DIR=services/feature_service/server
 
 WORKDIR /app
 

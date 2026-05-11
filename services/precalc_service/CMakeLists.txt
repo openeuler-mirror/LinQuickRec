@@ -1,26 +1,26 @@
-# RankServiceSub 服务 CMakeLists.txt
+# Precalc 服务 CMakeLists.txt
 cmake_minimum_required(VERSION 3.14)
-project(rank_sub_service)
+project(precalc_service)
 
-# 添加 common 库
+# 添加 common �?
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 设置默认构建类型为 Release
+# 设置默认构建类型�?Release
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
 message(STATUS "")
-message(STATUS "=== RankServiceSub Build Configuration ===")
+message(STATUS "=== PrecalcService Build Configuration ===")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 
 # ============================================================================
-# BRPC 路径设置（参考 Recall 服务）
+# BRPC 路径设置（参�?Recall 服务�?
 # ============================================================================
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES
@@ -39,7 +39,7 @@ link_directories(/usr/local/lib64)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
-# Abseil 库（与 Recall 服务保持一致）
+# Abseil 库（�?Recall 服务保持一致）
 set(ABSL_LIBS
     absl_log_internal_nullguard
     absl_log_internal_check_op
@@ -90,24 +90,24 @@ else()
     message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 endif()
 
-# 生成 rank_sub protobuf 文件
+# 生成 precalc protobuf 文件
 add_custom_command(
-    OUTPUT ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/rank_sub.pb.h
+    OUTPUT ${PROTO_OUT_DIR}/precalc.pb.cc ${PROTO_OUT_DIR}/precalc.pb.h
     COMMAND protobuf::protoc
-    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
-    DEPENDS ${PROTO_DIR}/rank_sub.proto
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/precalc.proto
+    DEPENDS ${PROTO_DIR}/precalc.proto
 )
 
 # ============================================================================
 # 编译 Server
 # ============================================================================
-add_executable(rank_sub_server
-    server/src/rank_sub_server.cpp
+add_executable(precalc_server
+    server/src/precalc_server.cpp
     server/src/main.cpp
-    ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/precalc.pb.cc
 )
 
-target_include_directories(rank_sub_server PRIVATE
+target_include_directories(precalc_server PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
@@ -118,49 +118,47 @@ target_include_directories(rank_sub_server PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
-target_link_libraries(rank_sub_server PRIVATE
+target_link_libraries(precalc_server PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
     ${YR_LIBRARY}
-    
-    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
-    -Wl,--no-as-needed
     ${ABSL_LIBS}
-    -Wl,--as-needed
 )
 
-set_target_properties(rank_sub_server PROPERTIES
+set_target_properties(precalc_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ============================================================================
 # 编译 Client
 # ============================================================================
-add_executable(rank_sub_client 
-    client/rank_sub_client.cpp
-    ${PROTO_OUT_DIR}/rank_sub.pb.cc
+add_executable(precalc_test_client 
+    client/precalc_test_client.cpp
+    ${PROTO_OUT_DIR}/precalc.pb.cc
 )
 
-target_include_directories(rank_sub_client PRIVATE
+target_include_directories(precalc_test_client PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
     ${BRPC_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
-target_link_libraries(rank_sub_client PRIVATE
+target_link_libraries(precalc_test_client PRIVATE
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
+    Threads::Threads
 )
 
-set_target_properties(rank_sub_client PROPERTIES
+set_target_properties(precalc_test_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
@@ -168,50 +166,32 @@ set_target_properties(rank_sub_client PROPERTIES
 # 输出信息
 # ============================================================================
 message(STATUS "===========================================")
-message(STATUS "RankServiceSub Build Configuration")
+message(STATUS "Precalc Service Build Configuration")
 message(STATUS "===========================================")
 message(STATUS "Build targets:")
-message(STATUS "  - rank_sub_server (with Yuanrong SDK)")
-message(STATUS "  - rank_sub_client")
-message(STATUS "  - rank_sub_test (unit tests)")
-message(STATUS "Yuanrong SDK Path: ${YR_SDK_PATH}")
-message(STATUS "Yuanrong SDK Include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK Library: ${YR_LIBRARY}")
+message(STATUS "  - precalc_server (with Yuanrong SDK)")
+message(STATUS "  - precalc_test_client")
+message(STATUS "  - precalc_test (unit tests)")
+message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
 
 # ============================================================================
 # 编译单元测试
 # ============================================================================
-add_executable(rank_sub_test
-    tests/test_rank_sub.cpp
-    server/src/rank_sub_server.cpp
-    ${PROTO_OUT_DIR}/rank_sub.pb.cc
+add_executable(precalc_test
+    tests/test_precalc.cpp
 )
 
-target_include_directories(rank_sub_test PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${PROTO_OUT_DIR}
-    ${PROTO_DIR}
-    ${PROTOBUF_INCLUDE_DIRS}
-    ${BRPC_INCLUDE_DIR}
-    ${YR_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+target_include_directories(precalc_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 
-target_link_libraries(rank_sub_test PRIVATE
+target_link_libraries(precalc_test PRIVATE
     common_lib
-    ${BRPC_LIBRARIES}
-    leveldb
-    ${Protobuf_LIBRARIES}
-    Threads::Threads
-    ${YR_LIBRARY}
-    -Wl,--no-as-needed
-    ${ABSL_LIBS}
-    -Wl,--as-needed
 )
 
-set_target_properties(rank_sub_test PROPERTIES
+set_target_properties(precalc_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )

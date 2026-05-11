@@ -62,7 +62,7 @@ RankServiceMaster 是推荐系统精排层的主控节点，负责将召回的�
 ## 3. 目录结构
 
 ```
-services/RankServiceMaster/
+services/rank_service_master/
 ├── DESIGN.md                    # 本文档
 ├── README.md                    # 模块介绍与使用说明
 ├── CMakeLists.txt               # CMake 构建配置
