@@ -1,0 +1,54 @@
+# Discovery 服务发现中心
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-server
+  namespace: lingquickrec
+  labels:
+    app: discovery-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-server
+  template:
+    metadata:
+      labels:
+        app: discovery-server
+    spec:
+      containers:
+      - name: discovery
+        image: lingquickrec/discovery:latest
+        ports:
+        - containerPort: 8100
+          name: rpc
+        readinessProbe:
+          tcpSocket:
+            port: 8100
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8100
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-server
+  namespace: lingquickrec
+spec:
+  selector:
+    app: discovery-server
+  ports:
+  - name: rpc
+    port: 8100
+    targetPort: 8100
+  type: ClusterIP

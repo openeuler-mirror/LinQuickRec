@@ -1,0 +1,67 @@
+# Feature 特征服务 (Mock 实现)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-service
+  namespace: lingquickrec
+  labels:
+    app: feature-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feature-service
+  template:
+    metadata:
+      labels:
+        app: feature-service
+    spec:
+      containers:
+      - name: feature
+        image: lingquickrec/feature:latest
+        ports:
+        - containerPort: 8003
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: lingquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8003"
+        resources:
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8003
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8003
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-service
+  namespace: lingquickrec
+spec:
+  selector:
+    app: feature-service
+  ports:
+  - name: rpc
+    port: 8003
+    targetPort: 8003
+  type: ClusterIP

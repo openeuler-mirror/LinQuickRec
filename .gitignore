@@ -8,10 +8,6 @@ CHANGES_SUMMARY.md
 DEPLOYMENT.md
 TASK_COMPLETION_SUMMARY.md
 
-# Docker 相关文件
-**/docker-compose*
-docker-compose.*
-
 # 构建目录
 build/
 cmake-build-*/

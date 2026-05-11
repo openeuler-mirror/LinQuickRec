@@ -33,6 +33,8 @@
 DEFINE_int32(server_port, 8005, "服务器监听端口");
 DEFINE_int32(sub_worker_count, 10, "子图数量");
 DEFINE_string(sub_worker_addresses, "127.0.0.1:8006", "子图地址列表（逗号分隔）");
+DEFINE_string(discovery_addr, "",
+    "Discovery server address (empty = use --sub_worker_addresses)");
 DEFINE_int32(top_k, 100, "返回前 K 个商品");
 DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
@@ -52,17 +54,32 @@ RankMasterServiceImpl::RankMasterServiceImpl()
     LOG(INFO) << "RankMasterServiceImpl initialized";
     LOG(INFO) << "Sub-worker count: " << FLAGS_sub_worker_count;
     LOG(INFO) << "Top-K: " << FLAGS_top_k;
-    LOG(INFO) << "Sub-worker addresses: " << FLAGS_sub_worker_addresses;
+    LOG(INFO) << "Discovery addr: " << FLAGS_discovery_addr;
 
     std::vector<std::string> addresses;
-    std::stringstream ss(FLAGS_sub_worker_addresses);
-    std::string addr;
 
-    while (std::getline(ss, addr, ',')) {
-        addr.erase(0, addr.find_first_not_of(" "));
-        addr.erase(addr.find_last_not_of(" ") + 1);
-        if (!addr.empty()) {
-            addresses.push_back(addr);
+    // 尝试通过 Discovery 发现 RankSub 实例
+    if (!FLAGS_discovery_addr.empty()) {
+        discovery_resolver_ = std::make_unique<DiscoveryResolver>(FLAGS_discovery_addr);
+        auto instances = discovery_resolver_->discover("rank_sub");
+        for (const auto& inst : instances) {
+            addresses.push_back(inst.host + ":" + std::to_string(inst.port));
+        }
+        LOG(INFO) << "Discovered " << instances.size() << " rank_sub instances via Discovery";
+    }
+
+    // Fallback 到静态配置
+    if (addresses.empty()) {
+        LOG(INFO) << "Using static sub_worker_addresses: " << FLAGS_sub_worker_addresses;
+        std::stringstream ss(FLAGS_sub_worker_addresses);
+        std::string addr;
+
+        while (std::getline(ss, addr, ',')) {
+            addr.erase(0, addr.find_first_not_of(" "));
+            addr.erase(addr.find_last_not_of(" ") + 1);
+            if (!addr.empty()) {
+                addresses.push_back(addr);
+            }
         }
     }
 
@@ -70,6 +87,11 @@ RankMasterServiceImpl::RankMasterServiceImpl()
         LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
             "No sub-worker addresses provided").ToString();
         addresses.push_back("127.0.0.1:8006");
+    }
+
+    LOG(INFO) << "Sub-worker addresses resolved: ";
+    for (const auto& addr : addresses) {
+        LOG(INFO) << "  " << addr;
     }
 
     for (int i = 0; i < FLAGS_sub_worker_count; ++i) {

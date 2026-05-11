@@ -1,0 +1,210 @@
+# LingQuickRec Docker Compose 部署配置
+#
+# 使用方法：
+#   1. 先在宿主机构建 discovery 二进制文件（Dockerfile 需要预编译产物）：
+#      mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release
+#      make discovery_server discovery_client -j$(nproc)
+#
+#   2. 构建并启动所有服务：
+#      docker compose up --build -d
+#
+#   3. 单独启动某个服务：
+#      docker compose up --build -d recall-service
+#
+#   4. 调整 rank-sub 副本数：
+#      docker compose up --build -d --scale rank-sub-service=5
+#      （同时修改 .env 中 SUB_WORKER_COUNT 和 SUB_WORKER_ADDRESSES）
+#
+#   5. 停止所有服务：
+#      docker compose down
+
+services:
+  # ========================
+  # 服务发现
+  # ========================
+  discovery-server:
+    build:
+      context: ../..
+      dockerfile: services/discovery/Dockerfile
+    image: lingquickrec-discovery
+    container_name: discovery-server
+    ports:
+      - "${DISCOVERY_PORT:-8100}:8100"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8100 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ========================
+  # 特征服务 (mock)
+  # ========================
+  feature-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/feature/Dockerfile
+    image: lingquickrec-feature
+    container_name: feature-service
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8003"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+
+  # ========================
+  # 召回服务（含 vLLM 模型推理）
+  # 需要 GPU 支持，确保宿主机已安装 nvidia-container-toolkit
+  # ========================
+  recall-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/recall/Dockerfile
+    image: lingquickrec-recall
+    container_name: recall-service
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8001"
+      VLLM_PORT: "${VLLM_PORT:-8000}"
+      VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
+      VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
+      MODEL_NAME: "${MODEL_NAME:-/app/models/Qwen3-0.6B/}"
+      VLLM_TIMEOUT_MS: "${VLLM_TIMEOUT_MS:-100000}"
+      SKU_COUNT: "${SKU_COUNT:-100}"
+      VLLM_STARTUP_TIMEOUT: "${VLLM_STARTUP_TIMEOUT:-120}"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    ports:
+      - "8001:8001"
+    networks:
+      - lingquickrec-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # ========================
+  # 预计算服务
+  # ========================
+  precalc-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/precalc/Dockerfile
+    image: lingquickrec-precalc
+    container_name: precalc-service
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8004"
+      KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
+      KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
+      ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
+      TTL_SECONDS: "${TTL_SECONDS:-5}"
+      PRECALC_RESULT_SIZE_MB: "${PRECALC_RESULT_SIZE_MB:-8.5}"
+      PAYLOAD_SIZE_KB: "${PAYLOAD_SIZE_KB:-100}"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+
+  # ========================
+  # 排序子服务（可水平扩展）
+  # 扩展命令: docker compose up -d --scale rank-sub-service=N
+  # ========================
+  rank-sub-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/rank-sub/Dockerfile
+    image: lingquickrec-rank-sub
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8006"
+      KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
+      KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
+      ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
+      SCORING_DELAY_MS: "${SCORING_DELAY_MS:-100}"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+    deploy:
+      replicas: ${RANK_SUB_REPLICAS:-3}
+
+  # ========================
+  # 排序主服务
+  # ========================
+  rank-master-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/rank-master/Dockerfile
+    image: lingquickrec-rank-master
+    container_name: rank-master-service
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      rank-sub-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: "8005"
+      SUB_WORKER_COUNT: "${SUB_WORKER_COUNT:-3}"
+      SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8006}"
+      TOP_K: "${TOP_K:-100}"
+      SUB_WORKER_TIMEOUT_MS: "${SUB_WORKER_TIMEOUT_MS:-5000}"
+      RANK_SUB_HOST: "rank-sub-service"
+      RANK_SUB_PORT: "8006"
+      RANK_SUB_STARTUP_TIMEOUT: "${RANK_SUB_STARTUP_TIMEOUT:-120}"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+
+  # ========================
+  # 网关代理（系统入口）
+  # ========================
+  proxy-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/proxy/Dockerfile
+    image: lingquickrec-proxy
+    container_name: proxy-service
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      feature-service:
+        condition: service_started
+      recall-service:
+        condition: service_started
+      precalc-service:
+        condition: service_started
+      rank-master-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: "8080"
+      FEATURE_SERVICE_ADDR: "feature-service:8003"
+      RECALL_SERVICE_ADDR: "recall-service:8001"
+      PRECALC_SERVICE_ADDR: "precalc-service:8004"
+      RANK_SERVICE_ADDR: "rank-master-service:8005"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+    ports:
+      - "${PROXY_PORT:-8080}:8080"
+    networks:
+      - lingquickrec-net
+    restart: unless-stopped
+
+networks:
+  lingquickrec-net:
+    driver: bridge

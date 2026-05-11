@@ -27,4 +27,15 @@ cd /app/build
     --sub_worker_count=${SUB_WORKER_COUNT:-10} \
     --sub_worker_addresses=${SUB_WORKER_ADDRESSES:-rank-sub-service:8006} \
     --top_k=${TOP_K:-100} \
-    "$@"
+    "$@" &
+SERVICE_PID=$!
+
+echo "Starting Discovery Client..."
+/app/discovery_client \
+    --service_type=rank_master \
+    --service_port=${SERVER_PORT:-8005} \
+    --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} &
+DISCOVERY_PID=$!
+
+echo "All services started, waiting for any process to exit..."
+wait -n $SERVICE_PID $DISCOVERY_PID

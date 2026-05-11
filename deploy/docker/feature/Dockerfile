@@ -3,17 +3,17 @@ FROM brpc_base:latest
 # === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/RankServiceMaster/
-ARG ENTRYPOINT_FILE=deploy/docker/rank-master/entrypoint.sh
+ARG SERVICE_DIR=services/FeatureService/
+ARG ENTRYPOINT_FILE=deploy/docker/feature/entrypoint.sh
 ARG DISCOVERY_CLIENT_BIN=build/bin/discovery_client
 
 WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/RankServiceMaster/
+COPY ${SERVICE_DIR} /app/services/FeatureService/
 RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/RankServiceMaster -DCMAKE_BUILD_TYPE=Release && \
+    cmake ../services/FeatureService -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 COPY ${DISCOVERY_CLIENT_BIN} /app/discovery_client
@@ -22,7 +22,7 @@ RUN chmod +x /app/discovery_client
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8005
+EXPOSE 8003
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 

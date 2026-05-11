@@ -20,10 +20,12 @@
 #include "common/logger.h"
 #include "common/error.h"
 #include "common/sku_utils.h"
+#include "discovery_resolver.h"
 
 DECLARE_int32(server_port);
 DECLARE_int32(sub_worker_count);
 DECLARE_string(sub_worker_addresses);
+DECLARE_string(discovery_addr);
 DECLARE_int32(top_k);
 DECLARE_bool(enable_timing_stats);
 DECLARE_int32(sub_worker_timeout_ms);
@@ -112,6 +114,9 @@ private:
 
     // 子图 Channel 池（复用连接）
     std::vector<std::unique_ptr<brpc::Channel>> sub_worker_channels_;
+
+    // Discovery 查询器（可选，仅当 --discovery_addr 非空时使用）
+    std::unique_ptr<DiscoveryResolver> discovery_resolver_;
 };
 
 } // namespace rank
