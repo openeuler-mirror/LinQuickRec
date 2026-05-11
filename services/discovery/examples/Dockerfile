@@ -1,15 +1,26 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
-ARG DISCOVERY_CLIENT_BIN=build/bin/discovery_client
-ARG PSEUDO_SERVICE_BIN=services/discovery/examples/build/bin/pseudo_service
-ARG TEST_DISCOVER_BIN=services/discovery/examples/build/bin/test_discover
-ARG TEST_REGISTER_BIN=services/discovery/examples/build/bin/test_register
-ARG TEST_HEARTBEAT_CYCLE_BIN=services/discovery/examples/build/bin/test_heartbeat_cycle
-COPY $DISCOVERY_CLIENT_BIN /usr/bin/discovery_client
-COPY $PSEUDO_SERVICE_BIN /usr/bin/pseudo_service
-COPY $TEST_DISCOVER_BIN /usr/bin/test_discover
-COPY $TEST_REGISTER_BIN /usr/bin/test_register
-COPY $TEST_HEARTBEAT_CYCLE_BIN /usr/bin/test_heartbeat_cycle
+WORKDIR /app
+
+COPY proto/ /app/proto/
+COPY common/ /app/common/
+COPY services/discovery/ /app/services/discovery/
+
+# Build discovery_client from main discovery project
+RUN mkdir -p /app/build/discovery && cd /app/build/discovery && \
+    cmake ../../services/discovery -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) discovery_client && \
+    cp /app/build/discovery/bin/discovery_client /usr/bin/
+
+# Build examples (pseudo_service + test tools)
+RUN mkdir -p /app/build/examples && cd /app/build/examples && \
+    cmake ../../services/discovery/examples -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    cp /app/build/examples/bin/* /usr/bin/
+
 COPY services/discovery/examples/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
