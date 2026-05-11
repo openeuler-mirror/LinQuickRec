@@ -26,8 +26,8 @@ int main(int argc, char* argv[]) {
         FLAGS_global_thread_pool_size = std::min(128, calculated_size);
     }
 
-    LOG_INFO_STREAM << "Proxy Service starting...";
-    LOG_INFO_STREAM << "CPU cores: " << cpu_cores
+    LOG_INFO << "Proxy Service starting...";
+    LOG_INFO << "CPU cores: " << cpu_cores
                     << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
@@ -36,32 +36,32 @@ int main(int argc, char* argv[]) {
 
     if (server.AddService(static_cast<google::protobuf::Service*>(&service_impl),
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG_ERROR_STREAM << "Failed to add ProxyService";
+        LOG_ERROR << "Failed to add ProxyService";
         return -1;
     }
 
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
     if (server.Start(server_addr.c_str(), nullptr) != 0) {
-        LOG_ERROR_STREAM << "Failed to start server on " << server_addr;
+        LOG_ERROR << "Failed to start server on " << server_addr;
         return -1;
     }
 
-    LOG_INFO_STREAM << "===========================================";
-    LOG_INFO_STREAM << "Proxy Service Started";
-    LOG_INFO_STREAM << "===========================================";
-    LOG_INFO_STREAM << "Listening on: " << server_addr;
-    LOG_INFO_STREAM << "Discovery:    " << FLAGS_discovery_addr;
-    LOG_INFO_STREAM << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
-    LOG_INFO_STREAM << "Downstream max retries: " << FLAGS_downstream_max_retries;
-    LOG_INFO_STREAM << "Service names:"
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Proxy Service Started";
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Listening on: " << server_addr;
+    LOG_INFO << "Discovery:    " << FLAGS_discovery_addr;
+    LOG_INFO << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
+    LOG_INFO << "Downstream max retries: " << FLAGS_downstream_max_retries;
+    LOG_INFO << "Service names:"
                     << " feature=" << FLAGS_feature_service_name
                     << " recall=" << FLAGS_recall_service_name
                     << " precalc=" << FLAGS_precalc_service_name
                     << " rank=" << FLAGS_rank_service_name;
-    LOG_INFO_STREAM << "===========================================";
+    LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();
 
-    LOG_INFO_STREAM << "Proxy Service stopped";
+    LOG_INFO << "Proxy Service stopped";
     return 0;
 }

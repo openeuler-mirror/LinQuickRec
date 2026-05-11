@@ -44,7 +44,7 @@ public:
         instances_[inst.service_name()].push_back(inst);
         response->set_success(true);
         response->set_instance_id(inst.service_name() + "_" + inst.host() + "_" + std::to_string(inst.port()) + "_1");
-        LOG_INFO_STREAM << "Discovery Register: " << inst.service_name()
+        LOG_INFO << "Discovery Register: " << inst.service_name()
                         << " at " << inst.host() << ":" << inst.port();
     }
 
@@ -224,12 +224,12 @@ struct ServerSet {
 static bool start_server(brpc::Server* server, int port,
                          google::protobuf::Service* service) {
     if (server->AddService(service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG_ERROR_STREAM << "Failed to add service on port " << port;
+        LOG_ERROR << "Failed to add service on port " << port;
         return false;
     }
     std::string addr = "0.0.0.0:" + std::to_string(port);
     if (server->Start(addr.c_str(), nullptr) != 0) {
-        LOG_ERROR_STREAM << "Failed to start server on " << addr;
+        LOG_ERROR << "Failed to start server on " << addr;
         return false;
     }
     return true;
