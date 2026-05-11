@@ -24,7 +24,7 @@ services/rank_service_master/
     └── rank_master_test_client.cpp  # 测试客户端
 ```
 
-## 编译
+## 编译命令
 
 ```bash
 cd services/rank_service_master
@@ -40,7 +40,7 @@ make -j$(nproc)
 | `rank_master_server` | 精排主图服务主程序 |
 | `rank_master_test_client` | 测试客户端 |
 
-## 使用方法
+## 启动方式
 
 ### 启动 RankServiceMaster
 
@@ -81,7 +81,7 @@ make -j$(nproc)
 4. 生成随机 SKU 和 payload
 5. 发送请求到 RankMaster
 
-## Docker 集成
+## 容器搭建
 
 ### 启动顺序
 
@@ -117,7 +117,7 @@ docker-compose up -d --force-recreate rank-master-service
 | `RANK_SUB_PORT` | 8006 | 子图端口 |
 | `TOP_K` | 100 | 返回前 K 个商品 |
 
-## 工作流程
+## 业务流程
 
 ```
        Client (Proxy)

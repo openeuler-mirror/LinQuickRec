@@ -24,7 +24,7 @@ services/rank_service_sub/
     └── rank_sub_client.cpp      # 测试客户端
 ```
 
-## 编译
+## 编译命令
 
 ```bash
 cd services/rank_service_sub
@@ -40,7 +40,7 @@ make -j$(nproc)
 | `rank_sub_server` | 精排子图服务主程序 |
 | `rank_sub_client` | 测试客户端 |
 
-## 使用方法
+## 启动方式
 
 ### 启动 RankServiceSub
 
@@ -69,7 +69,7 @@ make -j$(nproc)
 ./rank_sub_client --server=127.0.0.1:8006
 ```
 
-## Docker 集成
+## 容器搭建
 
 ### 启动多个实例
 
@@ -99,7 +99,7 @@ docker-compose up -d --scale rank-sub-service=5
 - **端口范围映射**：`8006-8015:8006`（宿主机访问用）
 - **同一网络**：所有实例加入 `lingquickrec` 网络
 
-## 工作流程
+## 业务流程
 
 ```
        RankServiceMaster
