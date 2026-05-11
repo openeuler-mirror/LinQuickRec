@@ -12,6 +12,7 @@
 #include <brpc/controller.h>
 
 #include "common/logger.h"
+#include "common/global_thread_pool.h"
 
 #include <cassert>
 #include <chrono>
@@ -99,7 +100,6 @@ public:
         brpc::ClosureGuard guard(done);
         response->set_feature_type(feature::KuaiRand);
         auto* kr_rsp = response->mutable_kr_feat_rsp();
-        kr_rsp->set_user_id(request->kr_feat_req().user_id());
         kr_rsp->set_other("mock_feat_other");
         auto* log = kr_rsp->add_user_logs();
         log->add_vec(10);
