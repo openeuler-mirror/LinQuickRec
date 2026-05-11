@@ -92,7 +92,13 @@ void ServiceDiscovery::refresh_all() {
                 rr_index_[svc] = 0;
             }
 
-            if (new_count != old_count) {
+            bool is_first = !first_refresh_[svc];
+            first_refresh_[svc] = true;
+
+            if (is_first) {
+                LOG_INFO << "Discover(" << svc << "): "
+                         << new_count << " instance(s) (initial)";
+            } else if (new_count != old_count) {
                 LOG_INFO << "Discover(" << svc << "): "
                          << old_count << " -> " << new_count << " instance(s)";
             } else {

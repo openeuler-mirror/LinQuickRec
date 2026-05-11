@@ -45,6 +45,7 @@ private:
     std::unordered_map<std::string, std::vector<discovery::ServiceInstance>> cache_;
     std::unordered_map<std::string, size_t> rr_index_;
     std::unordered_map<std::string, InstanceState> instance_states_;
+    std::unordered_map<std::string, bool> first_refresh_;
 
     int refresh_interval_ms_;
     std::thread refresh_thread_;
