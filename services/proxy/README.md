@@ -251,8 +251,7 @@ docker run -p 8080:8080 \
 
 ```bash
 # 集成测试
-docker run --rm linquickrec/proxy:latest \
-    /app/build/bin/proxy_integration_test
+docker run --rm linquickrec/proxy:latest test
 ```
 
 **方式二：命令运行：**
