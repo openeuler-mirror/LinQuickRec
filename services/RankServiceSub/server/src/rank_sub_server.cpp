@@ -18,13 +18,18 @@
 // 4. 其他库头文件
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 #include <datasystem/kv_client.h>
 
 // 5. 本项目内其他头文件
 #include "common/global_thread_pool.h"
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
+#include "common/sku_utils.h"
+
+using namespace datasystem;
 
 DEFINE_int32(server_port, 8006, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "KVWorker 主机地址");
@@ -35,174 +40,154 @@ DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 
 namespace rank {
 
-std::vector<uint64_t> parse_skus_from_string(const std::string& skus_sub) {
-    std::vector<uint64_t> sku_ids;
-    
-    if (skus_sub.empty()) {
-        LOG(WARNING) << "Empty skus_sub string";
-        return sku_ids;
-    }
-    
-    // 每 6 位数字是一个商品 ID
-    const size_t SKU_ID_LENGTH = 6;
-    size_t pos = 0;
-    
-    while (pos + SKU_ID_LENGTH <= skus_sub.size()) {
-        std::string sku_str = skus_sub.substr(pos, SKU_ID_LENGTH);
-        
-        try {
-            uint64_t sku_id = std::stoull(sku_str);
-            sku_ids.push_back(sku_id);
-        } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to parse SKU ID: " << sku_str 
-                        << ", error: " << e.what();
-        }
-        
-        pos += SKU_ID_LENGTH;
-    }
-    
-    LOG(INFO) << "Parsed " << sku_ids.size() << " SKU IDs from string";
-    return sku_ids;
-}
+using namespace common::error;
+using common::parse_skus_from_string;
+
+constexpr int SCORE_RANGE = 10000;
+constexpr int SCORE_SCALE = 100;
 
 double simulate_score(uint64_t sku_id, const std::string& user_feat) {
-    // 使用哈希函数生成模拟分数
     std::hash<std::string> hasher;
     size_t user_hash = hasher(user_feat);
     size_t sku_hash = std::hash<uint64_t>{}(sku_id);
-    
-    // 生成 0-100 之间的分数
-    double score = static_cast<double>((user_hash ^ sku_hash) % 10000) / 100.0;
-    
+
+    double score = static_cast<double>((user_hash ^ sku_hash) % SCORE_RANGE) / SCORE_SCALE;
+
     return score;
 }
 
 RankSubServiceImpl::RankSubServiceImpl() {
     LOG(INFO) << "RankSubServiceImpl initialized";
-    LOG(INFO) << "KVWorker address: " << FLAGS_kvworker_host 
+    LOG(INFO) << "KVWorker address: " << FLAGS_kvworker_host
               << ":" << FLAGS_kvworker_port;
     LOG(INFO) << "Scoring delay: " << FLAGS_scoring_delay_ms << " ms";
 }
 
-void RankSubServiceImpl::Rank(const RankSubRequest* request,
+void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
+                              const RankSubRequest* request,
                               RankSubResponse* response,
                               google::protobuf::Closure* done) {
-    
-    // 使用线程池异步处理请求
-    auto& pool = common::get_global_thread_pool();
-    
-    // 提交任务到线程池
-    auto future = pool.submit([this, request]() {
-        // 创建响应对象
-        RankSubResponse local_response;
-        
-        // 处理请求
-        process_rank_request(request, &local_response);
-        
-        return local_response;
-    });
-    
-    // 等待任务完成
-    try {
-        RankSubResponse result = future.get();
-        response->CopyFrom(result);
-    } catch (const std::exception& e) {
-        LOG(ERROR) << "Thread pool task failed: " << e.what();
-    }
-    
-    // 使用 ClosureGuard 确保 done 被正确调用
+
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+
+    if (!request->trace_id().empty()) {
+        std::string tid = request->trace_id();
+        common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
+    }
+
+    auto& pool = common::get_global_thread_pool();
+
+    auto future = pool.submit([this, request]() {
+        RankSubResponse local_response;
+        auto status = process_rank_request(request, &local_response);
+        return std::make_pair(status, local_response);
+    });
+
+    try {
+        auto result = future.get();
+        response->CopyFrom(result.second);
+        if (result.first.IsError()) {
+            cntl->SetFailed(result.first.ToString());
+        }
+    } catch (const std::exception& e) {
+        auto status = common::error::Status(rank_sub_errors::INTERNAL_ERROR,
+            "Thread pool task failed: " + std::string(e.what()));
+        LOG(ERROR) << status.ToString();
+        cntl->SetFailed(status.ToString());
+    }
 }
 
-void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
+common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
                                               RankSubResponse* response) {
-    
+
     int64_t server_receive_us = butil::gettimeofday_us();
-    
+
     LOG(INFO) << "Rank request received";
-    
-    // 验证请求参数
+
     if (request->user_feat_key().empty()) {
-        LOG(ERROR) << "Empty user_feat_key in request";
-        return;
+        auto status = common::error::Status(rank_sub_errors::EMPTY_USER_FEAT_KEY,
+            "Empty user_feat_key in request");
+        LOG(ERROR) << status.ToString();
+        return status;
     }
-    
+
     if (request->skus_sub().empty()) {
-        LOG(ERROR) << "Empty skus_sub in request";
-        return;
+        auto status = common::error::Status(rank_sub_errors::EMPTY_SKUS_SUB,
+            "Empty skus_sub in request");
+        LOG(ERROR) << status.ToString();
+        return status;
     }
-    
-    // 从 KVWorker 获取前置计算结果
+
     ConnectOptions connectOptions;
     connectOptions.host = FLAGS_kvworker_host;
     connectOptions.port = FLAGS_kvworker_port;
-    
+
     KVClient kv_client(connectOptions);
-    
-    Status status = kv_client.Init();
-    if (!status.IsOk()) {
-        LOG(ERROR) << "KVClient init failed: " << status.ToString();
-        return;
+
+    datasystem::Status kv_status = kv_client.Init();
+    if (!kv_status.IsOk()) {
+        auto status = common::error::Status(rank_sub_errors::KVCLIENT_INIT_FAILED,
+            "KVClient init failed: " + kv_status.ToString());
+        LOG(ERROR) << status.ToString();
+        return status;
     }
-    
+
     int64_t kv_read_start_us = butil::gettimeofday_us();
-    
-    // 使用 Buffer 方式获取数据（适合大数据）
-    std::shared_ptr<Buffer> buffer;
-    status = kv_client.Get(request->user_feat_key(), buffer);
-    
+
+    datasystem::Optional<datasystem::Buffer> buffer;
+    kv_status = kv_client.Get(request->user_feat_key(), buffer);
+
     int64_t kv_read_end_us = butil::gettimeofday_us();
     int64_t kv_read_cost_us = kv_read_end_us - kv_read_start_us;
-    
-    if (!status.IsOk()) {
-        LOG(ERROR) << "KVClient Get failed: " << status.ToString() 
-                  << ", key: " << request->user_feat_key();
-        return;
+
+    if (!kv_status.IsOk()) {
+        auto status = common::error::Status(rank_sub_errors::KVCLIENT_GET_FAILED,
+            "KVClient Get failed for key: " + request->user_feat_key() + ", error: " + kv_status.ToString());
+        LOG(ERROR) << status.ToString();
+        return status;
     }
-    
-    std::string user_feat(reinterpret_cast<char*>(buffer->data()), buffer->size());
-    
-    LOG(INFO) << "Retrieved user_feat from KVWorker: key=" 
-              << request->user_feat_key() 
+
+    std::string user_feat(reinterpret_cast<const char*>(buffer->ImmutableData()), buffer->GetSize());
+
+    LOG(DEBUG) << "Retrieved user_feat from KVWorker: key="
+              << request->user_feat_key()
               << ", size=" << user_feat.size() << " bytes";
-    
-    // 解析商品 ID 列表
+
     std::vector<uint64_t> sku_ids = parse_skus_from_string(request->skus_sub());
-    
+
     if (sku_ids.empty()) {
-        LOG(ERROR) << "No SKU IDs parsed from skus_sub";
-        return;
+        auto status = common::error::Status(rank_sub_errors::NO_SKU_PARSED,
+            "No SKU IDs parsed from skus_sub");
+        LOG(ERROR) << status.ToString();
+        return status;
     }
-    
-    // 对每个商品进行打分
+
     int64_t scoring_start_us = butil::gettimeofday_us();
-    
-    // skus_score 格式：两个独立的数组 skus_id 和 skus_score
-    // skus_score 存储分数 * 100 的整数值
+
     for (uint64_t sku_id : sku_ids) {
         double score = simulate_score(sku_id, user_feat);
-        
+
         response->add_skus_id(sku_id);
-        response->add_skus_score(static_cast<uint64_t>(score * 100));
+        response->add_skus_score(static_cast<uint64_t>(score * SCORE_SCALE));
     }
-    
+
     int64_t scoring_end_us = butil::gettimeofday_us();
     int64_t scoring_cost_us = scoring_end_us - scoring_start_us;
-    
-    // 模拟计算耗时
+
     if (FLAGS_scoring_delay_ms > 0) {
         LOG(INFO) << "Simulating scoring delay: " << FLAGS_scoring_delay_ms << " ms";
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_scoring_delay_ms));
     }
-    
+
     int64_t server_send_us = butil::gettimeofday_us();
     int64_t server_process_us = server_send_us - server_receive_us;
-    
+
     LOG(INFO) << "Rank processing completed:"
               << " sku_count=" << sku_ids.size()
               << ", response_skus_id_count=" << response->skus_id_size()
               << ", response_skus_score_count=" << response->skus_score_size();
-    
+
     if (FLAGS_enable_timing_stats) {
         LOG(INFO) << "Server timing breakdown:"
                   << " kv_read_cost=" << kv_read_cost_us / 1000.0 << " ms"
@@ -210,11 +195,13 @@ void RankSubServiceImpl::process_rank_request(const RankSubRequest* request,
                   << " simulated_delay=" << FLAGS_scoring_delay_ms << " ms"
                   << " server_process_total=" << server_process_us / 1000.0 << " ms";
     }
-    
+
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;
-    
+
     LOG(INFO) << "Rank completed, cost=" << cost_us / 1000.0 << " ms";
+
+    return common::error::Status::OK();
 }
 
 } // namespace rank

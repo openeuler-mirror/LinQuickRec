@@ -10,7 +10,7 @@ namespace common {
 namespace error {
 
 // 成功状态
-constexpr Status OkStatus = Status::OK();
+inline const Status OkStatus = Status::OK();
 
 // 常用错误创建函数
 inline Status InvalidArgumentError(const std::string& message = "") {

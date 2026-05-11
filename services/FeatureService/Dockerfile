@@ -1,15 +1,21 @@
 # Feature 服务 Dockerfile
 FROM lingquickrec/base:latest
 
+# === 可配置的路径参数 ===
+ARG PROTO_FILE=proto/feature.proto
+ARG CMAKELISTS_FILE=services/feature/CMakeLists.txt
+ARG CLIENT_DIR=services/feature/client
+ARG SERVER_DIR=services/feature/server
+
 WORKDIR /app
 
 # 复制 proto 文件
-COPY proto/feature.proto /app/proto/
+COPY ${PROTO_FILE} /app/proto/
 
 # 复制源代码
-COPY services/feature/CMakeLists.txt /app/
-COPY services/feature/client /app/client/
-COPY services/feature/server /app/server/
+COPY ${CMAKELISTS_FILE} /app/
+COPY ${CLIENT_DIR} /app/client/
+COPY ${SERVER_DIR} /app/server/
 
 # 构建
 RUN mkdir -p build && \

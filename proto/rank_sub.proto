@@ -9,12 +9,14 @@ option cc_generic_services = true;
 message RankSubRequest {
     string user_feat_key = 1;
     string skus_sub = 2; 
-    string payload = 3; 
+    string payload = 3;
+    string trace_id = 4;
 }
 
 // 精排子图服务 - 响应
 message RankSubResponse {
-    repeated uint64 skus_score = 1;
+    repeated uint32 skus_id = 1;
+    repeated uint64 skus_score = 2;
 }
 
 // 精排子图服务定义

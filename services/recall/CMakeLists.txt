@@ -3,6 +3,9 @@ project(vllm-brpc-gateway LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# 添加 common 库
+add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+
 # ============================================================================
 # BRPC 路径设置（根据您的实际安装路径调整）
 # ============================================================================
@@ -54,6 +57,7 @@ target_link_libraries(recall_proto PUBLIC ${Protobuf_LIBRARIES})
 # Abseil 库
 # ============================================================================
 set(ABSL_LIBS
+    absl_log_internal_nullguard
     absl_log_internal_check_op
     absl_log_internal_message
     absl_raw_logging_internal
@@ -61,6 +65,10 @@ set(ABSL_LIBS
     absl_base
     absl_time
     absl_synchronization
+    absl_status
+    absl_hash
+    absl_spinlock_wait
+    absl_throw_delegate
 )
 
 # ============================================================================
@@ -77,19 +85,22 @@ include_directories(
 # ============================================================================
 # 编译 Server（使用 RapidJSON 和线程池优化）
 # ============================================================================
-add_executable(recall_server 
+add_executable(recall_server
     server/src/recall_server.cpp
+    server/src/vllm_client.cpp
     server/src/main.cpp
 )
 target_include_directories(recall_server PRIVATE 
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
 )
 target_link_libraries(recall_server PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
@@ -108,11 +119,13 @@ add_executable(recall_test_client
 target_include_directories(recall_test_client PRIVATE 
     ${BRPC_INCLUDE_DIR} 
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
 )
 target_link_libraries(recall_test_client PRIVATE
     recall_proto
     common_lib
     ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     Threads::Threads
@@ -139,6 +152,40 @@ message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - recall_server (with RapidJSON + Global ThreadPool)")
 message(STATUS "  - recall_test_client")
+message(STATUS "  - recall_test (unit tests)")
 message(STATUS "RapidJSON include dirs: ${RAPIDJSON_INCLUDE_DIRS}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
+
+# ============================================================================
+# 编译单元测试
+# ============================================================================
+add_executable(recall_test
+    tests/test_recall.cpp
+    server/src/recall_server.cpp
+    server/src/vllm_client.cpp
+)
+target_include_directories(recall_test PRIVATE
+    ${BRPC_INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
+    ${RAPIDJSON_INCLUDE_DIRS}
+)
+target_link_libraries(recall_test PRIVATE
+    recall_proto
+    common_lib
+    ${BRPC_LIBRARIES}
+    leveldb
+    ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
+    Threads::Threads
+)
+
+set_target_properties(recall_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(recall_test PRIVATE -Wall -Wextra -O2)
+endif()
