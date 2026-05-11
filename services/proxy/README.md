@@ -179,7 +179,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 ```
 
-产物在 `build/bin/` 下：
+产物在 `build/` 下：
 
 | 二进制 | 说明 |
 |--------|------|
@@ -215,7 +215,7 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 ### 直接启动
 
 ```bash
-./build/bin/proxy_server \
+./build/proxy_server \
     --server_port=8080 \
     --discovery_addr="discovery-server:8100" \
     --enable_timing_stats=true
@@ -238,9 +238,9 @@ docker run -p 8080:8080 \
     linquickrec/proxy:latest \
     --discovery_addr="discovery-server:8100"
 
-# 集成测试（镜像已内置 mock 服务时使用）
+# 集成测试
 docker run --rm linquickrec/proxy:latest \
-    ./build/bin/proxy_integration_test
+    /app/build/proxy_integration_test
 ```
 
 ## 测试方法
@@ -251,7 +251,7 @@ docker run --rm linquickrec/proxy:latest \
 
 ```bash
 cd build && cmake .. && make proxy_integration_test
-./bin/proxy_integration_test
+./build/proxy_integration_test
 ```
 
 覆盖 5 个场景：
@@ -269,7 +269,7 @@ cd build && cmake .. && make proxy_integration_test
 需要 proxy 运行中且 discovery 上已注册下游服务：
 
 ```bash
-./build/bin/proxy_test_client \
+./build/proxy_test_client \
     --server="127.0.0.1:8080" \
     --user_id=12345
 ```
