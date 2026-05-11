@@ -264,6 +264,59 @@ cd build && cmake .. && make proxy_integration_test
 | Precalc 服务失败 | 返回 error_code = 0x01030003 |
 | Rank 服务失败 | 返回 error_code = 0x01030004 |
 
+#### 原理
+
+**单进程、零外部依赖。** 测试在一个进程内启动 6 个 brpc Server，模拟完整的 discovery + 下游服务链路，然后发送真实 RPC 请求并用 `assert()` 断言结果。
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    单进程 (test binary)                       │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │  MockDiscoveryService  (:18100)                     │     │
+│  │  Register("feature_service", 127.0.0.1:18001)       │     │
+│  │  Register("recall_service",  127.0.0.1:18002)       │     │
+│  │  Register("precalc_service", 127.0.0.1:18003)       │     │
+│  │  Register("rank_service",    127.0.0.1:18004)       │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
+│  │ MockFeat │ │MockRecall│ │MockPrecal│ │MockRank  │       │
+│  │(:18001)  │ │(:18002)  │ │(:18003)  │ │(:18004)  │       │
+│  └─────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘       │
+│        │           │           │           │              │
+│        └─────┬─────┴─────┬─────┘           │              │
+│              │           │                 │              │
+│        ┌─────▼───────────▼─────────────────▼──────────┐   │
+│        │     ProxyServiceImpl (:18000)                │   │
+│        │     ServiceDiscovery -> discover 4 instances │   │
+│        │     call_feature_service -> MockFeat         │   │
+│        │     call_recall_service  -> MockRecall  ∥    │   │
+│        │     call_precalc_service -> MockPrecalc ∥    │   │
+│        │     call_rank_service    -> MockRank         │   │
+│        └─────────────────┬────────────────────────────┘   │
+│                          │                                 │
+│        ┌─────────────────▼────────────────────────────┐   │
+│        │  stub.Recommend()  ← assert 5 项             │   │
+│        │  assert(rsp.error_code == 0)                 │   │
+│        │  assert(rsp.candidates_size == 3)            │   │
+│        │  assert(rsp.candidates[0] == 1003)           │   │
+│        │  ...                                         │   │
+│        │  std::cout << "[PASS]"                       │   │
+│        └──────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+每个场景内部：
+
+1. 创建 Mock 服务对象：成功 Mock 返回固定数据，失败 Mock 调用 `cntl->SetFailed()`
+2. 将 Mock 注册到 `brpc::Server` 并启动（不同端口）
+3. 创建 `proxy::ProxyServiceImpl`（真实 Proxy，通过 `ServiceDiscovery` 连接 MockDiscovery）
+4. 通过 `brpc::Channel` 发送 `Recommend` 请求
+5. 连续调用 `assert()` 逐一验证：`cntl.Failed()`、`error_code`、`candidates` 数量与顺序
+6. 任意 `assert` 失败 → 程序立即 abort，不会输出 `[PASS]`
+7. 停止所有 Server，清理
+
 ### 手动测试
 
 需要 proxy 运行中且 discovery 上已注册下游服务：
