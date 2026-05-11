@@ -1,4 +1,4 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
 RUN pip install openyuanrong_datasystem*.whl
 

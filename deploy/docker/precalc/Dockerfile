@@ -1,4 +1,4 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
 # === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
