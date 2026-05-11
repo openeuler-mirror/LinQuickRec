@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+if [ "$1" = "test" ]; then
+    shift
+    exec /app/build/bin/proxy_integration_test "$@"
+fi
+
 SERVICE_TYPE="${SERVICE_TYPE:-proxy}"
 SERVICE_PORT="${SERVICE_PORT:-8080}"
 
