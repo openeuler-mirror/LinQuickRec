@@ -8,7 +8,7 @@ DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 /app/build/proxy_server --server_port="$SERVICE_PORT" "$@" &
 PID_PROXY=$!
 
-/app/build/discovery/discovery_client \
+/app/build/discovery/bin/discovery_client \
     --service_type="$SERVICE_TYPE" \
     --service_port="$SERVICE_PORT" \
     --discovery_addr="$DISCOVERY_ADDR"
