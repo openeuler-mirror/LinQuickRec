@@ -140,11 +140,11 @@ public:
     }
 };
 
-class MockRankService : public rank::RankService {
+class MockRankService : public rank::RankMasterService {
 public:
     void Rank(google::protobuf::RpcController* cntl,
-              const rank::RankRequest* request,
-              rank::RankResponse* response,
+              const rank::RankMasterRequest* request,
+              rank::RankMasterResponse* response,
               google::protobuf::Closure* done) override {
         brpc::ClosureGuard guard(done);
         response->add_candidates(1003);
@@ -197,11 +197,11 @@ public:
     }
 };
 
-class MockRankServiceFailing : public rank::RankService {
+class MockRankServiceFailing : public rank::RankMasterService {
 public:
     void Rank(google::protobuf::RpcController* cntl,
-              const rank::RankRequest* request,
-              rank::RankResponse* response,
+              const rank::RankMasterRequest* request,
+              rank::RankMasterResponse* response,
               google::protobuf::Closure* done) override {
         brpc::ClosureGuard guard(done);
         cntl->SetFailed("mock rank failure");
@@ -277,7 +277,7 @@ struct TestScenario {
     feature::FeatureService* feature;
     recall::RecallService*   recall;
     precalc::PrecalcService* precalc;
-    rank::RankService*       rank;
+    rank::RankMasterService* rank;
     int                      expect_candidates;
     int                      expect_error_code;
 };
@@ -294,7 +294,7 @@ static void run_scenario(const TestScenario& s) {
     auto* f = s.feature ? s.feature : static_cast<feature::FeatureService*>(&pass_feat);
     auto* r = s.recall   ? s.recall   : static_cast<recall::RecallService*>(&pass_recall);
     auto* p = s.precalc  ? s.precalc  : static_cast<precalc::PrecalcService*>(&pass_precalc);
-    auto* k = s.rank     ? s.rank     : static_cast<rank::RankService*>(&pass_rank);
+    auto* k = s.rank     ? s.rank     : static_cast<rank::RankMasterService*>(&pass_rank);
 
     ServerSet svrs;
     assert(start_server(&svrs.discovery_svr, DISCOVERY_PORT, &mock_discovery));
@@ -361,7 +361,7 @@ static void run_scenario(const TestScenario& s) {
 // Main
 // ============================================================================
 
-int main(int argc, char* argv[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
     common::logger::AddConsoleSink();
     std::cout << "=== Proxy Integration Test ===" << std::endl;
 
@@ -377,48 +377,33 @@ int main(int argc, char* argv[]) {
     FLAGS_server_port                = PROXY_PORT;
 
     // Happy path
-    run_scenario({
-        "Happy path: all services succeed",
-        nullptr, nullptr, nullptr, nullptr,
-        3,   // expect 3 candidates
-        0    // expect no error
-    });
+    TestScenario happy{"Happy path: all services succeed",
+        nullptr, nullptr, nullptr, nullptr, 3, 0};
+    run_scenario(happy);
 
     // Feature fails
     MockFeatureServiceFailing fail_feat;
-    run_scenario({
-        "Feature service fails",
-        &fail_feat, nullptr, nullptr, nullptr,
-        0,
-        0x01030001
-    });
+    TestScenario t1{"Feature service fails",
+        &fail_feat, nullptr, nullptr, nullptr, 0, 0x01030001};
+    run_scenario(t1);
 
     // Recall fails
     MockRecallServiceFailing fail_recall;
-    run_scenario({
-        "Recall service fails",
-        nullptr, &fail_recall, nullptr, nullptr,
-        0,
-        0x01030002
-    });
+    TestScenario t2{"Recall service fails",
+        nullptr, &fail_recall, nullptr, nullptr, 0, 0x01030002};
+    run_scenario(t2);
 
     // Precalc fails
     MockPrecalcServiceFailing fail_precalc;
-    run_scenario({
-        "Precalc service fails",
-        nullptr, nullptr, &fail_precalc, nullptr,
-        0,
-        0x01030003
-    });
+    TestScenario t3{"Precalc service fails",
+        nullptr, nullptr, &fail_precalc, nullptr, 0, 0x01030003};
+    run_scenario(t3);
 
     // Rank fails
     MockRankServiceFailing fail_rank;
-    run_scenario({
-        "Rank service fails",
-        nullptr, nullptr, nullptr, &fail_rank,
-        0,
-        0x01030004
-    });
+    TestScenario t4{"Rank service fails",
+        nullptr, nullptr, nullptr, &fail_rank, 0, 0x01030004};
+    run_scenario(t4);
 
     std::cout << "\n=== All Proxy Integration Tests Passed ===" << std::endl;
     return 0;
