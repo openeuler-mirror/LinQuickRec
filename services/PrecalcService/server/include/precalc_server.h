@@ -4,18 +4,16 @@
 #include "precalc.pb.h"
 #include <brpc/server.h>
 #include <brpc/controller.h>
-#include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
-
-#include <datasystem/kv_client.h>
 
 #include <string>
 #include <memory>
 
 #include "common/global_thread_pool.h"
-
-using namespace datasystem;
+#define COMMON_LOGGER_COMPAT_MODE
+#include "common/logger.h"
+#include "common/error.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
@@ -28,21 +26,6 @@ DECLARE_bool(enable_timing_stats);
 DECLARE_int32(payload_size_kb);
 
 namespace precalc {
-
-/**
- * @brief 生成当前时间的微秒级时间戳字符串
- * 
- * @return std::string 微秒级时间戳字符串
- */
-std::string generate_timestamp();
-
-/**
- * @brief 生成指定大小的前置计算结果（随机 tensor 数据）
- * 
- * @param size_mb 数据大小（MB）
- * @return std::string 生成的前置计算结果
- */
-std::string generate_precalc_result(double size_mb);
 
 /**
  * @brief 前置计算服务实现类
@@ -70,12 +53,19 @@ public:
 private:
     /**
      * @brief 实际处理前置计算请求的内部方法
-     * 
+     *
      * @param request 请求对象
      * @param response 响应对象
+     * @return common::error::Status 处理状态
      */
-    void process_precalc_request(const PrecalcRequest* request,
-                                  PrecalcResponse* response);
+    common::error::Status process_precalc_request(const PrecalcRequest* request,
+                                                  PrecalcResponse* response);
+
+    common::error::Status validate_and_extract_key(const PrecalcRequest* request,
+                                                    std::string& user_feat_key);
+
+    common::error::Status write_to_kvworker(const std::string& user_feat_key,
+                                             const std::string& precalc_result);
 };
 
 } // namespace precalc

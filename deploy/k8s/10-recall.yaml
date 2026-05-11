@@ -1,0 +1,72 @@
+# Recall 服务（含 vLLM，需要 GPU 节点）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recall-service
+  namespace: lingquickrec
+  labels:
+    app: recall-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recall-service
+  template:
+    metadata:
+      labels:
+        app: recall-service
+    spec:
+      containers:
+      - name: recall
+        image: lingquickrec/recall:latest
+        ports:
+        - containerPort: 8001
+          name: rpc
+        - containerPort: 8000
+          name: vllm
+        envFrom:
+        - configMapRef:
+            name: lingquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8001"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+            nvidia.com/gpu: 1
+          limits:
+            nvidia.com/gpu: 1
+        readinessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 180
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/lingquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recall-service
+  namespace: lingquickrec
+spec:
+  selector:
+    app: recall-service
+  ports:
+  - name: rpc
+    port: 8001
+    targetPort: 8001
+  - name: vllm
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
