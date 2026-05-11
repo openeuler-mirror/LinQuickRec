@@ -35,4 +35,5 @@ RUN mkdir -p build && \
 
 EXPOSE 8080
 
-CMD ["./build/proxy_server", "--server_port=8080", "--logtostderr"]
+ENTRYPOINT ["./build/proxy_server"]
+CMD ["--server_port=8080", "--logtostderr"]
