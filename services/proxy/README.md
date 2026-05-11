@@ -245,7 +245,9 @@ docker run -p 8080:8080 \
 
 集成测试为单进程测试，不依赖任何其他服务容器。
 
-**容器启动：**
+**方式一：容器启动**
+
+需要提前构建完成 `linquickrec/proxy:latest` 容器镜像。
 
 ```bash
 # 集成测试
@@ -253,10 +255,12 @@ docker run --rm linquickrec/proxy:latest \
     /app/build/bin/proxy_integration_test
 ```
 
-**命令运行：**
+**方式二：命令运行：**
 
 ```bash
-cd build && cmake .. && make proxy_integration_test -j$(nproc)
+mkdir build && cd build
+cmake ..
+make proxy_integration_test -j$(nproc)
 ./bin/proxy_integration_test
 ```
 
