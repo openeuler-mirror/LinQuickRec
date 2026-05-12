@@ -3,27 +3,42 @@
 ## 架构总览
 
 ```
-                          ┌──────────────────────────────────────────────────┐
-                          │                 lingquickrec-net                 │
-                          │              (Docker bridge 网络)                │
-                          │                                                  │
- Client ──── :8080 ──► ┌──────────┐                                         │
-                        │  Proxy   │───► FeatureService  :8003              │
-                        │  :8080   │───► RecallService   :8001 (+vLLM :8000)│
-                        │          │───► PrecalcService  :8004              │
-                        │          │───► RankMaster      :8005              │
-                        └──────────┘         │                              │
-                                             │ fan-out                      │
-                                    ┌────────┼────────┐                     │
-                                    ▼        ▼        ▼                     │
-                               RankSub₁  RankSub₂  RankSub₃  :8006 × N     │
-                          │                                              │
-                          │  DiscoveryServer :8100  (服务注册/发现)         │
-                          └──────────────────────────────────────────────────┘
+                           ┌───────────────────────────────────────────────────┐
+                           │                 lingquickrec-net                 │
+                           │                 (Docker bridge)                  │
+                           │                                                   │
+ Client :8080 ──► ┌──────────────┐                                             │
+                  │    Proxy     │──── Discovery (8100)                        │
+                  │   (gateway)  │                                             │
+                  └──────┬───────┘                                             │
+                         │ discover downstream instances                       │
+                         ▼                                                     │
+          ┌──────────────┼──────────────┐                                      │
+          ▼              ▼              ▼                                      │
+   Feature (x1)    Recall (xN)    Precalc (xN)                                │
+   :8003             :8001           :8004                                     │
+   [pending]         + vLLM                                                     │
+                     :8000          KVWorker                                   │
+          │              │            :31502                                   │
+          │              ▼                                                     │
+          │         KVWorker                                                    │
+          │         :31501                                                      │
+          └──────────────┬──────────────┘                                      │
+                         ▼                                                     │
+                  RankMaster (xN)                                              │
+                  :8005                                                        │
+                         │                                                     │
+                         ▼                                                     │
+                  RankSub (xN)  ◄──── KVWorker :31502                          │
+                  :8006                                                        │
+                           │                                                   │
+                           │                                                   │
+                  Discovery Server :8100                                       │
+                           └───────────────────────────────────────────────────┘
 
-外部依赖（容器外）：
-  - KVWorker   141.61.84.245:31501/31502
-  - ETCD       141.61.84.245:2379
+External dependencies (outside container):
+  - KVWorker    141.61.84.245:31501 / 31502
+  - ETCD        141.61.84.245:2379
 ```
 
 ## 目录结构
