@@ -49,7 +49,7 @@ cd services/rank_master
 cd services/rank_master
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make rank_master_server rank_master_test_client -j$(nproc)
+make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 ```
 
 ### 编译产物
@@ -58,6 +58,7 @@ make rank_master_server rank_master_test_client -j$(nproc)
 |--------|------|
 | `rank_master_server` | 精排主图服务主程序 |
 | `rank_master_test_client` | 测试客户端 |
+| `rank_master_test` | 单元测试 |
 
 ## 启动方式
 

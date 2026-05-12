@@ -49,7 +49,7 @@ cd services/precalc
 cd services/precalc
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make precalc_server precalc_test_client -j$(nproc)
+make precalc_server precalc_test_client precalc_test -j$(nproc)
 ```
 
 ### 编译产物
@@ -58,6 +58,7 @@ make precalc_server precalc_test_client -j$(nproc)
 |--------|------|
 | `precalc_server` | 前置计算服务主程序 |
 | `precalc_test_client` | 测试客户端 |
+| `precalc_test` | 单元测试 |
 
 ## 启动方式
 
