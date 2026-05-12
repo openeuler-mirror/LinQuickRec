@@ -96,8 +96,19 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 ## 容器搭建
 
+### 构建镜像
+
 ```bash
-docker run --name precalc-service precalc-image
+docker build -t linquickrec/precalc:latest \
+    -f deploy/docker/precalc/Dockerfile .
+```
+
+### 启动容器
+
+```bash
+docker run -d --name precalc-service \
+    -p 8004:8004 \
+    linquickrec/precalc:latest
 ```
 
 环境变量配置：

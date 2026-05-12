@@ -93,17 +93,32 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 
 ## 容器搭建
 
+### 构建镜像
+
+```bash
+docker build -t linquickrec/rank-sub:latest \
+    -f deploy/docker/rank-sub/Dockerfile .
+```
+
+### 启动容器
+
+```bash
+docker run -d --name rank-sub \
+    -p 8006:8006 \
+    linquickrec/rank-sub:latest
+```
+
 ### 启动多个实例
 
 ```bash
 # 启动 10 个 RankSub 实例
-docker-compose up -d --scale rank-sub-service=10
+docker compose up -d --scale rank-sub-service=10
 
 # 扩容到 20 个
-docker-compose up -d --scale rank-sub-service=20
+docker compose up -d --scale rank-sub-service=20
 
 # 缩容到 5 个
-docker-compose up -d --scale rank-sub-service=5
+docker compose up -d --scale rank-sub-service=5
 ```
 
 ### 环境变量
