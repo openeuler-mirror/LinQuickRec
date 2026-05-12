@@ -1,383 +1,383 @@
-# Docker 部署指南
+﻿# Docker 閮ㄧ讲鎸囧崡
 
-## 架构总览
+## 鏋舵瀯鎬昏
 
 ```
-                          ┌────────────────────────────────────────────────────┐
-                          │                 lingquickrec-net                   │
-                          │                 (Docker bridge)                    │
-                          │                                                    │
- Client :8080 ──► ┌────────────┐                                               │
-                  │   Proxy    │──── Discovery (8100)                          │
-                  │  (gateway) │                                               │
-                  └─────┬──────┘                                               │
-                        │ discover downstream instances                        │
-                        ▼                                                      │
-         ┌──────────────┼──────────────┐                                       │
-         ▼              ▼              ▼                                       │
-  Feature (x1)    Recall (xN)    Precalc (xN)                                  │
-  :8001             :8002           :8003                                      │
-  [pending]         + vLLM                                                     │
-                    :8000          KVWorker                                    │
-         │              │            :31502                                    │
-         │              ▼                                                      │
-         │         KVWorker                                                    │
-         │         :31501                                                      │
-         └──────────────┬──────────────┘                                       │
-                        ▼                                                      │
-                 RankMaster (xN)                                               │
-                 :8004                                                         │
-                        │                                                      │
-                        ▼                                                      │
-                 RankSub (xN)  ◄──── KVWorker :31502                           │
-                 :8005                                                         │
-                          │                                                    │
-                          │                                                    │
-                  Discovery Server :8100                                       │
-                          └────────────────────────────────────────────────────┘
+                          鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
+                          鈹?                linquickrec-net                   鈹?
+                          鈹?                (Docker bridge)                    鈹?
+                          鈹?                                                   鈹?
+ Client :8080 鈹€鈹€鈻?鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?                                              鈹?
+                  鈹?  Proxy    鈹傗攢鈹€鈹€鈹€ Discovery (8100)                          鈹?
+                  鈹? (gateway) 鈹?                                              鈹?
+                  鈹斺攢鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹?                                              鈹?
+                        鈹?discover downstream instances                        鈹?
+                        鈻?                                                     鈹?
+         鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?                                      鈹?
+         鈻?             鈻?             鈻?                                      鈹?
+  Feature (x1)    Recall (xN)    Precalc (xN)                                  鈹?
+  :8001             :8002           :8003                                      鈹?
+  [pending]         + vLLM                                                     鈹?
+                    :8000          KVWorker                                    鈹?
+         鈹?             鈹?           :31502                                    鈹?
+         鈹?             鈻?                                                     鈹?
+         鈹?        KVWorker                                                    鈹?
+         鈹?        :31501                                                      鈹?
+         鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?                                      鈹?
+                        鈻?                                                     鈹?
+                 RankMaster (xN)                                               鈹?
+                 :8004                                                         鈹?
+                        鈹?                                                     鈹?
+                        鈻?                                                     鈹?
+                 RankSub (xN)  鈼勨攢鈹€鈹€鈹€ KVWorker :31502                           鈹?
+                 :8005                                                         鈹?
+                          鈹?                                                   鈹?
+                          鈹?                                                   鈹?
+                  Discovery Server :8100                                       鈹?
+                          鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
 ```
 
-## 目录结构
+## 鐩綍缁撴瀯
 
 ```
 deploy/docker/
-├── docker-compose.yml      # 主编排文件（7 个服务）
-├── .env                    # 环境变量配置（对应 K8s ConfigMap）
-├── recall/
-│   ├── Dockerfile          # Recall 服务镜像（含 vLLM + Qwen3-0.6B）
-│   └── entrypoint.sh       # 启动 vLLM → 等待就绪 → 启动 Recall 服务
-├── precalc/
-│   ├── Dockerfile          # Precalc 服务镜像
-│   └── entrypoint.sh       # 启动 Precalc 服务
-├── rank-master/
-│   ├── Dockerfile          # RankMaster 服务镜像
-│   └── entrypoint.sh       # 等待 RankSub 就绪 → 启动 RankMaster 服务
-├── rank-sub/
-│   ├── Dockerfile          # RankSub 服务镜像
-│   └── entrypoint.sh       # 启动 RankSub 服务
-├── feature/
-│   ├── Dockerfile          # Feature 服务镜像（mock）
-│   └── entrypoint.sh       # 启动 Feature 服务
-└── proxy/
-    ├── Dockerfile          # Proxy 网关镜像
-    └── entrypoint.sh       # 启动 Gateway 代理服务
+鈹溾攢鈹€ docker-compose.yml      # 涓荤紪鎺掓枃浠讹紙7 涓湇鍔★級
+鈹溾攢鈹€ .env                    # 鐜鍙橀噺閰嶇疆锛堝搴?K8s ConfigMap锛?
+鈹溾攢鈹€ recall/
+鈹?  鈹溾攢鈹€ Dockerfile          # Recall 鏈嶅姟闀滃儚锛堝惈 vLLM + Qwen3-0.6B锛?
+鈹?  鈹斺攢鈹€ entrypoint.sh       # 鍚姩 vLLM 鈫?绛夊緟灏辩华 鈫?鍚姩 Recall 鏈嶅姟
+鈹溾攢鈹€ precalc/
+鈹?  鈹溾攢鈹€ Dockerfile          # Precalc 鏈嶅姟闀滃儚
+鈹?  鈹斺攢鈹€ entrypoint.sh       # 鍚姩 Precalc 鏈嶅姟
+鈹溾攢鈹€ rank-master/
+鈹?  鈹溾攢鈹€ Dockerfile          # RankMaster 鏈嶅姟闀滃儚
+鈹?  鈹斺攢鈹€ entrypoint.sh       # 绛夊緟 RankSub 灏辩华 鈫?鍚姩 RankMaster 鏈嶅姟
+鈹溾攢鈹€ rank-sub/
+鈹?  鈹溾攢鈹€ Dockerfile          # RankSub 鏈嶅姟闀滃儚
+鈹?  鈹斺攢鈹€ entrypoint.sh       # 鍚姩 RankSub 鏈嶅姟
+鈹溾攢鈹€ feature/
+鈹?  鈹溾攢鈹€ Dockerfile          # Feature 鏈嶅姟闀滃儚锛坢ock锛?
+鈹?  鈹斺攢鈹€ entrypoint.sh       # 鍚姩 Feature 鏈嶅姟
+鈹斺攢鈹€ proxy/
+    鈹溾攢鈹€ Dockerfile          # Proxy 缃戝叧闀滃儚
+    鈹斺攢鈹€ entrypoint.sh       # 鍚姩 Gateway 浠ｇ悊鏈嶅姟
 ```
 
-## 前置条件
+## 鍓嶇疆鏉′欢
 
-| 依赖 | 说明 |
+| 渚濊禆 | 璇存槑 |
 |------|------|
-| Docker + Compose v2 | `docker compose` 命令可用 |
-| `linquickrec/base:latest` | 基础镜像，需提前构建或导入（包含 brpc、protobuf、gRPC、abseil 等依赖） |
-| NVIDIA GPU + nvidia-container-toolkit | Recall 服务运行 vLLM 需要 GPU |
+| Docker + Compose v2 | `docker compose` 鍛戒护鍙敤 |
+| `linquickrec/base:latest` | 鍩虹闀滃儚锛岄渶鎻愬墠鏋勫缓鎴栧鍏ワ紙鍖呭惈 brpc銆乸rotobuf銆乬RPC銆乤bseil 绛変緷璧栵級 |
+| NVIDIA GPU + nvidia-container-toolkit | Recall 鏈嶅姟杩愯 vLLM 闇€瑕?GPU |
 
-## 快速开始
+## 蹇€熷紑濮?
 
-### 1. 一键启动
+### 1. 涓€閿惎鍔?
 
-所有服务均在容器内编译，无需宿主机安装 brpc 或预编译任何二进制：
+鎵€鏈夋湇鍔″潎鍦ㄥ鍣ㄥ唴缂栬瘧锛屾棤闇€瀹夸富鏈哄畨瑁?brpc 鎴栭缂栬瘧浠讳綍浜岃繘鍒讹細
 
 ```bash
 cd deploy/docker
 docker compose up --build -d
 ```
 
-### 2. 验证
+### 2. 楠岃瘉
 
 ```bash
-# 查看所有容器状态
+# 鏌ョ湅鎵€鏈夊鍣ㄧ姸鎬?
 docker compose ps
 
-# 检查 proxy 网关是否就绪
-curl http://localhost:8080  # 或根据实际接口测试
+# 妫€鏌?proxy 缃戝叧鏄惁灏辩华
+curl http://localhost:8080  # 鎴栨牴鎹疄闄呮帴鍙ｆ祴璇?
 
-# 查看 discovery 注册的服务
+# 鏌ョ湅 discovery 娉ㄥ唽鐨勬湇鍔?
 docker compose logs discovery-server
 ```
 
-## docker-compose 服务清单
+## docker-compose 鏈嶅姟娓呭崟
 
-| 服务 | 容器名 | 端口 | 镜像 | 说明 |
+| 鏈嶅姟 | 瀹瑰櫒鍚?| 绔彛 | 闀滃儚 | 璇存槑 |
 |------|--------|------|------|------|
-| discovery-server | discovery-server | 8100 | lingquickrec-discovery | 服务注册与发现中心 |
-| feature-service | feature-service | 8001 | lingquickrec-feature | 特征服务（mock） |
-| recall-service | recall-service | 8002 | lingquickrec-recall | 召回服务（含 vLLM，需 GPU） |
-| precalc-service | precalc-service | 8003 | lingquickrec-precalc | 预计算服务 |
-| rank-sub-service | — (动态) | 8005 | lingquickrec-rank-sub | 排序子服务，默认 3 副本 |
-| rank-master-service | rank-master-service | 8004 | lingquickrec-rank-master | 排序主服务 |
-| proxy-service | proxy-service | 8080 | lingquickrec-proxy | 系统入口网关 |
+| discovery-server | discovery-server | 8100 | linquickrec-discovery | 鏈嶅姟娉ㄥ唽涓庡彂鐜颁腑蹇?|
+| feature-service | feature-service | 8001 | linquickrec-feature | 鐗瑰緛鏈嶅姟锛坢ock锛?|
+| recall-service | recall-service | 8002 | linquickrec-recall | 鍙洖鏈嶅姟锛堝惈 vLLM锛岄渶 GPU锛?|
+| precalc-service | precalc-service | 8003 | linquickrec-precalc | 棰勮绠楁湇鍔?|
+| rank-sub-service | 鈥?(鍔ㄦ€? | 8005 | linquickrec-rank-sub | 鎺掑簭瀛愭湇鍔★紝榛樿 3 鍓湰 |
+| rank-master-service | rank-master-service | 8004 | linquickrec-rank-master | 鎺掑簭涓绘湇鍔?|
+| proxy-service | proxy-service | 8080 | linquickrec-proxy | 绯荤粺鍏ュ彛缃戝叧 |
 
-### 启动顺序
+### 鍚姩椤哄簭
 
 ```
-discovery-server (healthcheck 通过)
-        │
-        ├── feature-service    ─┐
-        ├── recall-service     ─┤ 并行启动
-        ├── precalc-service    ─┤
-        └── rank-sub-service   ─┘
-                │
-        rank-master-service (等待 rank-sub TCP 就绪)
-                │
-        proxy-service (依赖所有上游服务)
+discovery-server (healthcheck 閫氳繃)
+        鈹?
+        鈹溾攢鈹€ feature-service    鈹€鈹?
+        鈹溾攢鈹€ recall-service     鈹€鈹?骞惰鍚姩
+        鈹溾攢鈹€ precalc-service    鈹€鈹?
+        鈹斺攢鈹€ rank-sub-service   鈹€鈹?
+                鈹?
+        rank-master-service (绛夊緟 rank-sub TCP 灏辩华)
+                鈹?
+        proxy-service (渚濊禆鎵€鏈変笂娓告湇鍔?
 ```
 
-## 配置管理
+## 閰嶇疆绠＄悊
 
-所有配置项集中在 `.env` 文件中，修改后重新 `docker compose up -d` 即可生效。
+鎵€鏈夐厤缃」闆嗕腑鍦?`.env` 鏂囦欢涓紝淇敼鍚庨噸鏂?`docker compose up -d` 鍗冲彲鐢熸晥銆?
 
-### 关键配置项
+### 鍏抽敭閰嶇疆椤?
 
 ```bash
-# ---- 外部依赖 ----
-KVWORKER_HOST=141.61.84.245     # KVWorker 地址
-KVWORKER_PORT=31502             # KVWorker 端口
-ETCD_ADDRESS=141.61.84.245:2379 # ETCD 地址
+# ---- 澶栭儴渚濊禆 ----
+KVWORKER_HOST=141.61.84.245     # KVWorker 鍦板潃
+KVWORKER_PORT=31502             # KVWorker 绔彛
+ETCD_ADDRESS=141.61.84.245:2379 # ETCD 鍦板潃
 
-# ---- vLLM 模型 ----
-MODEL_NAME=/app/models/Qwen3-0.6B/  # 容器内模型路径
-VLLM_TIMEOUT_MS=100000              # vLLM 请求超时
+# ---- vLLM 妯″瀷 ----
+MODEL_NAME=/app/models/Qwen3-0.6B/  # 瀹瑰櫒鍐呮ā鍨嬭矾寰?
+VLLM_TIMEOUT_MS=100000              # vLLM 璇锋眰瓒呮椂
 
-# ---- Rank 扩展 ----
-RANK_SUB_REPLICAS=3                  # rank-sub 副本数
-SUB_WORKER_COUNT=3                   # rank-master 连接的 worker 数（需与副本数一致）
-SUB_WORKER_ADDRESSES=rank-sub-service:8005  # Docker 内部 DNS 自动解析所有副本
+# ---- Rank 鎵╁睍 ----
+RANK_SUB_REPLICAS=3                  # rank-sub 鍓湰鏁?
+SUB_WORKER_COUNT=3                   # rank-master 杩炴帴鐨?worker 鏁帮紙闇€涓庡壇鏈暟涓€鑷达級
+SUB_WORKER_ADDRESSES=rank-sub-service:8005  # Docker 鍐呴儴 DNS 鑷姩瑙ｆ瀽鎵€鏈夊壇鏈?
 
-# ---- 网关 ----
-PROXY_PORT=8080                      # 对外暴露的代理端口
+# ---- 缃戝叧 ----
+PROXY_PORT=8080                      # 瀵瑰鏆撮湶鐨勪唬鐞嗙鍙?
 ```
 
-### 扩展 RankSub 副本
+### 鎵╁睍 RankSub 鍓湰
 
-以扩展到 5 个为例，修改 `.env`：
+浠ユ墿灞曞埌 5 涓负渚嬶紝淇敼 `.env`锛?
 
 ```bash
 RANK_SUB_REPLICAS=5
 SUB_WORKER_COUNT=5
 ```
 
-然后重新启动：
+鐒跺悗閲嶆柊鍚姩锛?
 
 ```bash
 docker compose up -d
 ```
 
-> `rank-sub-service` 的 Docker 内部 DNS 会自动解析到所有副本 IP，`SUB_WORKER_ADDRESSES` 无需改为逗号分隔列表。
+> `rank-sub-service` 鐨?Docker 鍐呴儴 DNS 浼氳嚜鍔ㄨВ鏋愬埌鎵€鏈夊壇鏈?IP锛宍SUB_WORKER_ADDRESSES` 鏃犻渶鏀逛负閫楀彿鍒嗛殧鍒楄〃銆?
 
-## 常用操作
+## 甯哥敤鎿嶄綔
 
 ```bash
-# ---- 启停 ----
-docker compose up --build -d          # 构建并启动全部
-docker compose up -d                  # 启动（不重新构建）
-docker compose down                   # 停止并移除容器
-docker compose restart proxy-service  # 重启单个服务
+# ---- 鍚仠 ----
+docker compose up --build -d          # 鏋勫缓骞跺惎鍔ㄥ叏閮?
+docker compose up -d                  # 鍚姩锛堜笉閲嶆柊鏋勫缓锛?
+docker compose down                   # 鍋滄骞剁Щ闄ゅ鍣?
+docker compose restart proxy-service  # 閲嶅惎鍗曚釜鏈嶅姟
 
-# ---- 单独构建/启动 ----
-docker compose build recall-service   # 只构建 recall
-docker compose up -d recall-service   # 只启动 recall
+# ---- 鍗曠嫭鏋勫缓/鍚姩 ----
+docker compose build recall-service   # 鍙瀯寤?recall
+docker compose up -d recall-service   # 鍙惎鍔?recall
 
-# ---- 查看日志 ----
-docker compose logs -f                        # 全部日志（实时跟踪）
-docker compose logs -f proxy-service          # 单个服务日志
-docker compose logs --tail=50 recall-service  # 最近 50 行
+# ---- 鏌ョ湅鏃ュ織 ----
+docker compose logs -f                        # 鍏ㄩ儴鏃ュ織锛堝疄鏃惰窡韪級
+docker compose logs -f proxy-service          # 鍗曚釜鏈嶅姟鏃ュ織
+docker compose logs --tail=50 recall-service  # 鏈€杩?50 琛?
 
-# ---- 扩缩容 ----
-docker compose up -d --scale rank-sub-service=5  # 临时指定副本数
+# ---- 鎵╃缉瀹?----
+docker compose up -d --scale rank-sub-service=5  # 涓存椂鎸囧畾鍓湰鏁?
 
-# ---- 状态检查 ----
-docker compose ps                     # 容器状态
-docker compose top                    # 容器内进程
+# ---- 鐘舵€佹鏌?----
+docker compose ps                     # 瀹瑰櫒鐘舵€?
+docker compose top                    # 瀹瑰櫒鍐呰繘绋?
 ```
 
-每个目录包含一个 `Dockerfile` 和一个 `entrypoint.sh`。
+姣忎釜鐩綍鍖呭惈涓€涓?`Dockerfile` 鍜屼竴涓?`entrypoint.sh`銆?
 
-## 基础镜像
+## 鍩虹闀滃儚
 
-所有服务基于 `linquickrec/base:latest`，包含 brpc、protobuf、abseil-cpp、gflags、leveldb、rapidjson 等依赖。
+鎵€鏈夋湇鍔″熀浜?`linquickrec/base:latest`锛屽寘鍚?brpc銆乸rotobuf銆乤bseil-cpp銆乬flags銆乴eveldb銆乺apidjson 绛変緷璧栥€?
 
-## Dockerfile 说明
+## Dockerfile 璇存槑
 
-### Discovery（discovery/Dockerfile）
+### Discovery锛坉iscovery/Dockerfile锛?
 
-编译 `discovery_server`，监听 8100 端口，提供服务注册/发现/心跳 RPC。
+缂栬瘧 `discovery_server`锛岀洃鍚?8100 绔彛锛屾彁渚涙湇鍔℃敞鍐?鍙戠幇/蹇冭烦 RPC銆?
 
-### Proxy（proxy/Dockerfile）
+### Proxy锛坧roxy/Dockerfile锛?
 
-编译 `proxy_server` 和 `discovery_client`。通过 sidecar 模式向 discovery-server 注册自身，并通过 discovery 动态发现下游实例。
+缂栬瘧 `proxy_server` 鍜?`discovery_client`銆傞€氳繃 sidecar 妯″紡鍚?discovery-server 娉ㄥ唽鑷韩锛屽苟閫氳繃 discovery 鍔ㄦ€佸彂鐜颁笅娓稿疄渚嬨€?
 
-### Recall（recall/Dockerfile）
+### Recall锛坮ecall/Dockerfile锛?
 
-Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文件（Qwen3-0.6B）：
+Recall 鏈嶅姟涓?vLLM 鍚屽鍣ㄩ儴缃诧紝棰濆瀹夎 vLLM wheel 鍖呭拰妯″瀷鏂囦欢锛圦wen3-0.6B锛夛細
 
-1. 安装 PyTorch + vLLM
-2. 复制 vLLM 启动脚本（`start_vllm_back.sh`、`start_vllm.sh`）
-3. 复制模型文件（`Qwen3-0.6B/`、`Qwen3-8B/`）
-4. 编译 recall_server
-5. 暴露端口 8002（brpc）和 8000（vLLM）
+1. 瀹夎 PyTorch + vLLM
+2. 澶嶅埗 vLLM 鍚姩鑴氭湰锛坄start_vllm_back.sh`銆乣start_vllm.sh`锛?
+3. 澶嶅埗妯″瀷鏂囦欢锛坄Qwen3-0.6B/`銆乣Qwen3-8B/`锛?
+4. 缂栬瘧 recall_server
+5. 鏆撮湶绔彛 8002锛坆rpc锛夊拰 8000锛坴LLM锛?
 
-### Precalc（precalc/Dockerfile）
+### Precalc锛坧recalc/Dockerfile锛?
 
-编译 `precalc_server`，监听 8003 端口，将用户特征预计算结果写入 KVWorker。
+缂栬瘧 `precalc_server`锛岀洃鍚?8003 绔彛锛屽皢鐢ㄦ埛鐗瑰緛棰勮绠楃粨鏋滃啓鍏?KVWorker銆?
 
-### RankMaster（rank-master/Dockerfile）
+### RankMaster锛坮ank-master/Dockerfile锛?
 
-编译 `rank_master_server`，监听 8004 端口，将候选商品分发给多个 RankSub 并行打分后归并结果。
+缂栬瘧 `rank_master_server`锛岀洃鍚?8004 绔彛锛屽皢鍊欓€夊晢鍝佸垎鍙戠粰澶氫釜 RankSub 骞惰鎵撳垎鍚庡綊骞剁粨鏋溿€?
 
-### RankSub（rank-sub/Dockerfile）
+### RankSub锛坮ank-sub/Dockerfile锛?
 
-编译 `rank_sub_server`，监听 8005 端口，从 KVWorker 读取特征 tensor 并对分配到的 SKU 打分。
+缂栬瘧 `rank_sub_server`锛岀洃鍚?8005 绔彛锛屼粠 KVWorker 璇诲彇鐗瑰緛 tensor 骞跺鍒嗛厤鍒扮殑 SKU 鎵撳垎銆?
 
-### Feature（feature/Dockerfile）
+### Feature锛坒eature/Dockerfile锛?
 
-1. 复制 proto、common、FeatureService 源码
-2. CMake 编译
-3. 暴露端口 8001
+1. 澶嶅埗 proto銆乧ommon銆丗eatureService 婧愮爜
+2. CMake 缂栬瘧
+3. 鏆撮湶绔彛 8001
 
-## EntryPoint 说明
+## EntryPoint 璇存槑
 
-每个 entrypoint.sh 通过环境变量配置服务参数，环境变量有默认值，也可通过 `.env` 或 `environment` 注入覆盖。
+姣忎釜 entrypoint.sh 閫氳繃鐜鍙橀噺閰嶇疆鏈嶅姟鍙傛暟锛岀幆澧冨彉閲忔湁榛樿鍊硷紝涔熷彲閫氳繃 `.env` 鎴?`environment` 娉ㄥ叆瑕嗙洊銆?
 
 ### recall/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 后台启动 vLLM（start_vllm_back.sh）
-2. 轮询 http://127.0.0.1:8000/health 等待 vLLM 就绪（最长 120 秒）
-3. 启动 recall_server
-4. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 鍚庡彴鍚姩 vLLM锛坰tart_vllm_back.sh锛?
+2. 杞 http://127.0.0.1:8000/health 绛夊緟 vLLM 灏辩华锛堟渶闀?120 绉掞級
+3. 鍚姩 recall_server
+4. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8002 | brpc 监听端口 |
-| `VLLM_BASE_URL` | http://127.0.0.1:8000 | vLLM 地址 |
-| `VLLM_ENDPOINT` | /v1/chat/completions | vLLM 推理接口路径 |
-| `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 模型路径 |
-| `VLLM_TIMEOUT_MS` | 100000 | vLLM 请求超时 |
-| `SKU_COUNT` | 100 | SKU 数量 |
-| `VLLM_PORT` | 8000 | vLLM 健康检查端口 |
-| `VLLM_STARTUP_TIMEOUT` | 120 | vLLM 启动等待秒数 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8002 | brpc 鐩戝惉绔彛 |
+| `VLLM_BASE_URL` | http://127.0.0.1:8000 | vLLM 鍦板潃 |
+| `VLLM_ENDPOINT` | /v1/chat/completions | vLLM 鎺ㄧ悊鎺ュ彛璺緞 |
+| `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 妯″瀷璺緞 |
+| `VLLM_TIMEOUT_MS` | 100000 | vLLM 璇锋眰瓒呮椂 |
+| `SKU_COUNT` | 100 | SKU 鏁伴噺 |
+| `VLLM_PORT` | 8000 | vLLM 鍋ュ悍妫€鏌ョ鍙?|
+| `VLLM_STARTUP_TIMEOUT` | 120 | vLLM 鍚姩绛夊緟绉掓暟 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
 ### precalc/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 启动 precalc_server
-2. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 鍚姩 precalc_server
+2. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8003 | brpc 监听端口 |
-| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
-| `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
-| `TTL_SECONDS` | 5 | KV 缓存 TTL |
-| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 (MB) |
-| `PAYLOAD_SIZE_KB` | 100 | Payload 大小 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8003 | brpc 鐩戝惉绔彛 |
+| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 鍦板潃 |
+| `KVWORKER_PORT` | 31502 | KVWorker 绔彛 |
+| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 鍦板潃 |
+| `TTL_SECONDS` | 5 | KV 缂撳瓨 TTL |
+| `PRECALC_RESULT_SIZE_MB` | 8.5 | 棰勮绠楃粨鏋滃ぇ灏?(MB) |
+| `PAYLOAD_SIZE_KB` | 100 | Payload 澶у皬 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
 ### rank-master/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 等待 RankSub 服务 TCP 端口就绪（最长 120 秒，超时也会继续启动）
-2. 启动 rank_master_server
-3. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 绛夊緟 RankSub 鏈嶅姟 TCP 绔彛灏辩华锛堟渶闀?120 绉掞紝瓒呮椂涔熶細缁х画鍚姩锛?
+2. 鍚姩 rank_master_server
+3. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8004 | brpc 监听端口 |
-| `SUB_WORKER_COUNT` | 3 | RankSub 工作线程数 |
-| `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | RankSub 服务地址 |
-| `TOP_K` | 100 | 返回 Top-K 结果 |
-| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名 |
-| `RANK_SUB_PORT` | 8005 | RankSub 端口 |
-| `RANK_SUB_STARTUP_TIMEOUT` | 120 | 等待 RankSub 就绪秒数 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8004 | brpc 鐩戝惉绔彛 |
+| `SUB_WORKER_COUNT` | 3 | RankSub 宸ヤ綔绾跨▼鏁?|
+| `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | RankSub 鏈嶅姟鍦板潃 |
+| `TOP_K` | 100 | 杩斿洖 Top-K 缁撴灉 |
+| `RANK_SUB_HOST` | rank-sub-service | RankSub 涓绘満鍚?|
+| `RANK_SUB_PORT` | 8005 | RankSub 绔彛 |
+| `RANK_SUB_STARTUP_TIMEOUT` | 120 | 绛夊緟 RankSub 灏辩华绉掓暟 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
 ### rank-sub/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 启动 rank_sub_server
-2. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 鍚姩 rank_sub_server
+2. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8005 | brpc 监听端口 |
-| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
-| `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
-| `SCORING_DELAY_MS` | 100 | 打分延迟 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8005 | brpc 鐩戝惉绔彛 |
+| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 鍦板潃 |
+| `KVWORKER_PORT` | 31502 | KVWorker 绔彛 |
+| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 鍦板潃 |
+| `SCORING_DELAY_MS` | 100 | 鎵撳垎寤惰繜 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
 ### feature/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 启动 feature_server（mock）
-2. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 鍚姩 feature_server锛坢ock锛?
+2. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8001 | brpc 监听端口 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8001 | brpc 鐩戝惉绔彛 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
 ### proxy/entrypoint.sh
 
 ```bash
-# 启动流程：
-1. 启动 proxy_server，配置所有下游服务地址
-2. 启动 discovery_client 注册服务
+# 鍚姩娴佺▼锛?
+1. 鍚姩 proxy_server锛岄厤缃墍鏈変笅娓告湇鍔″湴鍧€
+2. 鍚姩 discovery_client 娉ㄥ唽鏈嶅姟
 ```
 
-| 环境变量 | 默认值 | 说明 |
+| 鐜鍙橀噺 | 榛樿鍊?| 璇存槑 |
 |---------|--------|------|
-| `SERVER_PORT` | 8080 | brpc 监听端口 |
-| `FEATURE_SERVICE_ADDR` | feature-service:8001 | Feature 服务地址 |
-| `RECALL_SERVICE_ADDR` | recall-service:8002 | Recall 服务地址 |
-| `PRECALC_SERVICE_ADDR` | precalc-service:8003 | Precalc 服务地址 |
-| `RANK_SERVICE_ADDR` | rank-master-service:8004 | RankMaster 服务地址 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `SERVER_PORT` | 8080 | brpc 鐩戝惉绔彛 |
+| `FEATURE_SERVICE_ADDR` | feature-service:8001 | Feature 鏈嶅姟鍦板潃 |
+| `RECALL_SERVICE_ADDR` | recall-service:8002 | Recall 鏈嶅姟鍦板潃 |
+| `PRECALC_SERVICE_ADDR` | precalc-service:8003 | Precalc 鏈嶅姟鍦板潃 |
+| `RANK_SERVICE_ADDR` | rank-master-service:8004 | RankMaster 鏈嶅姟鍦板潃 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 鏈嶅姟鍙戠幇鍦板潃 |
 
-## 手动构建单个镜像
+## 鎵嬪姩鏋勫缓鍗曚釜闀滃儚
 
-如果不使用 docker-compose，也可以单独构建和运行：
+濡傛灉涓嶄娇鐢?docker-compose锛屼篃鍙互鍗曠嫭鏋勫缓鍜岃繍琛岋細
 
-在项目根目录下执行：
+鍦ㄩ」鐩牴鐩綍涓嬫墽琛岋細
 
 ```bash
-# 构建 Recall（需要 GPU 构建机器，文件路径需匹配）
-docker build -f deploy/docker/recall/Dockerfile -t lingquickrec/recall:latest .
+# 鏋勫缓 Recall锛堥渶瑕?GPU 鏋勫缓鏈哄櫒锛屾枃浠惰矾寰勯渶鍖归厤锛?
+docker build -f deploy/docker/recall/Dockerfile -t linquickrec/recall:latest .
 
-# 构建 Precalc
-docker build -f deploy/docker/precalc/Dockerfile -t lingquickrec/precalc:latest .
+# 鏋勫缓 Precalc
+docker build -f deploy/docker/precalc/Dockerfile -t linquickrec/precalc:latest .
 
-# 构建 RankMaster
-docker build -f deploy/docker/rank-master/Dockerfile -t lingquickrec/rank-master:latest .
+# 鏋勫缓 RankMaster
+docker build -f deploy/docker/rank-master/Dockerfile -t linquickrec/rank-master:latest .
 
-# 构建 RankSub
-docker build -f deploy/docker/rank-sub/Dockerfile -t lingquickrec/rank-sub:latest .
+# 鏋勫缓 RankSub
+docker build -f deploy/docker/rank-sub/Dockerfile -t linquickrec/rank-sub:latest .
 
-# 构建 Feature
-docker build -f deploy/docker/feature/Dockerfile -t lingquickrec/feature:latest .
+# 鏋勫缓 Feature
+docker build -f deploy/docker/feature/Dockerfile -t linquickrec/feature:latest .
 
-# 构建 Proxy
-docker build -f deploy/docker/proxy/Dockerfile -t lingquickrec/proxy:latest .
+# 鏋勫缓 Proxy
+docker build -f deploy/docker/proxy/Dockerfile -t linquickrec/proxy:latest .
 
-# 构建 Discovery
-docker build -f deploy/docker/discovery/Dockerfile -t lingquickrec/discovery:latest .
+# 鏋勫缓 Discovery
+docker build -f deploy/docker/discovery/Dockerfile -t linquickrec/discovery:latest .
 ```
 
-## 本地运行
+## 鏈湴杩愯
 
-### 服务发现中心
+### 鏈嶅姟鍙戠幇涓績
 
 ```bash
 docker run -d --name discovery \
@@ -385,7 +385,7 @@ docker run -d --name discovery \
     linquickrec/discovery:latest
 ```
 
-### Proxy（依赖 discovery-server）
+### Proxy锛堜緷璧?discovery-server锛?
 
 ```bash
 docker run -d --name proxy \
@@ -410,7 +410,7 @@ docker run -d --name rank-sub \
     linquickrec/rank-sub:latest
 ```
 
-### RankMaster（需 RankSub 已运行）
+### RankMaster锛堥渶 RankSub 宸茶繍琛岋級
 
 ```bash
 docker run -d --name rank-master \
@@ -420,7 +420,7 @@ docker run -d --name rank-master \
     linquickrec/rank-master:latest
 ```
 
-### Recall（需 GPU）
+### Recall锛堥渶 GPU锛?
 
 ```bash
 docker run -d --gpus all --name recall \
@@ -428,6 +428,7 @@ docker run -d --gpus all --name recall \
     linquickrec/recall:latest
 ```
 
-## 端到端演示
+## 绔埌绔紨绀?
 
-`examples/` 目录提供完整的 docker-compose 编排，参见 [services/discovery/examples/README.md](../../services/discovery/examples/README.md)。
+`examples/` 鐩綍鎻愪緵瀹屾暣鐨?docker-compose 缂栨帓锛屽弬瑙?[services/discovery/examples/README.md](../../services/discovery/examples/README.md)銆?
+
