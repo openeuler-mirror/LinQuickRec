@@ -204,8 +204,10 @@ message(STATUS "===========================================")
 add_executable(rank_master_test
     tests/test_rank_master.cpp
     server/src/rank_master_server.cpp
+    server/src/discovery_resolver.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(rank_master_test PRIVATE
