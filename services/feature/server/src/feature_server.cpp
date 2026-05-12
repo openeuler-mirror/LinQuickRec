@@ -3,7 +3,7 @@
 #include <chrono>
 #include <sstream>
 
-#include <butil/logging.h>
+#include "common/logger.h"
 
 DEFINE_int32(server_port, 8003, "Feature service port");
 
