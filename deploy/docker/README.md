@@ -4,9 +4,9 @@
 
 ```
                           ┌────────────────────────────────────────────────────┐
-                          │                 lingquickrec-net                  │
-                          │                 (Docker bridge)                   │
-                          │                                                   │
+                          │                 lingquickrec-net                   │
+                          │                 (Docker bridge)                    │
+                          │                                                    │
  Client :8080 ──► ┌────────────┐                                               │
                   │   Proxy    │──── Discovery (8100)                          │
                   │  (gateway) │                                               │
@@ -15,14 +15,14 @@
                         ▼                                                      │
          ┌──────────────┼──────────────┐                                       │
          ▼              ▼              ▼                                       │
-  Feature (x1)    Recall (xN)    Precalc (xN)                                 │
+  Feature (x1)    Recall (xN)    Precalc (xN)                                  │
   :8003             :8001           :8004                                      │
   [pending]         + vLLM                                                     │
                     :8000          KVWorker                                    │
          │              │            :31502                                    │
          │              ▼                                                      │
-         │         KVWorker                                                     │
-         │         :31501                                                       │
+         │         KVWorker                                                    │
+         │         :31501                                                      │
          └──────────────┬──────────────┘                                       │
                         ▼                                                      │
                  RankMaster (xN)                                               │
