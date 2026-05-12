@@ -95,21 +95,21 @@ make recall_server recall_test_client recall_test -j$(nproc)
 
 ## 容器搭建
 
-RecallService 与 vLLM 同容器部署，容器启动时先启动 vLLM，再启动 RecallService：
+RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等待就绪。
+
+### 构建镜像
 
 ```bash
-docker run --gpus all --init --name recall-service \
-  recall-image \
-  sh -c "/app/run_vllm.sh & \
-         sleep 30 && \
-         /app/recall_server --server_port=8001 & \
-         wait"
+docker build -t linquickrec/recall:latest \
+    -f deploy/docker/recall/Dockerfile .
 ```
 
-或使用 entrypoint.sh 自动管理启动顺序：
+### 启动容器
 
 ```bash
-docker run --gpus all --name recall-service recall-image
+docker run --gpus all --name recall-service \
+    -p 8001:8001 -p 8000:8000 \
+    linquickrec/recall:latest
 ```
 
 ## 业务流程

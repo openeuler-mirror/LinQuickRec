@@ -107,27 +107,23 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 
 ## 容器搭建
 
-### 启动顺序
+需先启动 RankSub 容器。
+
+### 构建镜像
 
 ```bash
-# 1. 先启动 RankSub（10 个实例）
-docker-compose up -d --scale rank-sub-service=10 rank-sub-service
-
-# 2. 等待 RankSub 就绪
-sleep 10
-
-# 3. 启动 RankMaster
-docker-compose up -d rank-master-service
+docker build -t linquickrec/rank-master:latest \
+    -f deploy/docker/rank-master/Dockerfile .
 ```
 
-### 动态扩缩容
+### 启动容器
 
 ```bash
-# 扩容到 20 个 RankSub
-bash deploy/scripts/scale-rank-sub.sh 20
-
-# 需要重启 RankMaster 以更新 Channel 池
-docker-compose up -d --force-recreate rank-master-service
+docker run -d --name rank-master \
+    -p 8005:8005 \
+    -e RANK_SUB_HOST=rank-sub-service \
+    -e SUB_WORKER_ADDRESSES=rank-sub-service:8006 \
+    linquickrec/rank-master:latest
 ```
 
 ### 环境变量
