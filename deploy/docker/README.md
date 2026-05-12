@@ -135,28 +135,7 @@ discovery-server (healthcheck 通过)
 
 ## 配置管理
 
-所有配置项集中在 `.env` 文件中，修改后重新 `docker compose up -d` 即可生效。
-
-### 关键配置项
-
-```bash
-# ---- 外部依赖 ----
-KVWORKER_HOST=141.61.84.245     # KVWorker 地址
-KVWORKER_PORT=31502             # KVWorker 端口
-ETCD_ADDRESS=141.61.84.245:2379 # ETCD 地址
-
-# ---- vLLM 模型 ----
-MODEL_NAME=/app/models/Qwen3-0.6B/  # 容器内模型路径
-VLLM_TIMEOUT_MS=100000              # vLLM 请求超时
-
-# ---- Rank 扩展 ----
-RANK_SUB_REPLICAS=3                  # rank-sub 副本数
-SUB_WORKER_COUNT=3                   # rank-master 连接的 worker 数（需与副本数一致）
-SUB_WORKER_ADDRESSES=rank-sub-service:8005  # Docker 内部 DNS 自动解析所有副本
-
-# ---- 网关 ----
-PROXY_PORT=8080                      # 对外暴露的代理端口
-```
+所有配置项集中在 `.env` 文件中，修改后执行 `docker compose up -d` 即可生效。完整参数说明见 [CONFIG.md](../../CONFIG.md)。
 
 ### 扩展 RankSub 副本
 
@@ -172,8 +151,6 @@ SUB_WORKER_COUNT=5
 ```bash
 docker compose up -d
 ```
-
-> `rank-sub-service` 的 Docker 内部 DNS 会自动解析到所有副本 IP，`SUB_WORKER_ADDRESSES` 无需改为逗号分隔列表。
 
 ## 常用操作
 
@@ -209,7 +186,7 @@ docker compose top                    # 容器内进程
 
 ## 组件说明
 
-每个组件目录包含一个 `Dockerfile` 和一个 `entrypoint.sh`。entrypoint.sh 通过环境变量配置参数，变量均有默认值，可通过 `.env` 或 `environment` 注入覆盖。
+每个组件目录包含一个 `Dockerfile` 和一个 `entrypoint.sh`。entrypoint.sh 通过环境变量配置参数，变量均有默认值，可通过 `.env` 或 `environment` 注入覆盖。完整参数列表及生效方式见 [CONFIG.md](../../CONFIG.md)。
 
 ### Discovery
 
@@ -217,12 +194,12 @@ docker compose top                    # 容器内进程
 
 启动流程：启动 discovery_server → 等待请求。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8100 | brpc 监听端口 |
-| `HEARTBEAT_CHECK_INTERVAL_MS` | 1000 | 健康检查扫描间隔 (ms) |
-| `HEARTBEAT_GRACE_FACTOR` | 2.0 | 心跳超时倍数 |
-| `CLEANUP_FACTOR` | 5.0 | 清理倍数 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8100 | 🔄 重启容器 | 监听端口 |
+| `HEARTBEAT_CHECK_INTERVAL_MS` | 1000 | 🔄 重启容器 | 健康检查扫描间隔 (ms) |
+| `HEARTBEAT_GRACE_FACTOR` | 2.0 | 🔄 重启容器 | 心跳超时倍数 |
+| `CLEANUP_FACTOR` | 5.0 | 🔄 重启容器 | 清理倍数 |
 
 ### Proxy
 
@@ -230,14 +207,12 @@ docker compose top                    # 容器内进程
 
 启动流程：启动 proxy_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8080 | HTTP 监听端口 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
-| `FEATURE_SERVICE_NAME` | feature_service | Feature 服务注册名 |
-| `RECALL_SERVICE_NAME` | recall_service | Recall 服务注册名 |
-| `PRECALC_SERVICE_NAME` | precalc_service | Precalc 服务注册名 |
-| `RANK_SERVICE_NAME` | rank_service | RankMaster 服务注册名 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8080 | 🔄 重启容器 | HTTP 监听端口 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
+
+> 下游地址通过 Discovery 动态获取，无需静态配置。完整参数列表见 `CONFIG.md`。
 
 ### Recall
 
@@ -245,17 +220,15 @@ docker compose top                    # 容器内进程
 
 启动流程：后台启动 vLLM → 轮询 health 等待就绪（最长 120s）→ 启动 recall_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8002 | brpc 监听端口 |
-| `VLLM_BASE_URL` | http://127.0.0.1:8000 | vLLM 地址 |
-| `VLLM_ENDPOINT` | /v1/chat/completions | vLLM 推理接口路径 |
-| `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 模型路径 |
-| `VLLM_TIMEOUT_MS` | 100000 | vLLM 请求超时 |
-| `SKU_COUNT` | 100 | SKU 数量 |
-| `VLLM_PORT` | 8000 | vLLM 健康检查端口 |
-| `VLLM_STARTUP_TIMEOUT` | 120 | vLLM 启动等待秒数 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8002 | 🔄 重启容器 | 监听端口 |
+| `VLLM_PORT` | 8000 | 🔄 重启容器 | vLLM 端口 |
+| `VLLM_ENDPOINT` | /v1/chat/completions | 🔄 重启容器 | vLLM 接口路径 |
+| `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 🔧 重新构建 | 模型路径 |
+| `VLLM_TIMEOUT_MS` | 100000 | 🔄 重启容器 | vLLM 请求超时 |
+| `SKU_COUNT` | 100 | 🔄 重启容器 | SKU 数量 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
 
 ### Precalc
 
@@ -263,16 +236,16 @@ docker compose top                    # 容器内进程
 
 启动流程：启动 precalc_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8003 | brpc 监听端口 |
-| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
-| `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
-| `TTL_SECONDS` | 5 | KV 缓存 TTL |
-| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 (MB) |
-| `PAYLOAD_SIZE_KB` | 100 | Payload 大小 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8003 | 🔄 重启容器 | 监听端口 |
+| `KVWORKER_HOST` | 141.61.84.245 | 🚨 环境相关 | KVWorker 地址 |
+| `KVWORKER_PORT` | 31502 | 🚨 环境相关 | KVWorker 端口 |
+| `ETCD_ADDRESS` | 141.61.84.245:2379 | 🚨 环境相关 | ETCD 地址 |
+| `TTL_SECONDS` | 5 | 🔄 重启容器 | KV 缓存 TTL |
+| `PRECALC_RESULT_SIZE_MB` | 8.5 | 🔄 重启容器 | 预计算结果大小 (MB) |
+| `PAYLOAD_SIZE_KB` | 100 | 🔄 重启容器 | Payload 大小 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
 
 ### RankMaster
 
@@ -280,16 +253,15 @@ docker compose top                    # 容器内进程
 
 启动流程：等待 RankSub 就绪（最长 120s）→ 启动 rank_master_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8004 | brpc 监听端口 |
-| `SUB_WORKER_COUNT` | 3 | RankSub 数量 |
-| `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | RankSub 地址 |
-| `TOP_K` | 100 | 返回 Top-K 结果 |
-| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名 |
-| `RANK_SUB_PORT` | 8005 | RankSub 端口 |
-| `RANK_SUB_STARTUP_TIMEOUT` | 120 | 等待 RankSub 就绪秒数 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8004 | 🔄 重启容器 | 监听端口 |
+| `SUB_WORKER_COUNT` | 3 | 🔄 重启容器 | RankSub 数量 |
+| `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | 🔄 重启容器 | RankSub 地址 |
+| `TOP_K` | 100 | 🔄 重启容器 | 返回 Top-K |
+| `SUB_WORKER_TIMEOUT_MS` | 5000 | 🔄 重启容器 | 子图请求超时 |
+| `RANK_SUB_STARTUP_TIMEOUT` | 120 | 🔄 重启容器 | 等待 RankSub 就绪秒数 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
 
 ### RankSub
 
@@ -297,14 +269,14 @@ docker compose top                    # 容器内进程
 
 启动流程：启动 rank_sub_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8005 | brpc 监听端口 |
-| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
-| `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
-| `SCORING_DELAY_MS` | 100 | 打分延迟 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8005 | 🔄 重启容器 | 监听端口 |
+| `KVWORKER_HOST` | 141.61.84.245 | 🚨 环境相关 | KVWorker 地址 |
+| `KVWORKER_PORT` | 31502 | 🚨 环境相关 | KVWorker 端口 |
+| `ETCD_ADDRESS` | 141.61.84.245:2379 | 🚨 环境相关 | ETCD 地址 |
+| `SCORING_DELAY_MS` | 100 | 🔄 重启容器 | 打分延迟 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
 
 ### Feature
 
@@ -312,10 +284,10 @@ docker compose top                    # 容器内进程
 
 启动流程：启动 feature_server → 启动 discovery_client 注册。
 
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `SERVER_PORT` | 8001 | brpc 监听端口 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| 环境变量 | 默认值 | 生效方式 | 说明 |
+|---------|--------|---------|------|
+| `SERVER_PORT` | 8001 | 🔄 重启容器 | 监听端口 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 🔄 重启容器 | 服务发现地址 |
 
 ### KVWorker
 
