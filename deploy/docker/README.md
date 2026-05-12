@@ -202,7 +202,7 @@ docker compose top                    # 容器内进程
 | 环境变量 | 默认值 | 配置级别 | 说明 |
 |---------|--------|---------|------|
 | `SERVER_PORT` | 8080 | 允许调整 | HTTP 监听端口 |
-| `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
+| `DISCOVERY_ADDR` | — | 必须指定 | 服务发现地址 |
 
 > 下游地址通过 Discovery 动态获取，无需静态配置。完整参数列表见 `CONFIG.md`。
 
