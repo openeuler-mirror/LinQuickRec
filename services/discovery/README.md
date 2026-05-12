@@ -72,7 +72,7 @@ services/discovery/
     │
     ▼
 ┌────────┐     heartbeat timeout     ┌────────┐     cleanup timeout    ┌─────────┐
-│  UP    │ ────────────────────────>  │  DOWN  │ ─────────────────────> │ REMOVED │
+│  UP    │ ────────────────────────> │  DOWN  │ ─────────────────────> │ REMOVED │
 └────────┘                           └────────┘                        └─────────┘
     │
     └── Deregister ──> REMOVED
@@ -87,20 +87,23 @@ services/discovery/
 | protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
 | abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
 
-### 独立构建
+
+### 脚本构建
+
+```bash
+cd services/discovery
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
 
 ```bash
 cd services/discovery
 mkdir -p build && cd build
-cmake ..
-make discovery_server discovery_client -j$(nproc)
-```
-
-### 整体构建（从项目根目录）
-
-```bash
-mkdir -p build && cd build
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make discovery_server discovery_client -j$(nproc)
 ```
 

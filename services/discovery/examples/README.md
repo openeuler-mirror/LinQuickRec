@@ -103,17 +103,23 @@ services/discovery/examples/
 ### 依赖
 
 | 依赖 | 版本要求 | 安装参考 |
-|---|---|---|
+|------|----------|----------|
 | CMake | >= 3.14 | `apt install cmake` |
 | brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
 | protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
 | abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
 
-### 1. 编译 discovery_server + discovery_client
+### 脚本构建
 
-参考 [discovery 服务](../README.md) 完成编译。
+```bash
+cd services/discovery/examples
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
 
-### 2. 编译示例和测试工具
+### 手动构建
 
 ```bash
 cd services/discovery/examples
@@ -125,11 +131,11 @@ make -j$(nproc)
 ### 编译产物
 
 | 二进制 | 说明 |
-|---|---|
-| `build/bin/pseudo_service` | 模拟业务服务，监听 TCP 端口 |
-| `build/bin/test_discover` | 查询指定 service_type 的实例列表 |
-| `build/bin/test_register` | 验证 Register + Deregister RPC |
-| `build/bin/test_heartbeat_cycle` | 验证全生命周期健康检查 |
+|--------|------|
+| `pseudo_service` | 模拟业务服务，监听 TCP 端口 |
+| `test_discover` | 查询指定 service_type 的实例列表 |
+| `test_register` | 验证 Register + Deregister RPC |
+| `test_heartbeat_cycle` | 验证全生命周期健康检查 |
 
 ## 启动方式
 

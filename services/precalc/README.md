@@ -26,19 +26,38 @@ services/precalc_service/
 
 ## 编译命令
 
+| 依赖 | 版本要求 | 安装参考 |
+|------|----------|----------|
+| CMake | >= 3.14 | `apt install cmake` |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 脚本构建
+
 ```bash
-cd services/precalc_service
+cd services/precalc
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/precalc
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make precalc_server precalc_test_client -j$(nproc)
 ```
 
 ### 编译产物
 
-| 二进制                   | 用途        |
-| --------------------- | --------- |
-| `precalc_server`      | 前置计算服务主程序 |
-| `precalc_test_client` | 测试客户端     |
+| 二进制 | 说明 |
+|--------|------|
+| `precalc_server` | 前置计算服务主程序 |
+| `precalc_test_client` | 测试客户端 |
 
 ## 启动方式
 

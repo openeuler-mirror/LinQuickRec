@@ -159,27 +159,33 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 
 ## 编译命令
 
-### 前置依赖
-
 | 依赖 | 版本要求 | 安装参考 |
 |------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` / `brew install cmake` |
-| brpc | latest | [brpc 构建指南](https://github.com/apache/brpc/blob/master/docs/cn/getting_started.md) |
-| protobuf | >= 3.x | brpc 自带或单独安装 |
-| abseil-cpp | latest | brpc 自带或单独安装 |
-| gflags | latest | `apt install libgflags-dev` |
-| pthread | 系统自带 | — |
+| CMake | >= 3.14 | `apt install cmake` |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
 
-### 编译
+### 脚本构建
 
 ```bash
-# 在项目根目录
+cd services/proxy
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/proxy
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 ```
 
-产物在 `build/bin/` 下：
+### 编译产物
 
 | 二进制 | 说明 |
 |--------|------|
