@@ -79,6 +79,9 @@ services/RankServiceSub/
 │       └── rank_sub_server.cpp  # 服务实现
 └── client/
     └── rank_sub_client.cpp      # 测试客户端
+├── tests/
+│   └── test_rank_sub.cpp        # 单元测试
+└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义
@@ -94,6 +97,7 @@ message RankSubRequest {
     string user_feat_key = 1;  // KVWorker 中的用户特征键
     string skus_sub = 2;       // 分配给本子图的 SKU 列表
     string payload = 3;        // 模拟负载
+    string trace_id = 4;       // 分布式追踪 ID
 }
 
 message RankSubResponse {
@@ -116,12 +120,15 @@ service RankSubService {
 
 **请求处理流程**：
 
-1. 验证 `user_feat_key` 和 `skus_sub` 非空
-2. 从 KVWorker 读取前置计算结果：`KVClient::Get(key, buffer)`
-3. 解析 SKU ID 列表
-4. 对每个 SKU 调用 `simulate_score()` 打分
-5. 可选：模拟打分耗时（`scoring_delay_ms`）
-6. 返回 `skus_id[]` 和 `skus_score[]`
+1. 提取 `trace_id` 并注入日志系统（分布式追踪）
+2. 通过全局线程池异步执行处理任务
+3. 验证 `user_feat_key` 和 `skus_sub` 非空
+4. 从 KVWorker 读取前置计算结果：`KVClient::Get(key, buffer)`
+5. 解析 SKU ID 列表
+6. 对每个 SKU 调用 `simulate_score()` 打分
+7. 可选：模拟打分耗时（`scoring_delay_ms`）
+8. 返回 `skus_id[]` 和 `skus_score[]`
+9. 若启用 `enable_timing_stats`，记录 `kv_read_cost`、`scoring_cost`、`simulated_delay`、`server_process_total` 耗时
 
 ### 6.2 KVWorker 读取流程
 
@@ -286,16 +293,16 @@ RankMaster              RankSub (:8006)               KVWorker
 
 | 场景 | 行为 |
 |------|------|
-| **空 user_feat_key** | 记录 ERROR，返回空响应 |
-| **空 skus_sub** | 记录 ERROR，返回空响应 |
-| **KVWorker Init 失败** | 记录 ERROR，返回空响应 |
-| **KVWorker Get 失败** | 记录 ERROR（含 key），返回空响应 |
+| **空 user_feat_key** | 返回 `EMPTY_USER_FEAT_KEY` 错误，记录 ERROR |
+| **空 skus_sub** | 返回 `EMPTY_SKUS_SUB` 错误，记录 ERROR |
+| **KVWorker Init 失败** | 返回 `KVCLIENT_INIT_FAILED` 错误，记录 ERROR |
+| **KVWorker Get 失败** | 返回 `KVCLIENT_GET_FAILED` 错误，记录 ERROR（含 key） |
 | **key 不存在（TTL 过期）** | KVWorker 返回错误，记录 ERROR |
-| **SKU 解析失败** | 跳过无效 token，记录 WARNING |
-| **无有效 SKU** | 记录 ERROR，返回空响应 |
+| **SKU 解析失败** | 返回 `NO_SKU_PARSED` 错误，记录 ERROR |
 | **KVWorker 不可达** | 所有请求失败，需检查网络 |
 | **实例被 kill** | Docker 自动重启（restart: unless-stopped） |
-| **打分延迟过大** | Master 侧 5s 超时兜底 |
+| **打分延迟过大** | Master 侧 `sub_worker_timeout_ms` 超时兜底 |
+| **线程池任务异常** | 返回 `INTERNAL_ERROR` 错误，记录 ERROR |
 
 ## 11. 演进规划
 
