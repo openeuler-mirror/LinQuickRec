@@ -16,12 +16,17 @@ services/recall/
 ├── build.sh                     # 编译脚本
 ├── server/
 │   ├── include/
-│   │   └── recall_server.h      # RecallServiceImpl 声明
+│   │   ├── recall_server.h      # RecallServiceImpl 声明
+│   │   └── vllm_client.h        # VllmClient 声明
 │   └── src/
 │       ├── main.cpp             # 服务入口
-│       └── recall_server.cpp    # 服务实现
-└── client/
-    └── recall_test_client.cpp   # 测试客户端
+│       ├── recall_server.cpp    # 服务实现
+│       └── vllm_client.cpp      # vLLM HTTP 客户端实现
+├── client/
+│   └── recall_test_client.cpp   # 测试客户端
+├── tests/
+│   └── test_recall.cpp          # 单元测试
+└── backup/                      # 备份目录
 ```
 
 ## 编译命令
@@ -56,8 +61,9 @@ make -j$(nproc)
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
-| `--vllm_timeout_ms` | int32 | 5000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
+| `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
+| `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
+| `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
 
 ### 使用测试客户端
 

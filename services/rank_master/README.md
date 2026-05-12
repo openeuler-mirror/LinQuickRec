@@ -9,19 +9,23 @@ RankServiceMaster 是推荐系统精排层的主控节点，采用 Scatter-Gathe
 ## 目录结构
 
 ```
-services/rank_service_master/
+services/rank_master/
 ├── DESIGN.md                        # 详细设计文档
 ├── README.md                        # 本文件
 ├── CMakeLists.txt                   # CMake 构建配置
 ├── build.sh                         # 编译脚本
 ├── server/
 │   ├── include/
-│   │   └── rank_master_server.h     # RankMasterServiceImpl 声明
+│   │   ├── rank_master_server.h     # RankMasterServiceImpl 声明
+│   │   └── discovery_resolver.h     # DiscoveryResolver 声明
 │   └── src/
 │       ├── main.cpp                 # 服务入口
-│       └── rank_master_server.cpp   # 服务实现
-└── client/
-    └── rank_master_test_client.cpp  # 测试客户端
+│       ├── rank_master_server.cpp   # 服务实现
+│       └── discovery_resolver.cpp   # Discovery 服务发现实现
+├── client/
+│   └── rank_master_test_client.cpp  # 测试客户端
+├── tests/
+│   └── test_rank_master.cpp         # 单元测试
 ```
 
 ## 编译命令
@@ -59,7 +63,9 @@ make -j$(nproc)
 | `--server_port` | int32 | 8005 | 服务监听端口 |
 | `--sub_worker_count` | int32 | 10 | 子图数量 |
 | `--sub_worker_addresses` | string | "127.0.0.1:8006" | 子图地址列表（逗号分隔） |
+| `--discovery_addr` | string | "" | Discovery 服务地址（空则使用静态地址） |
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
+| `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
 | `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
 
 ### 使用测试客户端

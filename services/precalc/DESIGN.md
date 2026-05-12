@@ -11,8 +11,6 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 - 设置合理的 TTL，确保数据在下游消费前有效
 - 返回 `user_feat_key` 和 payload 给调用方
 
-
-
 ## 2. 系统架构
 
 ```
@@ -60,7 +58,7 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 ## 3. 目录结构
 
 ```
-services/precalc_service/
+services/precalc/
 ├── DESIGN.md                    # 本文档
 ├── README.md                    # 模块介绍与使用说明
 ├── CMakeLists.txt               # CMake 构建配置
@@ -75,7 +73,6 @@ services/precalc_service/
 │   └── precalc_test_client.cpp  # 测试客户端
 ├── tests/
 │   └── test_precalc.cpp         # 单元测试
-└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义
@@ -178,7 +175,7 @@ user_feat_key = "A1B2C3D4E5F6G7H8"
 
 **设计考量**：
 
-- 6 字符长度足以区分不同用户特征
+- 16 字符长度足以区分不同用户特征
 - 固定长度便于下游解析
 - 与 RankServiceSub 的 KVWorker 读取键一致
 
@@ -194,7 +191,7 @@ user_feat_key = "A1B2C3D4E5F6G7H8"
 
 ### 7.1 Dockerfile
 
-基于 `brpc_base:v1.3`，元戎 SDK 已包含在基础镜像中。
+基于 `brpc_base:latest`，元戎 SDK 已包含在基础镜像中。
 
 ### 7.2 环境变量
 
@@ -261,11 +258,11 @@ Upstream                  PrecalcService                KVWorker
 
 | 场景                     | 行为                                               |
 | ---------------------- | ------------------------------------------------ |
-| **空 user\_feat**       | 返回 `EMPTY_USER_FEAT` 错误，记录 ERROR                   |
-| **KVWorker Init 失败**   | 返回 `KVCLIENT_INIT_FAILED` 错误，记录 ERROR              |
-| **KVWorker Create 失败** | 返回 `KVCLIENT_CREATE_FAILED` 错误，记录 ERROR            |
-| **KVWorker Set 失败**    | 返回 `KVCLIENT_SET_FAILED` 错误，记录 ERROR               |
-| **线程池任务异常**          | 返回 `INTERNAL_ERROR` 错误，记录 ERROR                     |
+| **空 user\_feat**       | 返回 `EMPTY_USER_FEAT` 错误，记录 ERROR                 |
+| **KVWorker Init 失败**   | 返回 `KVCLIENT_INIT_FAILED` 错误，记录 ERROR            |
+| **KVWorker Create 失败** | 返回 `KVCLIENT_CREATE_FAILED` 错误，记录 ERROR          |
+| **KVWorker Set 失败**    | 返回 `KVCLIENT_SET_FAILED` 错误，记录 ERROR             |
+| **线程池任务异常**            | 返回 `INTERNAL_ERROR` 错误，记录 ERROR                  |
 | **user\_feat 长度 < 16** | 取全部字符作为 key                                      |
 | **TTL 过期**             | 下游 RankSub 读取时返回 key not found                   |
 | **KVWorker 不可达**       | 所有请求失败，需检查网络或 KVWorker 状态                        |

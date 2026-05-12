@@ -4,7 +4,9 @@
 #include "feature.pb.h"
 
 #include <brpc/server.h>
-#include <random>
+#include <string>
+
+#include "common/global_thread_pool.h"
 
 DECLARE_int32(server_port);
 
@@ -26,7 +28,22 @@ public:
                         google::protobuf::Closure* done) override;
 
 private:
-    std::mt19937 rng_;
+    struct UserFeatureResult {
+        bool success = false;
+        UserFeatureResponse response;
+        std::string error_message;
+    };
+
+    struct SKUFeatureResult {
+        bool success = false;
+        SKUFeatureResponse response;
+        std::string error_message;
+    };
+
+    UserFeatureResult process_user_features_request(const UserFeatureRequest* request);
+    SKUFeatureResult process_sku_features_request(const SKUFeatureRequest* request);
+
+    common::ThreadPool& thread_pool_;
 };
 
 } // namespace feature

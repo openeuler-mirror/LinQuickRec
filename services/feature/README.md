@@ -2,30 +2,26 @@
 
 ## 模块简介
 
-FeatureService 是推荐系统的特征层，负责根据用户 ID 从 Redis 等数据源获取用户特征数据（行为日志、画像标签等），为下游服务（RecallService、PrecalcService）提供特征输入。
-
-当前处于开发阶段，实现尚未合入 main 分支。
+FeatureService 是推荐系统的特征层，负责提供用户特征和 SKU 特征数据，供上游服务（如 RecallService）在召回和排序阶段使用。当前为模拟实现，通过随机数生成测试特征数据，用于端到端流水线验证。支持 KuaiRand 特征类型。
 
 ## 目录结构
 
 ```
-services/feature_service/
-├── CMakeLists.txt        # 构建配置
-└── Dockerfile            # 容器镜像
+services/feature/
+├── CMakeLists.txt               # CMake 构建配置
+├── build.sh                     # 编译脚本
+├── server/
+│   ├── include/
+│   │   └── feature_server.h     # FeatureServiceImpl 声明
+│   └── src/
+│       ├── main.cpp             # 服务入口
+│       └── feature_server.cpp   # 服务实现
 ```
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 安装参考 |
-|---|---|---|
-| CMake | >= 3.14 | `apt install cmake` |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
-| hiredis | latest | `apt install libhiredis-dev` |
-
 ```bash
-cd services/feature_service
+cd services/feature
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
@@ -35,12 +31,62 @@ make -j$(nproc)
 
 | 二进制 | 说明 |
 |---|---|
-| `feature_server` | 特征服务端（待实现） |
+| `feature_server` | 特征服务主程序 |
 
 ## 启动方式
 
-待实现后补充。
+### 启动 FeatureService
+
+```bash
+./bin/feature_server --server_port=8003
+```
+
+参数说明：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `--server_port` | int32 | 8003 | 服务监听端口 |
+
+### RPC 接口
+
+| 方法 | 请求 | 响应 | 说明 |
+|---|---|---|---|
+| `GetUserFeatures` | UserFeatureRequest | UserFeatureResponse | 获取用户行为日志特征 |
+| `GetSKUFeatures` | SKUFeatureRequest | SKUFeatureResponse | 获取 SKU 特征数据 |
 
 ## 容器搭建
 
-待实现后补充。
+```bash
+docker run --name feature-service feature-image
+```
+
+环境变量配置：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `SERVER_PORT` | 8003 | 服务端口 |
+
+## 业务流程
+
+```
+       Upstream (Proxy)
+            │
+            │ GetUserFeatures(user_id)
+            ▼
+   ┌─────────────────────┐
+   │   FeatureService    │
+   │   (:8003)           │
+   │                     │
+   │  随机生成 user_logs │
+   │  (5~20 条日志)      │
+   │  每条 10~50 维向量   │
+   │                     │
+   │  返回 UserFeature   │
+   └─────────────────────┘
+```
+
+## 端口对照表
+
+| 端口 | 服务 | 协议 | 说明 |
+|---|---|---|---|
+| 8003 | FeatureService | BRPC | 特征服务端口 |
