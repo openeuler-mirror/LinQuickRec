@@ -1,8 +1,9 @@
 #include "feature_server.h"
 
 #include <brpc/server.h>
-#include <butil/logging.h>
 #include <gflags/gflags.h>
+
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);

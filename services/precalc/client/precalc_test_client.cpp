@@ -15,6 +15,7 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
+#include "common/logger.h"
 #include "common/random_utils.h"
 #include "precalc.pb.h"
 
