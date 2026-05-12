@@ -3,18 +3,31 @@
 # 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译二进制。
 #
 # 使用方法：
-#   1. 构建并启动所有服务：
+#   1. 构建所有服务容器：
+#      docker compose build
+#
+#   2. 启动所有服务：
+#      docker compose up -d
+#
+#   3. 构建并启动所有服务：
 #      docker compose up --build -d
 #
-#   2. 单独启动某个服务：
-#      docker compose up --build -d recall-service
+#   4. 单独启动某个服务：
+#      docker compose up -d <service_name>
+#      例如：docker compose up -d recall-service
 #
-#   3. 调整 rank-sub 副本数：
-#      docker compose up --build -d --scale rank-sub-service=5
+#   5. 调整副本数（Recall、Precalc、RankMaster、RankSub 均支持多副本）：
+#      docker compose up -d --scale rank-sub-service=5
 #      （同时修改 .env 中 SUB_WORKER_COUNT 和 SUB_WORKER_ADDRESSES）
 #
-#   4. 停止所有服务：
+#   6. 停止所有服务：
 #      docker compose down
+#
+#   7. 删除所有服务容器：
+#      docker compose down --remove-orphans
+#
+#   8. 删除所有服务镜像：
+#      docker compose down --rmi all
 
 services:
   # ========================
