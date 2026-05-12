@@ -114,8 +114,8 @@ make discovery_server discovery_client -j$(nproc)
 
 | 二进制 | 说明 |
 |--------|------|
-| `build/bin/discovery_server` | 服务端，运行在发现中心容器 |
-| `build/bin/discovery_client` | 客户端，部署在每个业务容器 |
+| `discovery_server` | 服务端，运行在发现中心容器 |
+| `discovery_client` | 客户端，部署在每个业务容器 |
 
 ## 启动方式
 
