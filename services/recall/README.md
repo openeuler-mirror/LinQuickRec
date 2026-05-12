@@ -49,7 +49,7 @@ cd services/recall
 cd services/recall
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make recall_server recall_test_client -j$(nproc)
+make recall_server recall_test_client recall_test -j$(nproc)
 ```
 
 ### 编译产物
@@ -58,6 +58,7 @@ make recall_server recall_test_client -j$(nproc)
 |--------|------|
 | `recall_server` | 召回服务主程序 |
 | `recall_test_client` | 测试客户端 |
+| `recall_test` | 单元测试 |
 
 ## 启动方式
 

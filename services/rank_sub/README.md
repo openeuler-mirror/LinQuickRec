@@ -49,7 +49,7 @@ cd services/rank_sub
 cd services/rank_sub
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make rank_sub_server rank_sub_client -j$(nproc)
+make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 ```
 
 ### 编译产物
@@ -58,6 +58,7 @@ make rank_sub_server rank_sub_client -j$(nproc)
 |--------|------|
 | `rank_sub_server` | 精排子图服务主程序 |
 | `rank_sub_client` | 测试客户端 |
+| `rank_sub_test` | 单元测试 |
 
 ## 启动方式
 
