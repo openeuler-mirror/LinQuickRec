@@ -42,4 +42,4 @@ echo "Starting Discovery Client..."
 DISCOVERY_PID=$!
 
 echo "All services started, waiting for any process to exit..."
-wait -n $RECALL_PID $DISCOVERY_PID $VLLM_PID
+wait -n $RECALL_PID $DISCOVERY_PID
