@@ -20,17 +20,15 @@
 
 ```
 services/discovery/examples/
-├── README.md                  # 本文件
-├── CMakeLists.txt             # 编译 pseudo_service + 测试工具
-├── Dockerfile                 # 伪服务容器镜像
-├── docker-compose.yml         # 一键编排所有容器
-├── entrypoint.sh              # 容器入口：启动 pseudo_service + discovery_client
+├── CMakeLists.txt
+├── README.md
+├── docker-compose.yml
 ├── pseudo_service/
-│   └── main.cpp               # 简易 TCP server，模拟业务服务
+│   └── main.cpp
 └── tests/
-    ├── test_discover.cpp       # 查询 Discover RPC
-    ├── test_register.cpp       # 测试 Register + Deregister RPC
-    └── test_heartbeat_cycle.cpp# 全生命周期：注册 -> 心跳 -> DOWN -> 清理
+    ├── test_discover.cpp
+    ├── test_heartbeat_cycle.cpp
+    └── test_register.cpp
 ```
 
 ## 业务流程

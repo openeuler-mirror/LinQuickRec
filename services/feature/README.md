@@ -9,9 +9,17 @@ FeatureService 是推荐系统的特征层，负责根据用户 ID 从 Redis 等
 ## 目录结构
 
 ```
-services/feature_service/
-├── CMakeLists.txt        # 构建配置
-└── Dockerfile            # 容器镜像
+services/feature/
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── server/
+│   ├── include/
+│   │   └── feature_server.h
+│   └── src/
+│       ├── feature_server.cpp
+│       └── main.cpp
 ```
 
 ## 编译命令

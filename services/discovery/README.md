@@ -15,26 +15,29 @@
 
 ```
 services/discovery/
+├── build.sh
 ├── CMakeLists.txt
-├── Dockerfile
-├── README.md
 ├── DESIGN.md
+├── README.md
+├── client/
+│   └── src/
+│       └── main.cpp
 ├── server/
 │   ├── include/
 │   │   └── discovery_server.h
 │   └── src/
 │       ├── main.cpp
 │       └── discovery_server.cpp
-├── client/
-│   └── src/
-│       └── main.cpp
 └── examples/
     ├── CMakeLists.txt
-    ├── Dockerfile
+    ├── README.md
     ├── docker-compose.yml
-    ├── entrypoint.sh
     ├── pseudo_service/
+    │   └── main.cpp
     └── tests/
+        ├── test_discover.cpp
+        ├── test_heartbeat_cycle.cpp
+        └── test_register.cpp
 ```
 
 ## 业务流程

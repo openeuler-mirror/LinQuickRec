@@ -10,18 +10,26 @@ RecallService 是推荐系统的召回层，负责从海量商品池中筛选出
 
 ```
 services/recall/
-├── DESIGN.md                    # 详细设计文档
-├── README.md                    # 本文件
-├── CMakeLists.txt               # CMake 构建配置
-├── build.sh                     # 编译脚本
+├── backup/
+│   ├── brpc_client.cpp.backup
+│   ├── brpc_server.cpp.backup
+│   └── recommend.proto.backup
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── recall_test_client.cpp
 ├── server/
 │   ├── include/
-│   │   └── recall_server.h      # RecallServiceImpl 声明
+│   │   ├── recall_server.h
+│   │   └── vllm_client.h
 │   └── src/
-│       ├── main.cpp             # 服务入口
-│       └── recall_server.cpp    # 服务实现
-└── client/
-    └── recall_test_client.cpp   # 测试客户端
+│       ├── main.cpp
+│       ├── recall_server.cpp
+│       └── vllm_client.cpp
+└── tests/
+    └── test_recall.cpp
 ```
 
 ## 编译命令
