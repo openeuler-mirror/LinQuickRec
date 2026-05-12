@@ -173,7 +173,9 @@ docker build -t linquickrec/discovery:latest \
 ### 启动服务
 
 ```bash
-docker run -p 8100:8100 linquickrec/discovery:latest
+docker run -d --name discovery-service \
+  -p 8100:8100 \
+  linquickrec/discovery:latest
 ```
 
 ## 端到端示例

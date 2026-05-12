@@ -101,15 +101,17 @@ RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等
 
 ```bash
 docker build -t linquickrec/recall:latest \
-    -f deploy/docker/recall/Dockerfile .
+  -f deploy/docker/recall/Dockerfile .
 ```
 
 ### 启动容器
 
 ```bash
-docker run --gpus all --name recall-service \
-    -p 8001:8001 -p 8000:8000 \
-    linquickrec/recall:latest
+docker run -d --name recall-service \
+  --gpus all \
+  -p 8000:8000 \
+  -p 8001:8001 \
+  linquickrec/recall:latest
 ```
 
 ## 业务流程

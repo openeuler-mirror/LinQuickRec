@@ -97,15 +97,15 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 
 ```bash
 docker build -t linquickrec/rank-sub:latest \
-    -f deploy/docker/rank-sub/Dockerfile .
+  -f deploy/docker/rank-sub/Dockerfile .
 ```
 
 ### 启动容器
 
 ```bash
 docker run -d --name rank-sub \
-    -p 8006:8006 \
-    linquickrec/rank-sub:latest
+  -p 8006:8006 \
+  linquickrec/rank-sub:latest
 ```
 
 ### 启动多个实例
