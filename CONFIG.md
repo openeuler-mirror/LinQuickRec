@@ -12,6 +12,7 @@
 
 | 参数 | 默认值 | 配置级别 | 说明 |
 |------|--------|---------|------|
+| `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | Discovery 服务地址（容器网络下使用容器名） |
 | `DISCOVERY_PORT` | 8100 | 允许调整 | 服务发现中心端口 |
 | `PROXY_PORT` | 8080 | 允许调整 | 网关对外 HTTP 端口 |
 
@@ -29,85 +30,22 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8080 | 允许调整 | HTTP 监听端口 |
-| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（env: `DISCOVERY_ADDR`） |
-| `--discovery_refresh_interval_ms` | int32 | 5000 | 不建议修改 | 缓存刷新间隔 (ms) |
-| `--downstream_max_retries` | int32 | 2 | 不建议修改 | 下游最大重试次数 |
-| `--feature_service_name` | string | "feature_service" | 不建议修改 | Feature 服务注册名 |
-| `--recall_service_name` | string | "recall_service" | 不建议修改 | Recall 服务注册名 |
-| `--precalc_service_name` | string | "precalc_service" | 不建议修改 | Precalc 服务注册名 |
-| `--rank_service_name` | string | "rank_service" | 不建议修改 | RankMaster 服务注册名 |
-| `--feature_timeout_ms` | int32 | 3000 | 允许调整 | Feature 调用超时 (ms) |
-| `--recall_timeout_ms` | int32 | 5000 | 允许调整 | Recall 调用超时 (ms) |
-| `--precalc_timeout_ms` | int32 | 5000 | 允许调整 | Precalc 调用超时 (ms) |
-| `--rank_timeout_ms` | int32 | 10000 | 允许调整 | Rank 调用超时 (ms) |
-| `--enable_timing_stats` | bool | true | 不建议修改 | 打印阶段时延统计 |
-| `--global_thread_pool_size` | int32 | auto | 允许调整 | 全局线程池大小 |
-
-## Recall
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--server_port` | int32 | 8002 | 允许调整 | 监听端口 |
-| `--vllm_base_url` | string | "http://127.0.0.1:8000" | 允许调整 | vLLM 地址 |
-| `--vllm_endpoint` | string | "/v1/chat/completions" | 允许调整 | vLLM 接口路径 |
-| `--model_name` | string | "/app/models/Qwen3-0.6B/" | 允许调整 | 模型路径（容器内） |
-| `--vllm_timeout_ms` | int32 | 100000 | 允许调整 | vLLM 请求超时 (ms) |
-| `--sku_count` | int32 | 100 | 允许调整 | 返回 SKU 数量 |
-| `VLLM_PORT` | 8000 | 允许调整 | vLLM 端口 |
-| `VLLM_STARTUP_TIMEOUT` | 120 | 不建议修改 | vLLM 启动等待秒数 |
-
-## Precalc
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址（env: `PRECALC_KVWORKER_HOST`） |
-| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口（env: `PRECALC_KVWORKER_PORT`） |
-| `--etcd_address` | string | — | 必须指定 | ETCD 地址（env: `PRECALC_ETCD_ADDRESS`） |
-| `--precalc_result_size_mb` | double | 8.5 | 允许调整 | 预计算结果大小 (MB) |
-| `--ttl_seconds` | int32 | 5 | 允许调整 | KV 缓存 TTL |
-| `--user_feat_key_size_kb` | int32 | 100 | 不建议修改 | user_feat_key 大小 (KB) |
-| `--enable_timing_stats` | bool | true | 不建议修改 | 启用时延统计 |
-| `--payload_size_kb` | int32 | 100 | 允许调整 | payload 大小 (KB) |
-
-## RankMaster
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--server_port` | int32 | 8004 | 允许调整 | 监听端口 |
-| `--sub_worker_count` | int32 | 3 | 允许调整 | 子图数量 |
-| `--sub_worker_addresses` | string | "rank-sub-service:8005" | 允许调整 | 子图地址 |
-| `--top_k` | int32 | 100 | 允许调整 | 返回 Top-K |
-| `--enable_timing_stats` | bool | true | 不建议修改 | 启用时延统计 |
-| `SUB_WORKER_TIMEOUT_MS` | 5000 | 不建议修改 | 子图请求超时 (ms) |
-| `RANK_SUB_STARTUP_TIMEOUT` | 120 | 不建议修改 | 等待 RankSub 就绪秒数 |
-
-## RankSub
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
-| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址（env: `RANKSUB_KVWORKER_HOST`） |
-| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口（env: `RANKSUB_KVWORKER_PORT`） |
-| `--etcd_address` | string | — | 必须指定 | ETCD 地址（env: `RANKSUB_ETCD_ADDRESS`） |
-| `--scoring_delay_ms` | int32 | 100 | 允许调整 | 打分延迟 (ms) |
-| `--enable_timing_stats` | bool | true | 不建议修改 | 启用时延统计 |
-
-## 扩缩容参数
-
-| 参数 | 默认值 | 配置级别 | 说明 |
-|------|--------|---------|------|
-| `RANK_SUB_REPLICAS` | 3 | 允许调整 | RankSub 副本数 |
-| `SUB_WORKER_COUNT` | 3 | 允许调整 | 需与 `RANK_SUB_REPLICAS` 一致 |
+| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（取自全局 `DISCOVERY_ADDR`） |
+| `--host` | string | "auto" | 不建议修改 | 本容器 IP |
+| `--heartbeat_interval` | int32 | 5 | 不建议修改 | 心跳间隔 (秒) |
+| `--health_check_timeout` | int32 | 2 | 不建议修改 | TCP 探测超时 (秒) |
+| `--fail_threshold` | int32 | 3 | 不建议修改 | 连续失败次数阈值 |
+| `--startup_timeout` | int32 | 30 | 不建议修改 | 等待主服务就绪超时 (秒) |
 
 ## Discovery Client（sidecar）
 
-所有服务容器通过 discovery_client 向 discovery server 注册。以下参数由 entrypoint.sh 注入。
+所有服务容器通过 discovery_client 向 discovery server 注册。以下参数由 entrypoint.sh 注入。`--discovery_addr` 取自全局配置 `DISCOVERY_ADDR`，其余参数均有合理默认值，通常无需修改。
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--service_type` | string | — | 必须指定 | 服务类型名 |
 | `--service_port` | int32 | — | 必须指定 | 本容器主服务端口 |
-| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（env: `DISCOVERY_ADDR`） |
+| `--discovery_addr` | string | (全局 `DISCOVERY_ADDR`) | 必须指定 | Discovery 地址 |
 | `--host` | string | "auto" | 不建议修改 | 本容器 IP |
 | `--heartbeat_interval` | int32 | 5 | 不建议修改 | 心跳间隔 (秒) |
 | `--health_check_timeout` | int32 | 2 | 不建议修改 | TCP 探测超时 (秒) |
