@@ -1,12 +1,11 @@
-#include "discovery.pb.h"
+#include <string>
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include <string>
-
 #include "common/logger.h"
+#include "discovery.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8100", "Discovery server address");
 

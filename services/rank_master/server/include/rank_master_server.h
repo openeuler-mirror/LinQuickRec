@@ -1,26 +1,26 @@
 #ifndef RANK_MASTER_SERVER_H
 #define RANK_MASTER_SERVER_H
 
-#include "rank_master.pb.h"
-#include "rank_sub.pb.h"
-#include <brpc/server.h>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
-#include <cstdint>
-
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 #include "common/sku_utils.h"
 #include "discovery_resolver.h"
+#include "rank_master.pb.h"
+#include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
 DECLARE_int32(sub_worker_count);

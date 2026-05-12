@@ -1,37 +1,32 @@
-// 1. 对应的头文件
 #include "recall_server.h"
 
-// 2. 标准库头文件
-#include <thread>
-#include <queue>
-#include <mutex>
+#include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
 #include <future>
-#include <atomic>
-#include <sstream>
 #include <iostream>
-#include <string>
-#include <vector>
-#include <cstdint>
+#include <mutex>
+#include <queue>
 #include <random>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
-#include <brpc/server.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
 
-// 5. 本项目内其他头文件
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
 DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");

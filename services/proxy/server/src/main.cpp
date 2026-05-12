@@ -1,9 +1,11 @@
 #include "proxy_server.h"
-#include "common/global_thread_pool.h"
 
-#include <gflags/gflags.h>
-#include <brpc/server.h>
 #include <thread>
+
+#include <brpc/server.h>
+#include <gflags/gflags.h>
+
+#include "common/global_thread_pool.h"
 
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");

@@ -1,15 +1,8 @@
-// 1. 对应的头文件
 #include "precalc_server.h"
 
-// 2. 标准库头文件
-
-// 3. 系统库头文件
-
-// 4. 其他库头文件
-#include <gflags/gflags.h>
 #include <brpc/server.h>
+#include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 

@@ -4,9 +4,9 @@
 #include <brpc/controller.h>
 #include <butil/time.h>
 
+#include "common/error.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 
 namespace recall {
 

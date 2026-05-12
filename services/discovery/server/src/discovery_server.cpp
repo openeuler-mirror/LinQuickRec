@@ -1,10 +1,10 @@
 #include "discovery_server.h"
 
-#include <chrono>
-#include <sstream>
-#include <cstdint>
-
 // common/logger.h is included via discovery_server.h
+
+#include <chrono>
+#include <cstdint>
+#include <sstream>
 
 DEFINE_int32(server_port, 8100, "Discovery server listening port");
 DEFINE_int32(heartbeat_check_interval_ms, 1000, "Health check scan interval (ms)");

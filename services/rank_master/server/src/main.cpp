@@ -1,8 +1,9 @@
 #include "rank_master_server.h"
-#include "common/global_thread_pool.h"
-#include <gflags/gflags.h>
-#include <brpc/server.h>
 
+#include <brpc/server.h>
+#include <gflags/gflags.h>
+
+#include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
