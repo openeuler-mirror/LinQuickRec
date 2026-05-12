@@ -4,70 +4,98 @@
 
 ```
 deploy/docker/
-├── recall/
-│   ├── Dockerfile        # Recall 服务镜像（含 vLLM + Qwen3-0.6B）
-│   └── entrypoint.sh     # 启动 vLLM → 等待就绪 → 启动 Recall 服务
-├── precalc/
-│   ├── Dockerfile        # Precalc 服务镜像
-│   └── entrypoint.sh     # 启动 Precalc 服务
-├── rank-master/
-│   ├── Dockerfile        # RankMaster 服务镜像
-│   └── entrypoint.sh     # 等待 RankSub 就绪 → 启动 RankMaster 服务
-└── rank-sub/
-    ├── Dockerfile        # RankSub 服务镜像
-    └── entrypoint.sh     # 启动 RankSub 服务
+├── discovery/            # 服务发现中心
+├── proxy/                # 网关服务
+├── recall/               # 召回服务（含 vLLM + Qwen3-0.6B）
+├── precalc/              # 前置计算服务
+├── rank-master/          # 精排主图服务
+├── rank-sub/             # 精排子图服务
+├── feature_service/      # 特征服务（待合入）
+├── kv_worker/            # 元戎数据系统 Worker
+├── examples/             # 端到端演示（pseudo_service + test tools）
+└── README.md
 ```
+
+每个目录包含一个 `Dockerfile` 和一个 `entrypoint.sh`。
 
 ## 基础镜像
 
-所有服务基于 `brpc_base:latest`，包含 brpc、protobuf、gRPC、abseil-cpp、gflags、leveldb、rapidjson、CURL 等依赖。
-
-构建基础镜像需要在宿主机上提前准备好，不在本项目范围内。
+所有服务基于 `linquickrec/base:latest`，包含 brpc、protobuf、abseil-cpp、gflags、leveldb、rapidjson 等依赖。
 
 ## Dockerfile 说明
 
+### Discovery（discovery/Dockerfile）
+
+编译 `discovery_server`，监听 8100 端口，提供服务注册/发现/心跳 RPC。
+
+### Proxy（proxy/Dockerfile）
+
+编译 `proxy_server` 和 `discovery_client`。通过 sidecar 模式向 discovery-server 注册自身，并通过 discovery 动态发现下游实例。
+
 ### Recall（recall/Dockerfile）
 
-Recall 服务额外包含 vLLM 和模型文件：
+Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文件（Qwen3-0.6B）：
 
-1. 安装 vLLM wheel 包（`vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl`）
+1. 安装 PyTorch + vLLM
 2. 复制 vLLM 启动脚本（`start_vllm_back.sh`、`start_vllm.sh`）
 3. 复制模型文件（`Qwen3-0.6B/`、`Qwen3-8B/`）
-4. 编译 Recall 服务
+4. 编译 recall_server
 5. 暴露端口 8001（brpc）和 8000（vLLM）
-
-注意：Dockerfile 中的 COPY 路径（如 `/home/w00921547/share/`）是构建机器上的绝对路径，需要在构建机器上执行。
 
 ### Precalc（precalc/Dockerfile）
 
-1. 复制 proto、common、PrecalcService 源码
-2. CMake 编译
-3. 暴露端口 8004
+编译 `precalc_server`，监听 8004 端口，将用户特征预计算结果写入 KVWorker。
 
 ### RankMaster（rank-master/Dockerfile）
 
-1. 复制 proto、common、RankServiceMaster 源码
-2. CMake 编译
-3. 暴露端口 8005
+编译 `rank_master_server`，监听 8005 端口，将候选商品分发给多个 RankSub 并行打分后归并结果。
 
 ### RankSub（rank-sub/Dockerfile）
 
-1. 复制 proto、common、RankServiceSub 源码
-2. CMake 编译
-3. 暴露端口 8006
+编译 `rank_sub_server`，监听 8006 端口，从 KVWorker 读取特征 tensor 并对分配到的 SKU 打分。
+
+### FeatureService（feature_service/Dockerfile）
+
+编译 `feature_server`，监听 8003 端口。实现待其他开发者合入。
+
+### KVWorker（kv_worker/Dockerfile）
+
+基于 pip 安装 `openyuanrong_datasystem`，运行 `start_datasystem.sh`。
+
+### Examples（examples/Dockerfile）
+
+构建 `discovery_client`、`pseudo_service`、`test_discover`、`test_register`、`test_heartbeat_cycle`，用于端到端演示。
 
 ## EntryPoint 说明
 
-每个 entrypoint.sh 通过环境变量配置服务参数，环境变量有默认值，也可通过 Docker/K8s 注入覆盖。
+每个 entrypoint.sh 通过环境变量配置服务参数，均有默认值，可通过 Docker/K8s 注入覆盖。
+
+### discovery/entrypoint.sh
+
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| `SERVER_PORT` | 8100 | brpc 监听端口 |
+| `HEARTBEAT_CHECK_INTERVAL_MS` | 1000 | 健康检查扫描间隔 (ms) |
+| `HEARTBEAT_GRACE_FACTOR` | 2.0 | 心跳超时倍数 |
+| `CLEANUP_FACTOR` | 5.0 | 清理倍数 |
+
+### proxy/entrypoint.sh
+
+支持 `test` 参数运行集成测试：
+
+```bash
+docker run linquickrec/proxy:latest test
+```
+
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| `SERVICE_TYPE` | proxy | 服务发现注册名 |
+| `SERVICE_PORT` | 8080 | HTTP 监听端口 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | Discovery Server 地址 |
 
 ### recall/entrypoint.sh
 
-```bash
-# 启动流程：
-1. 后台启动 vLLM（start_vllm_back.sh）
-2. 轮询 http://127.0.0.1:8000/health 等待 vLLM 就绪（最长 120 秒）
-3. 启动 recall_server
-```
+启动流程：后台启动 vLLM → 轮询 health 等待就绪 → 启动 recall_server。
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
@@ -82,11 +110,6 @@ Recall 服务额外包含 vLLM 和模型文件：
 
 ### precalc/entrypoint.sh
 
-```bash
-# 启动流程：
-1. 直接启动 precalc_server
-```
-
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
 | `SERVER_PORT` | 8004 | brpc 监听端口 |
@@ -94,33 +117,24 @@ Recall 服务额外包含 vLLM 和模型文件：
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
 | `TTL_SECONDS` | 5 | KV 缓存 TTL |
-| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 |
+| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 (MB) |
 | `PAYLOAD_SIZE_KB` | 100 | Payload 大小 |
 
 ### rank-master/entrypoint.sh
 
-```bash
-# 启动流程：
-1. 等待 RankSub 服务 TCP 端口就绪（最长 120 秒，超时也会继续启动）
-2. 启动 rank_master_server
-```
+启动流程：等待 RankSub 就绪（最长 120s，超时仍继续启动）→ 启动 rank_master_server。
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
 | `SERVER_PORT` | 8005 | brpc 监听端口 |
-| `SUB_WORKER_COUNT` | 10 | RankSub 工作线程数 |
-| `SUB_WORKER_ADDRESSES` | rank-sub-service:8006 | RankSub 服务地址 |
+| `SUB_WORKER_COUNT` | 10 | RankSub 数量 |
+| `SUB_WORKER_ADDRESSES` | rank-sub-service:8006 | RankSub 地址 |
 | `TOP_K` | 100 | 返回 Top-K 结果 |
-| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名（用于健康检查） |
-| `RANK_SUB_PORT` | 8006 | RankSub 端口（用于健康检查） |
+| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名 |
+| `RANK_SUB_PORT` | 8006 | RankSub 端口 |
 | `RANK_SUB_STARTUP_TIMEOUT` | 120 | 等待 RankSub 就绪秒数 |
 
 ### rank-sub/entrypoint.sh
-
-```bash
-# 启动流程：
-1. 直接启动 rank_sub_server
-```
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
@@ -128,77 +142,97 @@ Recall 服务额外包含 vLLM 和模型文件：
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
-| `SCORING_DELAY_MS` | 100 | 打分延迟 |
+| `SCORING_DELAY_MS` | 100 | 打分延迟 (ms) |
 
 ## 构建镜像
 
 ### 前提条件
 
 - Docker 已安装
-- 基础镜像 `brpc_base:latest` 已构建或导入
-- Recall 服务额外需要：vLLM wheel 包、模型文件、vLLM 启动脚本（路径见 Dockerfile 中的 COPY）
+- 基础镜像 `linquickrec/base:latest` 已构建或导入
+- Recall 服务额外需要：vLLM wheel 包、模型文件、vLLM 启动脚本
 
 ### 构建命令
 
-```bash
-# 在项目根目录下执行（因为需要 COPY proto/ 和 common/）
-
-# 构建 Recall（需要 GPU 构建机器，且文件路径需匹配）
-docker build -f deploy/docker/recall/Dockerfile -t lingquickrec/recall:latest .
-
-# 构建 Precalc
-docker build -f deploy/docker/precalc/Dockerfile -t lingquickrec/precalc:latest .
-
-# 构建 RankMaster
-docker build -f deploy/docker/rank-master/Dockerfile -t lingquickrec/rank-master:latest .
-
-# 构建 RankSub
-docker build -f deploy/docker/rank-sub/Dockerfile -t lingquickrec/rank-sub:latest .
-```
-
-### 构建所有镜像
+在项目根目录下执行：
 
 ```bash
-for svc in recall precalc rank-master rank-sub; do
-  docker build -f deploy/docker/${svc}/Dockerfile -t lingquickrec/${svc}:latest .
+# 构建单个镜像
+docker build -t linquickrec/discovery:latest \
+    -f deploy/docker/discovery/Dockerfile .
+docker build -t linquickrec/proxy:latest \
+    -f deploy/docker/proxy/Dockerfile .
+docker build -t linquickrec/precalc:latest \
+    -f deploy/docker/precalc/Dockerfile .
+docker build -t linquickrec/rank-master:latest \
+    -f deploy/docker/rank-master/Dockerfile .
+docker build -t linquickrec/rank-sub:latest \
+    -f deploy/docker/rank-sub/Dockerfile .
+
+# Recall（需 GPU 构建机器，文件路径需匹配）
+docker build -t linquickrec/recall:latest \
+    -f deploy/docker/recall/Dockerfile .
+
+# 批量构建
+for svc in discovery proxy precalc rank-master rank-sub; do
+  docker build -t linquickrec/${svc}:latest \
+    -f deploy/docker/${svc}/Dockerfile .
 done
 ```
 
-### 推送到镜像仓库
+## 本地运行
+
+### 服务发现中心
 
 ```bash
-# 如果使用私有仓库，先打 tag 再推送
-docker tag lingquickrec/recall:latest <registry>/lingquickrec/recall:latest
-docker push <registry>/lingquickrec/recall:latest
-
-# 对其他服务同理
+docker run -d --name discovery \
+    -p 8100:8100 \
+    linquickrec/discovery:latest
 ```
 
-## 本地运行（Docker 直接运行）
+### Proxy（依赖 discovery-server）
 
 ```bash
-# Recall（需要 GPU）
-docker run -d --gpus all --runtime=nvidia \
-  --name recall \
-  -p 8001:8001 -p 8000:8000 \
-  lingquickrec/recall:latest
+docker run -d --name proxy \
+    -p 8080:8080 \
+    -e DISCOVERY_ADDR=host.docker.internal:8100 \
+    linquickrec/proxy:latest
+```
 
-# Precalc
+### Precalc
+
+```bash
 docker run -d --name precalc \
-  -p 8004:8004 \
-  lingquickrec/precalc:latest
-
-# RankSub
-docker run -d --name rank-sub \
-  -p 8006:8006 \
-  lingquickrec/rank-sub:latest
-
-# RankMaster（需要 RankSub 已运行）
-docker run -d --name rank-master \
-  -p 8005:8005 \
-  -e RANK_SUB_HOST=host.docker.internal \
-  -e SUB_WORKER_ADDRESSES=host.docker.internal:8006 \
-  lingquickrec/rank-master:latest
+    -p 8004:8004 \
+    linquickrec/precalc:latest
 ```
 
-本地运行时 RankMaster 需要通过 `host.docker.internal` 或宿主机 IP 访问 RankSub。K8s 部署则无需此配置，通过 K8s Service 自动发现。
+### RankSub
+
+```bash
+docker run -d --name rank-sub \
+    -p 8006:8006 \
+    linquickrec/rank-sub:latest
+```
+
+### RankMaster（需 RankSub 已运行）
+
+```bash
+docker run -d --name rank-master \
+    -p 8005:8005 \
+    -e RANK_SUB_HOST=host.docker.internal \
+    -e SUB_WORKER_ADDRESSES=host.docker.internal:8006 \
+    linquickrec/rank-master:latest
+```
+
+### Recall（需 GPU）
+
+```bash
+docker run -d --gpus all --name recall \
+    -p 8001:8001 -p 8000:8000 \
+    linquickrec/recall:latest
+```
+
+## 端到端演示
+
+`examples/` 目录提供完整的 docker-compose 编排，参见 [services/discovery/examples/README.md](../../services/discovery/examples/README.md)。
