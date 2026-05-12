@@ -31,7 +31,7 @@
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
 DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");
 DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
-DEFINE_int32(server_port, 8001, "服务器监听端口");
+DEFINE_int32(server_port, 8002, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
 DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
 DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");

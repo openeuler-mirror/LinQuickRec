@@ -73,14 +73,14 @@ make recall_server recall_test_client recall_test -j$(nproc)
 ### 启动 RecallService
 
 ```bash
-./bin/recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
+./bin/recall_server --server_port=8002 --vllm_base_url=http://127.0.0.1:8000
 ```
 
 参数说明：
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--server_port` | int32 | 8001 | 服务监听端口 |
+| `--server_port` | int32 | 8002 | 服务监听端口 |
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
@@ -90,7 +90,7 @@ make recall_server recall_test_client recall_test -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./bin/recall_test_client --server=127.0.0.1:8001 --user_id=12345
+./bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
 ```
 
 ## 容器搭建
@@ -110,7 +110,7 @@ docker build -t linquickrec/recall:latest \
 docker run -d --name recall-service \
   --gpus all \
   -p 8000:8000 \
-  -p 8001:8001 \
+  -p 8002:8002 \
   linquickrec/recall:latest
 ```
 
@@ -123,7 +123,7 @@ docker run -d --name recall-service \
             ▼
    ┌─────────────────────┐
    │   RecallService     │
-   │   (:8001)           │
+   │   (:8002)           │
    │                     │
    │  1. Proto → JSON    │
    │  2. Build Prompt    │──── HTTP POST ────▶ vLLM (:8000)
@@ -136,5 +136,5 @@ docker run -d --name recall-service \
 
 | 端口 | 服务 | 协议 | 说明 |
 |------|------|------|------|
-| 8001 | RecallService | BRPC | 召回服务 RPC 端口 |
+| 8002 | RecallService | BRPC | 召回服务 RPC 端口 |
 | 8000 | vLLM | HTTP | 大模型推理 API（容器内部） |

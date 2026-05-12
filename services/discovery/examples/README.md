@@ -149,12 +149,12 @@ make -j$(nproc)
 
 ```bash
 # 启动 pseudo_service
-./build/bin/pseudo_service --port=8001
+./build/bin/pseudo_service --port=8002
 
 # 启动 discovery_client（需先编译）
 ./build/bin/discovery_client \
     --service_type=my_service \
-    --service_port=8001 \
+    --service_port=8002 \
     --discovery_addr=127.0.0.1:8100
 ```
 
@@ -179,10 +179,10 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 | 容器名 | 镜像名 | 服务类型 | 端口 | 副本数 |
 |---|---|---|---|---|
 | discovery-examples-server | discovery-examples-server | — | 8100 | 1 |
-| discovery-examples-proxy | discovery-examples-pseudo | proxy | 8001 | 1 |
+| discovery-examples-proxy | discovery-examples-pseudo | proxy | 8002 | 1 |
 | discovery-examples-feature | discovery-examples-pseudo | feature_service | 8002 | 1 |
-| discovery-examples-recall-{1,2,3} | discovery-examples-pseudo | recall_service | 8003 | 3 |
-| discovery-examples-rank-{1,2,3} | discovery-examples-pseudo | rank_service | 8004 | 3 |
+| discovery-examples-recall-{1,2,3} | discovery-examples-pseudo | recall_service | 8001 | 3 |
+| discovery-examples-rank-{1,2,3} | discovery-examples-pseudo | rank_service | 8003 | 3 |
 | discovery-examples-client | discovery-examples-pseudo | — | — | 1 |
 
 各伪服务容器自动运行 `pseudo_service + discovery_client`，向发现中心注册。同类型容器使用相同端口（各自容器内独立，互不冲突）。
@@ -200,10 +200,10 @@ docker compose -f services/discovery/examples/docker-compose.yml logs discovery-
 ```
 [2026-04-29 11:14:15.123] [INFO] [main.cpp:42] Discovery Server starting on 8100
 [2026-04-29 11:14:15.124] [INFO] [main.cpp:43] Heartbeat check interval: 1000ms
-[2026-04-29 11:14:16.962] [INFO] [discovery_server.cpp:74] Register: proxy_172.19.0.3_8001_1
+[2026-04-29 11:14:16.962] [INFO] [discovery_server.cpp:74] Register: proxy_172.19.0.3_8002_1
 [2026-04-29 11:14:17.237] [INFO] [discovery_server.cpp:74] Register: feature_service_172.19.0.8_8002_1
-[2026-04-29 11:14:17.421] [INFO] [discovery_server.cpp:74] Register: recall_service_172.19.0.4_8003_1
-[2026-04-29 11:14:17.592] [INFO] [discovery_server.cpp:74] Register: rank_service_172.19.0.9_8004_1
+[2026-04-29 11:14:17.421] [INFO] [discovery_server.cpp:74] Register: recall_service_172.19.0.4_8001_1
+[2026-04-29 11:14:17.592] [INFO] [discovery_server.cpp:74] Register: rank_service_172.19.0.9_8003_1
 ...
 ```
 
@@ -219,15 +219,15 @@ docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-rec
 ========================================
 Pseudo service starting
   service_type: recall_service
-  service_port: 8003
+  service_port: 8001
   discovery_addr: discovery-server:8100
 ========================================
-[2026-04-29 11:14:17.410] [INFO] [main.cpp:48] Pseudo service listening on port 8003
+[2026-04-29 11:14:17.410] [INFO] [main.cpp:48] Pseudo service listening on port 8001
 [2026-04-29 11:14:17.412] [INFO] [main.cpp:140] Discovery Client starting
-[2026-04-29 11:14:17.412] [INFO] [main.cpp:163] Main service port 8003 is ready
-[2026-04-29 11:14:17.412] [INFO] [main.cpp:68] Port 8003 accepting health checks
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:163] Main service port 8001 is ready
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:68] Port 8001 accepting health checks
 [2026-04-29 11:14:17.412] [INFO] [main.cpp:69] (subsequent health check logs are suppressed)
-[2026-04-29 11:14:17.415] [INFO] [main.cpp:202] Registered as recall_service_172.19.0.4_8003_1
+[2026-04-29 11:14:17.415] [INFO] [main.cpp:202] Registered as recall_service_172.19.0.4_8001_1
 [2026-04-29 11:14:22.418] [INFO] [main.cpp:218] Heartbeat OK              <- 每 5s 一条
 [2026-04-29 11:14:27.422] [INFO] [main.cpp:218] Heartbeat OK
 ...
@@ -277,20 +277,20 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 
 ```
 [PASS] Found 1 instance(s) of [proxy]:
-  [0] proxy_172.17.0.x_8001_1  172.17.0.x:8001  status=UP
+  [0] proxy_172.17.0.x_8002_1  172.17.0.x:8002  status=UP
 
 [PASS] Found 1 instance(s) of [feature_service]:
   [0] feature_service_172.17.0.x_8002_1  172.17.0.x:8002  status=UP
 
 [PASS] Found 3 instance(s) of [recall_service]:
-  [0] recall_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
-  [1] recall_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
-  [2] recall_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
+  [0] recall_service_172.17.0.x_8001_1  172.17.0.x:8001  status=UP
+  [1] recall_service_172.17.0.x_8001_1  172.17.0.x:8001  status=UP
+  [2] recall_service_172.17.0.x_8001_1  172.17.0.x:8001  status=UP
 
 [PASS] Found 3 instance(s) of [rank_service]:
-  [0] rank_service_172.17.0.x_8004_1  172.17.0.x:8004  status=UP
-  [1] rank_service_172.17.0.x_8004_1  172.17.0.x:8004  status=UP
-  [2] rank_service_172.17.0.x_8004_1  172.17.0.x:8004  status=UP
+  [0] rank_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
+  [1] rank_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
+  [2] rank_service_172.17.0.x_8003_1  172.17.0.x:8003  status=UP
 
 [PASS] Found 0 instance(s) of [no_this_service]:
 ```

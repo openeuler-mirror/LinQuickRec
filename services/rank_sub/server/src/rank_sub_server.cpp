@@ -26,7 +26,7 @@
 
 using namespace datasystem;
 
-DEFINE_int32(server_port, 8006, "服务器监听端口");
+DEFINE_int32(server_port, 8005, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "KVWorker 主机地址");
 DEFINE_int32(kvworker_port, 31502, "KVWorker 端口 (Rank)");
 DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");

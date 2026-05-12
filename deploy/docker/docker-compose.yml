@@ -50,7 +50,7 @@ services:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8003"
+      SERVER_PORT: "8001"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
       - lingquickrec-net
@@ -70,7 +70,7 @@ services:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8001"
+      SERVER_PORT: "8002"
       VLLM_PORT: "${VLLM_PORT:-8000}"
       VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
       VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
@@ -80,7 +80,7 @@ services:
       VLLM_STARTUP_TIMEOUT: "${VLLM_STARTUP_TIMEOUT:-120}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     ports:
-      - "8001:8001"
+      - "8002:8002"
     networks:
       - lingquickrec-net
     deploy:
@@ -105,7 +105,7 @@ services:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8004"
+      SERVER_PORT: "8003"
       KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
       KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
       ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
@@ -130,7 +130,7 @@ services:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8006"
+      SERVER_PORT: "8005"
       KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
       KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
       ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
@@ -157,13 +157,13 @@ services:
       rank-sub-service:
         condition: service_started
     environment:
-      SERVER_PORT: "8005"
+      SERVER_PORT: "8004"
       SUB_WORKER_COUNT: "${SUB_WORKER_COUNT:-3}"
-      SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8006}"
+      SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8005}"
       TOP_K: "${TOP_K:-100}"
       SUB_WORKER_TIMEOUT_MS: "${SUB_WORKER_TIMEOUT_MS:-5000}"
       RANK_SUB_HOST: "rank-sub-service"
-      RANK_SUB_PORT: "8006"
+      RANK_SUB_PORT: "8005"
       RANK_SUB_STARTUP_TIMEOUT: "${RANK_SUB_STARTUP_TIMEOUT:-120}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
@@ -192,10 +192,10 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: "8080"
-      FEATURE_SERVICE_ADDR: "feature-service:8003"
-      RECALL_SERVICE_ADDR: "recall-service:8001"
-      PRECALC_SERVICE_ADDR: "precalc-service:8004"
-      RANK_SERVICE_ADDR: "rank-master-service:8005"
+      FEATURE_SERVICE_ADDR: "feature-service:8001"
+      RECALL_SERVICE_ADDR: "recall-service:8002"
+      PRECALC_SERVICE_ADDR: "precalc-service:8003"
+      RANK_SERVICE_ADDR: "rank-master-service:8004"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     ports:
       - "${PROXY_PORT:-8080}:8080"

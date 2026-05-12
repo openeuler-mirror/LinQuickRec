@@ -23,7 +23,7 @@
 
 using namespace datasystem;
 
-DEFINE_int32(server_port, 8004, "服务器监听端口");
+DEFINE_int32(server_port, 8003, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
 DEFINE_int32(kvworker_port, 31502, "元戎 KVWorker 端口 (PrecalcService)");
 DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");

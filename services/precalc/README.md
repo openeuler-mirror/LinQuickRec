@@ -68,7 +68,7 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 ```bash
 ./bin/precalc_server \
-  --server_port=8004 \
+  --server_port=8003 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31501 \
   --ttl_seconds=5
@@ -78,7 +78,7 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 | 参数                         | 类型     | 默认值                  | 说明                     |
 | -------------------------- | ------ | -------------------- | ---------------------- |
-| `--server_port`            | int32  | 8004                 | 服务监听端口                 |
+| `--server_port`            | int32  | 8003                 | 服务监听端口                 |
 | `--kvworker_host`          | string | "141.61.84.245"      | 元戎 KVWorker 主机地址       |
 | `--kvworker_port`          | int32  | 31502                | 元戎 KVWorker 端口         |
 | `--etcd_address`           | string | "141.61.84.245:2379" | ETCD 地址                |
@@ -91,7 +91,7 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./bin/precalc_test_client --server=127.0.0.1:8004
+./bin/precalc_test_client --server=127.0.0.1:8003
 ```
 
 ## 容器搭建
@@ -107,7 +107,7 @@ docker build -t linquickrec/precalc:latest \
 
 ```bash
 docker run -d --name precalc-service \
-  -p 8004:8004 \
+  -p 8003:8003 \
   linquickrec/precalc:latest
 ```
 
@@ -115,7 +115,7 @@ docker run -d --name precalc-service \
 
 | 变量              | 默认值           | 说明          |
 | --------------- | ------------- | ----------- |
-| `SERVER_PORT`   | 8004          | 服务端口        |
+| `SERVER_PORT`   | 8003          | 服务端口        |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 主机 |
 | `KVWORKER_PORT` | 31502         | KVWorker 端口 |
 | `TTL_SECONDS`   | 5             | 数据 TTL      |
@@ -129,7 +129,7 @@ docker run -d --name precalc-service \
             ▼
    ┌─────────────────────┐         ┌──────────────────┐
    │  PrecalcService     │  Write  │  KVWorker         │
-   │  (:8004)            │────────▶│  (:31501)         │
+   │  (:8003)            │────────▶│  (:31501)         │
    │                     │         │                   │
    │  1. Extract key     │         │  key → 8.5MB data │
    │  2. Generate tensor │         │  TTL = 5s         │
@@ -147,6 +147,6 @@ docker run -d --name precalc-service \
 
 | 端口    | 服务                | 协议     | 说明       |
 | ----- | ----------------- | ------ | -------- |
-| 8004  | PrecalcService    | BRPC   | 前置计算服务端口 |
+| 8003  | PrecalcService    | BRPC   | 前置计算服务端口 |
 | 31502 | KVWorker (Recall) | 元戎 SDK | 分布式缓存端口  |
 
