@@ -1,10 +1,11 @@
 #ifndef FEATURE_SERVER_H
 #define FEATURE_SERVER_H
 
-#include "feature.pb.h"
+#include <random>
 
 #include <brpc/server.h>
-#include <random>
+
+#include "feature.pb.h"
 
 DECLARE_int32(server_port);
 

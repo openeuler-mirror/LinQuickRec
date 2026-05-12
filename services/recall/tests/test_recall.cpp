@@ -1,12 +1,13 @@
 // Recall 服务单元测试
 // 测试 proto_to_json、build_vllm_request、parse_vllm_response 纯逻辑函数
 
-#include "recall_server.h"
-#include <iostream>
 #include <cassert>
+#include <iostream>
 #include <string>
 
 #include <rapidjson/document.h>
+
+#include "recall_server.h"
 
 using namespace recall;
 

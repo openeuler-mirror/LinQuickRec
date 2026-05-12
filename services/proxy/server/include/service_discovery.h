@@ -1,10 +1,6 @@
 #ifndef SERVICE_DISCOVERY_H
 #define SERVICE_DISCOVERY_H
 
-#include "discovery.pb.h"
-
-#include <brpc/channel.h>
-
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -12,6 +8,10 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+
+#include <brpc/channel.h>
+
+#include "discovery.pb.h"
 
 class ServiceDiscovery {
 public:

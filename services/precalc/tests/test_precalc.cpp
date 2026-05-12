@@ -1,10 +1,11 @@
 // Precalc 服务单元测试
 // 测试 common::generate_random_string 和 common::generate_random_numeric_string
 
-#include "common/random_utils.h"
-#include <iostream>
 #include <cassert>
+#include <iostream>
 #include <string>
+
+#include "common/random_utils.h"
 
 // ============================================================================
 // generate_random_string 测试

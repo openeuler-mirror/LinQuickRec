@@ -1,14 +1,13 @@
-#include "discovery.pb.h"
+#include <chrono>
+#include <string>
+#include <thread>
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include <string>
-#include <thread>
-#include <chrono>
-
 #include "common/logger.h"
+#include "discovery.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(service_type, "", "Service type (snake_case)");

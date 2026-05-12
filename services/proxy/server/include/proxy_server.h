@@ -1,26 +1,24 @@
 #ifndef PROXY_SERVER_H
 #define PROXY_SERVER_H
 
-#include "proxy.pb.h"
-#include "feature.pb.h"
-#include "recall.pb.h"
-#include "precalc.pb.h"
-#include "rank_master.pb.h"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
 
-#include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <gflags/gflags.h>
 
-#include "common/logger.h"
 #include "common/error.h"
-
+#include "common/logger.h"
+#include "feature.pb.h"
+#include "precalc.pb.h"
+#include "proxy.pb.h"
+#include "rank_master.pb.h"
+#include "recall.pb.h"
 #include "service_discovery.h"
-
-#include <functional>
-#include <string>
-#include <memory>
-#include <cstdint>
 
 DECLARE_int32(server_port);
 DECLARE_string(discovery_addr);

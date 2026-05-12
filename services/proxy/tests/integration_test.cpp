@@ -1,20 +1,25 @@
-#include "proxy_server.h"
-#include "service_discovery.h"
+#include <cassert>
+#include <chrono>
+#include <iostream>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
 
-#include "feature.pb.h"
-#include "recall.pb.h"
-#include "precalc.pb.h"
-#include "rank_master.pb.h"
-#include "discovery.pb.h"
-
-#include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
-
-#include "common/logger.h"
-#include "common/global_thread_pool.h"
-
+#include <brpc/server.h>
 #include <gflags/gflags.h>
+
+#include "common/global_thread_pool.h"
+#include "common/logger.h"
+#include "discovery.pb.h"
+#include "feature.pb.h"
+#include "precalc.pb.h"
+#include "proxy_server.h"
+#include "rank_master.pb.h"
+#include "recall.pb.h"
+#include "service_discovery.h"
 
 DEFINE_string(discovery_addr, "127.0.0.1:18100", "");
 DEFINE_string(feature_service_name, "feature_service", "");
@@ -23,14 +28,6 @@ DEFINE_string(precalc_service_name, "precalc_service", "");
 DEFINE_string(rank_service_name, "rank_service", "");
 DEFINE_int32(discovery_refresh_interval_ms, 100, "");
 DEFINE_int32(downstream_max_retries, 0, "");
-
-#include <cassert>
-#include <chrono>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <thread>
-#include <unordered_map>
 
 constexpr int DISCOVERY_PORT   = 18100;
 constexpr int MOCK_FEATURE_PORT = 18001;

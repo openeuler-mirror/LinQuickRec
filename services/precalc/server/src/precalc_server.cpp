@@ -1,29 +1,24 @@
-// 1. 对应的头文件
 #include "precalc_server.h"
 
-// 2. 标准库头文件
 #include <chrono>
-#include <sstream>
-#include <vector>
-#include <random>
 #include <cstring>
 #include <memory>
+#include <random>
+#include <sstream>
 #include <string>
+#include <vector>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
-#include <brpc/server.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
+
 #include <datasystem/kv_client.h>
 
-// 5. 本项目内其他头文件
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 #include "common/random_utils.h"
 
 using namespace datasystem;

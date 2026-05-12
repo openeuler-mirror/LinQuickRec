@@ -5,25 +5,18 @@
  * 用于与 RankSubServer 通信，发送打分请求
  */
 
-// 1. 对应的头文件
-#include "rank_sub.pb.h"
-
-// 2. 标准库头文件
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cstdint>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
+#include "rank_sub.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8006", "服务器地址 (ip:port)");
 DEFINE_int32(timeout_ms, 10000, "超时时间（毫秒）");

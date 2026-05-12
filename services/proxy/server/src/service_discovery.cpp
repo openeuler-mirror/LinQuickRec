@@ -1,6 +1,7 @@
 #include "service_discovery.h"
 
-#include "common/logger.h"
+#include <chrono>
+#include <thread>
 
 #include <gflags/gflags.h>
 
@@ -9,8 +10,7 @@ DECLARE_string(recall_service_name);
 DECLARE_string(precalc_service_name);
 DECLARE_string(rank_service_name);
 
-#include <chrono>
-#include <thread>
+#include "common/logger.h"
 
 static constexpr int COOLDOWN_SECONDS = 10;
 static constexpr int MAX_CONSECUTIVE_FAILURES = 3;

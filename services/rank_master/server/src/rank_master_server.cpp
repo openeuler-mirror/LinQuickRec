@@ -1,32 +1,26 @@
-// 1. 对应的头文件
 #include "rank_master_server.h"
 
-// 2. 标准库头文件
-#include <chrono>
-#include <sstream>
-#include <vector>
-#include <random>
-#include <cstring>
-#include <memory>
 #include <algorithm>
+#include <chrono>
+#include <cstring>
 #include <functional>
 #include <future>
 #include <map>
+#include <memory>
+#include <random>
+#include <sstream>
+#include <vector>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
-#include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
 

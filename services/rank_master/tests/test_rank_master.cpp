@@ -2,11 +2,12 @@
 // 测试 parse_skus_from_string、distribute_skus_by_hash、skus_to_string、select_top_k 纯逻辑函数
 
 #include "rank_master_server.h"
-#include <iostream>
+
 #include <cassert>
+#include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 using namespace rank;
 

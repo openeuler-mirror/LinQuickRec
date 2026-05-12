@@ -2,6 +2,7 @@
 #define VLLM_CLIENT_H
 
 #include <string>
+
 #include "common/error.h"
 
 namespace recall {
