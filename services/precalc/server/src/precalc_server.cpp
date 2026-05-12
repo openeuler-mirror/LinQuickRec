@@ -69,13 +69,15 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
         auto result = future.get();
         response->CopyFrom(result.second);
         if (result.first.IsError()) {
-            cntl->SetFailed(result.first.ToString());
+            response->set_error_code(static_cast<int32_t>(result.first.Code()));
+            response->set_error_message(result.first.ToString());
         }
     } catch (const std::exception& e) {
         auto status = common::error::Status(precalc_errors::INTERNAL_ERROR,
             "Thread pool task failed: " + std::string(e.what()));
         LOG_ERROR << status.ToString();
-        cntl->SetFailed(status.ToString());
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
     }
 }
 

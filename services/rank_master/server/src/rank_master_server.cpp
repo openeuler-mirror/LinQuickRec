@@ -134,9 +134,11 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
 
     try {
         auto result = future.get();
-        response->CopyFrom(result.second);
         if (result.first.IsError()) {
-            cntl->SetFailed(result.first.ToString());
+            response->set_error_code(static_cast<int32_t>(result.first.Code()));
+            response->set_error_message(result.first.ToString());
+        } else {
+            response->CopyFrom(result.second);
         }
     } catch (const std::exception& e) {
         auto status = common::error::Status(rank_master_errors::INTERNAL_ERROR,

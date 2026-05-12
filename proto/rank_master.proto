@@ -16,6 +16,8 @@ message RankMasterRequest {
 // 精排主图服务 - 响应
 message RankMasterResponse {
     repeated uint64 candidates = 1;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 // 精排主图服务定义
