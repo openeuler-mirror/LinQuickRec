@@ -65,6 +65,8 @@ services:
       context: ../..
       dockerfile: deploy/docker/recall/Dockerfile
     image: lingquickrec/recall:v1.2
+    volumes:
+      - /usr/local/cuda-12.9:/usr/local/cuda
     container_name: recall-service
     depends_on:
       discovery-server:
