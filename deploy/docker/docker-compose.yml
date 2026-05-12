@@ -1,0 +1,58 @@
+services:
+  discovery:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/discovery/Dockerfile
+    ports:
+      - "8100:8100"
+    networks:
+      - lingquickrec
+
+  proxy:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/proxy/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - discovery
+    environment:
+      DISCOVERY_ADDR: discovery:8100
+    networks:
+      - lingquickrec
+
+  precalc:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/precalc/Dockerfile
+    ports:
+      - "8004:8004"
+    networks:
+      - lingquickrec
+
+  rank-sub:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/rank-sub/Dockerfile
+    ports:
+      - "8006:8006"
+    networks:
+      - lingquickrec
+
+  rank-master:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/rank-master/Dockerfile
+    ports:
+      - "8005:8005"
+    depends_on:
+      - rank-sub
+    environment:
+      RANK_SUB_HOST: rank-sub
+      SUB_WORKER_ADDRESSES: rank-sub:8006
+    networks:
+      - lingquickrec
+
+networks:
+  lingquickrec:
+    name: lingquickrec
