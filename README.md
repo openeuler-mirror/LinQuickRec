@@ -171,6 +171,10 @@ Content-Type: application/json
 
 错误码采用 `0xMMTTCCCC` 格式，详见 [错误码体系](#错误码体系) 和 [proxy/README.md](services/proxy/README.md)。
 
+## 配置参考
+
+所有可配置参数详见 [CONFIG.md](CONFIG.md)，包括各服务 gflag、环境变量映射及生效方式。
+
 ## 编译命令
 
 ### 前置依赖
