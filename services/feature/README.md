@@ -17,25 +17,36 @@ services/feature_service/
 ## 编译命令
 
 | 依赖 | 版本要求 | 安装参考 |
-|---|---|---|
+|------|----------|----------|
 | CMake | >= 3.14 | `apt install cmake` |
 | brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
 | protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
 | abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
-| hiredis | latest | `apt install libhiredis-dev` |
+
+### 脚本构建
 
 ```bash
-cd services/feature_service
+cd services/feature
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/feature
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make feature_server -j$(nproc)
 ```
 
 ### 编译产物
 
 | 二进制 | 说明 |
-|---|---|
-| `feature_server` | 特征服务端（待实现） |
+|--------|------|
+| `feature_server` | 特征服务端 |
 
 ## 启动方式
 

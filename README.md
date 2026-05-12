@@ -253,20 +253,6 @@ LinQuickRec-yh/
 
 容器构建与部署详见 [deploy/docker/README.md](deploy/docker/README.md)。
 
-### 单独构建
-
-单独构建指定容器可以使用如下示例命令：
-
-```bash
-# 构建 Discovery
-docker build -t linquickrec/discovery:latest \
-    -f deploy/docker/discovery/Dockerfile .
-
-# 构建 Proxy
-docker build -t linquickrec/proxy:latest \
-    -f deploy/docker/proxy/Dockerfile .
-```
-
 ## 后续开发
 
 - [x] common 公共基础库（错误码/日志/线程池）
