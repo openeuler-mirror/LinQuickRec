@@ -70,7 +70,7 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 
 ```bash
 ./bin/rank_master_server \
-  --server_port=8005 \
+  --server_port=8004 \
   --sub_worker_count=10 \
   --sub_worker_addresses=rank-sub-service:8006 \
   --top_k=100
@@ -80,7 +80,7 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--server_port` | int32 | 8005 | 服务监听端口 |
+| `--server_port` | int32 | 8004 | 服务监听端口 |
 | `--sub_worker_count` | int32 | 10 | 子图数量 |
 | `--sub_worker_addresses` | string | "127.0.0.1:8006" | 子图地址列表（逗号分隔） |
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
@@ -90,7 +90,7 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 
 ```bash
 ./bin/rank_master_test_client \
-  --server=127.0.0.1:8005 \
+  --server=127.0.0.1:8004 \
   --sku_count=1000 \
   --payload_size_kb=100 \
   --tensor_size_mb=8.5 \
@@ -120,7 +120,7 @@ docker build -t linquickrec/rank-master:latest \
 
 ```bash
 docker run -d --name rank-master \
-  -p 8005:8005 \
+  -p 8004:8004 \
   -e RANK_SUB_HOST=rank-sub-service \
   -e SUB_WORKER_ADDRESSES=rank-sub-service:8006 \
   linquickrec/rank-master:latest
@@ -130,7 +130,7 @@ docker run -d --name rank-master \
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SERVER_PORT` | 8005 | 服务端口 |
+| `SERVER_PORT` | 8004 | 服务端口 |
 | `SUB_WORKER_COUNT` | 10 | 子图数量 |
 | `SUB_WORKER_ADDRESSES` | "rank-sub-service:8006" | 子图地址 |
 | `RANK_SUB_HOST` | "rank-sub-service" | 子图主机名 |
@@ -145,7 +145,7 @@ docker run -d --name rank-master \
             │ Rank(key, skus, payload)
             ▼
    ┌─────────────────────────────────────────────┐
-   │         RankServiceMaster (:8005)            │
+   │         RankServiceMaster (:8004)            │
    │                                              │
    │  1. Parse SKUs → [100456, 200789, ...]      │
    │  2. Hash distribute to N workers             │
@@ -168,5 +168,5 @@ docker run -d --name rank-master \
 
 | 端口 | 服务 | 协议 | 说明 |
 |------|------|------|------|
-| 8005 | RankServiceMaster | BRPC | 精排主图服务端口 |
+| 8004 | RankServiceMaster | BRPC | 精排主图服务端口 |
 | 8006 | RankServiceSub | BRPC | 精排子图服务端口 |

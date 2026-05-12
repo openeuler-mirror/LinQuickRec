@@ -58,7 +58,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
                  |
                  v
   ┌──────────────────────────────┐
-  │  Feature (8003)              │<──── Redis (6379)
+  │  Feature (8001)              │<──── Redis (6379)
   │  [pending]                   │
   └──────────────┬───────────────┘
                  |
@@ -69,7 +69,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
         v                 v
   ┌────────────┐   ┌──────────────┐
   │ Recall xN  │   │ Precalc xN   │
-  │ 8001       │   │ 8004         │
+  │ 8002       │   │ 8003         │
   └──────┬─────┘   └──────┬───────┘
          │ Write          │ Write
          v                v
@@ -81,13 +81,13 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
                           v
                    ┌──────────────┐
                    │ RankMaster   │
-                   │ xN, 8005     │
+                   │ xN, 8004     │
                    └──────┬───────┘
                           │
                           v
                    ┌──────────────┐
                    │ RankSub xN   │
-                   │ 8006         │
+                   │ 8005         │
                    └──────┬───────┘
                           │ Read
                           v
@@ -119,11 +119,11 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 |------|------|---------------|------|------|
 | Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
 | Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
-| Recall | 8001 | RecallService | ✅ 已完成 | vLLM |
-| Precalc | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
-| RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
-| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
-| Feature | 8003 | FeatureService | 待合入 | Redis(6379) |
+| Recall | 8002 | RecallService | ✅ 已完成 | vLLM |
+| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
+| RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub(8005) |
+| RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker(31502) |
+| Feature | 8001 | FeatureService | 待合入 | Redis(6379) |
 | KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
 | vLLM | — | — | 模型服务 | Qwen3-0.6B |
 

@@ -16,7 +16,7 @@
          ┌──────────────┼──────────────┐                                       │
          ▼              ▼              ▼                                       │
   Feature (x1)    Recall (xN)    Precalc (xN)                                  │
-  :8003             :8001           :8004                                      │
+  :8001             :8002           :8003                                      │
   [pending]         + vLLM                                                     │
                     :8000          KVWorker                                    │
          │              │            :31502                                    │
@@ -26,11 +26,11 @@
          └──────────────┬──────────────┘                                       │
                         ▼                                                      │
                  RankMaster (xN)                                               │
-                 :8005                                                         │
+                 :8004                                                         │
                         │                                                      │
                         ▼                                                      │
                  RankSub (xN)  ◄──── KVWorker :31502                           │
-                 :8006                                                         │
+                 :8005                                                         │
                           │                                                    │
                           │                                                    │
                   Discovery Server :8100                                       │
@@ -100,11 +100,11 @@ docker compose logs discovery-server
 | 服务 | 容器名 | 端口 | 镜像 | 说明 |
 |------|--------|------|------|------|
 | discovery-server | discovery-server | 8100 | lingquickrec-discovery | 服务注册与发现中心 |
-| feature-service | feature-service | 8003 | lingquickrec-feature | 特征服务（mock） |
-| recall-service | recall-service | 8001 | lingquickrec-recall | 召回服务（含 vLLM，需 GPU） |
-| precalc-service | precalc-service | 8004 | lingquickrec-precalc | 预计算服务 |
-| rank-sub-service | — (动态) | 8006 | lingquickrec-rank-sub | 排序子服务，默认 3 副本 |
-| rank-master-service | rank-master-service | 8005 | lingquickrec-rank-master | 排序主服务 |
+| feature-service | feature-service | 8001 | lingquickrec-feature | 特征服务（mock） |
+| recall-service | recall-service | 8002 | lingquickrec-recall | 召回服务（含 vLLM，需 GPU） |
+| precalc-service | precalc-service | 8003 | lingquickrec-precalc | 预计算服务 |
+| rank-sub-service | — (动态) | 8005 | lingquickrec-rank-sub | 排序子服务，默认 3 副本 |
+| rank-master-service | rank-master-service | 8004 | lingquickrec-rank-master | 排序主服务 |
 | proxy-service | proxy-service | 8080 | lingquickrec-proxy | 系统入口网关 |
 
 ### 启动顺序
@@ -141,7 +141,7 @@ VLLM_TIMEOUT_MS=100000              # vLLM 请求超时
 # ---- Rank 扩展 ----
 RANK_SUB_REPLICAS=3                  # rank-sub 副本数
 SUB_WORKER_COUNT=3                   # rank-master 连接的 worker 数（需与副本数一致）
-SUB_WORKER_ADDRESSES=rank-sub-service:8006  # Docker 内部 DNS 自动解析所有副本
+SUB_WORKER_ADDRESSES=rank-sub-service:8005  # Docker 内部 DNS 自动解析所有副本
 
 # ---- 网关 ----
 PROXY_PORT=8080                      # 对外暴露的代理端口
@@ -214,25 +214,25 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 2. 复制 vLLM 启动脚本（`start_vllm_back.sh`、`start_vllm.sh`）
 3. 复制模型文件（`Qwen3-0.6B/`、`Qwen3-8B/`）
 4. 编译 recall_server
-5. 暴露端口 8001（brpc）和 8000（vLLM）
+5. 暴露端口 8002（brpc）和 8000（vLLM）
 
 ### Precalc（precalc/Dockerfile）
 
-编译 `precalc_server`，监听 8004 端口，将用户特征预计算结果写入 KVWorker。
+编译 `precalc_server`，监听 8003 端口，将用户特征预计算结果写入 KVWorker。
 
 ### RankMaster（rank-master/Dockerfile）
 
-编译 `rank_master_server`，监听 8005 端口，将候选商品分发给多个 RankSub 并行打分后归并结果。
+编译 `rank_master_server`，监听 8004 端口，将候选商品分发给多个 RankSub 并行打分后归并结果。
 
 ### RankSub（rank-sub/Dockerfile）
 
-编译 `rank_sub_server`，监听 8006 端口，从 KVWorker 读取特征 tensor 并对分配到的 SKU 打分。
+编译 `rank_sub_server`，监听 8005 端口，从 KVWorker 读取特征 tensor 并对分配到的 SKU 打分。
 
 ### Feature（feature/Dockerfile）
 
 1. 复制 proto、common、FeatureService 源码
 2. CMake 编译
-3. 暴露端口 8003
+3. 暴露端口 8001
 
 ## EntryPoint 说明
 
@@ -250,7 +250,7 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `SERVER_PORT` | 8001 | brpc 监听端口 |
+| `SERVER_PORT` | 8002 | brpc 监听端口 |
 | `VLLM_BASE_URL` | http://127.0.0.1:8000 | vLLM 地址 |
 | `VLLM_ENDPOINT` | /v1/chat/completions | vLLM 推理接口路径 |
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 模型路径 |
@@ -270,7 +270,7 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `SERVER_PORT` | 8004 | brpc 监听端口 |
+| `SERVER_PORT` | 8003 | brpc 监听端口 |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
@@ -290,12 +290,12 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `SERVER_PORT` | 8005 | brpc 监听端口 |
+| `SERVER_PORT` | 8004 | brpc 监听端口 |
 | `SUB_WORKER_COUNT` | 3 | RankSub 工作线程数 |
-| `SUB_WORKER_ADDRESSES` | rank-sub-service:8006 | RankSub 服务地址 |
+| `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | RankSub 服务地址 |
 | `TOP_K` | 100 | 返回 Top-K 结果 |
 | `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名 |
-| `RANK_SUB_PORT` | 8006 | RankSub 端口 |
+| `RANK_SUB_PORT` | 8005 | RankSub 端口 |
 | `RANK_SUB_STARTUP_TIMEOUT` | 120 | 等待 RankSub 就绪秒数 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
 
@@ -309,7 +309,7 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `SERVER_PORT` | 8006 | brpc 监听端口 |
+| `SERVER_PORT` | 8005 | brpc 监听端口 |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 地址 |
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
@@ -326,7 +326,7 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| `SERVER_PORT` | 8003 | brpc 监听端口 |
+| `SERVER_PORT` | 8001 | brpc 监听端口 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
 
 ### proxy/entrypoint.sh
@@ -340,10 +340,10 @@ Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文�
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
 | `SERVER_PORT` | 8080 | brpc 监听端口 |
-| `FEATURE_SERVICE_ADDR` | feature-service:8003 | Feature 服务地址 |
-| `RECALL_SERVICE_ADDR` | recall-service:8001 | Recall 服务地址 |
-| `PRECALC_SERVICE_ADDR` | precalc-service:8004 | Precalc 服务地址 |
-| `RANK_SERVICE_ADDR` | rank-master-service:8005 | RankMaster 服务地址 |
+| `FEATURE_SERVICE_ADDR` | feature-service:8001 | Feature 服务地址 |
+| `RECALL_SERVICE_ADDR` | recall-service:8002 | Recall 服务地址 |
+| `PRECALC_SERVICE_ADDR` | precalc-service:8003 | Precalc 服务地址 |
+| `RANK_SERVICE_ADDR` | rank-master-service:8004 | RankMaster 服务地址 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
 
 ## 手动构建单个镜像
@@ -398,7 +398,7 @@ docker run -d --name proxy \
 
 ```bash
 docker run -d --name precalc \
-    -p 8004:8004 \
+    -p 8003:8003 \
     linquickrec/precalc:latest
 ```
 
@@ -406,7 +406,7 @@ docker run -d --name precalc \
 
 ```bash
 docker run -d --name rank-sub \
-    -p 8006:8006 \
+    -p 8005:8005 \
     linquickrec/rank-sub:latest
 ```
 
@@ -414,9 +414,9 @@ docker run -d --name rank-sub \
 
 ```bash
 docker run -d --name rank-master \
-    -p 8005:8005 \
+    -p 8004:8004 \
     -e RANK_SUB_HOST=host.docker.internal \
-    -e SUB_WORKER_ADDRESSES=host.docker.internal:8006 \
+    -e SUB_WORKER_ADDRESSES=host.docker.internal:8005 \
     linquickrec/rank-master:latest
 ```
 
@@ -424,7 +424,7 @@ docker run -d --name rank-master \
 
 ```bash
 docker run -d --gpus all --name recall \
-    -p 8001:8001 -p 8000:8000 \
+    -p 8002:8002 -p 8000:8000 \
     linquickrec/recall:latest
 ```
 

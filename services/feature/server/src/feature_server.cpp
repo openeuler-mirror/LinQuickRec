@@ -5,7 +5,7 @@
 
 #include "common/logger.h"
 
-DEFINE_int32(server_port, 8003, "Feature service port");
+DEFINE_int32(server_port, 8001, "Feature service port");
 
 namespace feature {
 

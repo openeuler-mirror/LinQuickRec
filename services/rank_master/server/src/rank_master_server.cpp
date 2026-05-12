@@ -24,7 +24,7 @@
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
 
-DEFINE_int32(server_port, 8005, "服务器监听端口");
+DEFINE_int32(server_port, 8004, "服务器监听端口");
 DEFINE_int32(sub_worker_count, 10, "子图数量");
 DEFINE_string(sub_worker_addresses, "127.0.0.1:8006", "子图地址列表（逗号分隔）");
 DEFINE_string(discovery_addr, "",
