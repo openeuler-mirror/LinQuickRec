@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     brpc::Server server;
 
     if (server.AddService(&rank_master_service, brpc::SERVER_OWNS_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add RankMasterService";
+        LOG_ERROR << "Failed to add RankMasterService";
         return -1;
     }
     
@@ -31,14 +31,14 @@ int main(int argc, char* argv[]) {
     server_options.num_threads = 128;
     
     if (server.Start(FLAGS_server_port, &server_options) != 0) {
-        LOG(ERROR) << "Failed to start server on port " << FLAGS_server_port;
+        LOG_ERROR << "Failed to start server on port " << FLAGS_server_port;
         return -1;
     }
     
-    LOG(INFO) << "RankMasterService started on port " << FLAGS_server_port;
+    LOG_INFO << "RankMasterService started on port " << FLAGS_server_port;
     
     server.RunUntilAskedToQuit();
     
-    LOG(INFO) << "RankMasterService stopped";
+    LOG_INFO << "RankMasterService stopped";
     return 0;
 }

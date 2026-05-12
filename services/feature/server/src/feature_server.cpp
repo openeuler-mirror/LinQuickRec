@@ -10,7 +10,7 @@ namespace feature {
 
 FeatureServiceImpl::FeatureServiceImpl()
     : rng_(std::random_device{}()) {
-    LOG(INFO) << "FeatureServiceImpl (mock) initialized";
+    LOG_INFO << "FeatureServiceImpl (mock) initialized";
 }
 
 FeatureServiceImpl::~FeatureServiceImpl() = default;
@@ -28,7 +28,7 @@ void FeatureServiceImpl::GetUserFeatures(
         user_id = request->kr_feat_req().user_id();
     }
 
-    LOG(INFO) << "GetUserFeatures (mock): user_id=" << user_id;
+    LOG_INFO << "GetUserFeatures (mock): user_id=" << user_id;
 
     std::uniform_int_distribution<int> log_count_dist(5, 20);
     std::uniform_int_distribution<int> vec_size_dist(10, 50);
@@ -48,7 +48,7 @@ void FeatureServiceImpl::GetUserFeatures(
     kr_rsp->set_other("mock_feat_" + std::to_string(user_id));
     response->set_feature_type(KuaiRand);
 
-    LOG(INFO) << "GetUserFeatures (mock) response: user_logs="
+    LOG_INFO << "GetUserFeatures (mock) response: user_logs="
               << kr_rsp->user_logs_size()
               << " other=" << kr_rsp->other();
 }
@@ -61,7 +61,7 @@ void FeatureServiceImpl::GetSKUFeatures(
 
     brpc::ClosureGuard done_guard(done);
 
-    LOG(INFO) << "GetSKUFeatures (mock): sku_count="
+    LOG_INFO << "GetSKUFeatures (mock): sku_count="
               << request->sku_ids_size();
 
     std::uniform_int_distribution<int> feat_len_dist(10, 30);
@@ -82,7 +82,7 @@ void FeatureServiceImpl::GetSKUFeatures(
         sku_feat->set_feat(feat);
     }
 
-    LOG(INFO) << "GetSKUFeatures (mock) response: sku_feats="
+    LOG_INFO << "GetSKUFeatures (mock) response: sku_feats="
               << response->kr_sku_feats_size();
 }
 
