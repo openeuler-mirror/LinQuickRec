@@ -5,7 +5,7 @@ ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
 ARG SERVICE_DIR=services/RankServiceMaster/
 ARG ENTRYPOINT_FILE=deploy/docker/rank-master/entrypoint.sh
-ARG DISCOVERY_CLIENT_BIN=build/bin/discovery_client
+ARG DISCOVERY_DIR=services/discovery/
 
 WORKDIR /app
 
@@ -16,7 +16,12 @@ RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/RankServiceMaster -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-COPY ${DISCOVERY_CLIENT_BIN} /app/discovery_client
+COPY ${DISCOVERY_DIR} /app/services/discovery/
+RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
+    cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
+    make discovery_client -j$(nproc) && \
+    cp bin/discovery_client /app/discovery_client && \
+    rm -rf /tmp/build_discovery
 RUN chmod +x /app/discovery_client
 
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh

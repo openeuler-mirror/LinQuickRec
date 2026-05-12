@@ -1,21 +1,19 @@
 # LingQuickRec Docker Compose 部署配置
 #
-# 使用方法：
-#   1. 先在宿主机构建 discovery 二进制文件（Dockerfile 需要预编译产物）：
-#      mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release
-#      make discovery_server discovery_client -j$(nproc)
+# 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译二进制。
 #
-#   2. 构建并启动所有服务：
+# 使用方法：
+#   1. 构建并启动所有服务：
 #      docker compose up --build -d
 #
-#   3. 单独启动某个服务：
+#   2. 单独启动某个服务：
 #      docker compose up --build -d recall-service
 #
-#   4. 调整 rank-sub 副本数：
+#   3. 调整 rank-sub 副本数：
 #      docker compose up --build -d --scale rank-sub-service=5
 #      （同时修改 .env 中 SUB_WORKER_COUNT 和 SUB_WORKER_ADDRESSES）
 #
-#   5. 停止所有服务：
+#   4. 停止所有服务：
 #      docker compose down
 
 services:

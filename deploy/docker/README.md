@@ -59,30 +59,19 @@ deploy/docker/
 | Docker + Compose v2 | `docker compose` 命令可用 |
 | `brpc_base:latest` | 基础镜像，需提前构建或导入（包含 brpc、protobuf、gRPC、abseil 等依赖） |
 | NVIDIA GPU + nvidia-container-toolkit | Recall 服务运行 vLLM 需要 GPU |
-| 宿主机 CMake 工具链 | 预编译 discovery_server / discovery_client 二进制 |
 
 ## 快速开始
 
-### 1. 预编译 Discovery 二进制
+### 1. 一键启动
 
-discovery 的 Dockerfile 依赖宿主机预编译产物，需先构建：
-
-```bash
-# 在项目根目录下
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make discovery_server discovery_client -j$(nproc)
-# 产物位于 build/bin/discovery_server 和 build/bin/discovery_client
-```
-
-### 2. 一键启动
+所有服务均在容器内编译，无需宿主机安装 brpc 或预编译任何二进制：
 
 ```bash
 cd deploy/docker
 docker compose up --build -d
 ```
 
-### 3. 验证
+### 2. 验证
 
 ```bash
 # 查看所有容器状态
