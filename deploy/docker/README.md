@@ -3,42 +3,38 @@
 ## 架构总览
 
 ```
-                           ┌───────────────────────────────────────────────────┐
-                           │                 lingquickrec-net                 │
-                           │                 (Docker bridge)                  │
-                           │                                                   │
- Client :8080 ──► ┌──────────────┐                                             │
-                  │    Proxy     │──── Discovery (8100)                        │
-                  │   (gateway)  │                                             │
-                  └──────┬───────┘                                             │
-                         │ discover downstream instances                       │
-                         ▼                                                     │
-          ┌──────────────┼──────────────┐                                      │
-          ▼              ▼              ▼                                      │
-   Feature (x1)    Recall (xN)    Precalc (xN)                                │
-   :8003             :8001           :8004                                     │
-   [pending]         + vLLM                                                     │
-                     :8000          KVWorker                                   │
-          │              │            :31502                                   │
-          │              ▼                                                     │
-          │         KVWorker                                                    │
-          │         :31501                                                      │
-          └──────────────┬──────────────┘                                      │
-                         ▼                                                     │
-                  RankMaster (xN)                                              │
-                  :8005                                                        │
-                         │                                                     │
-                         ▼                                                     │
-                  RankSub (xN)  ◄──── KVWorker :31502                          │
-                  :8006                                                        │
-                           │                                                   │
-                           │                                                   │
+                          ┌────────────────────────────────────────────────────┐
+                          │                 lingquickrec-net                  │
+                          │                 (Docker bridge)                   │
+                          │                                                   │
+ Client :8080 ──► ┌────────────┐                                               │
+                  │   Proxy    │──── Discovery (8100)                          │
+                  │  (gateway) │                                               │
+                  └─────┬──────┘                                               │
+                        │ discover downstream instances                        │
+                        ▼                                                      │
+         ┌──────────────┼──────────────┐                                       │
+         ▼              ▼              ▼                                       │
+  Feature (x1)    Recall (xN)    Precalc (xN)                                 │
+  :8003             :8001           :8004                                      │
+  [pending]         + vLLM                                                     │
+                    :8000          KVWorker                                    │
+         │              │            :31502                                    │
+         │              ▼                                                      │
+         │         KVWorker                                                     │
+         │         :31501                                                       │
+         └──────────────┬──────────────┘                                       │
+                        ▼                                                      │
+                 RankMaster (xN)                                               │
+                 :8005                                                         │
+                        │                                                      │
+                        ▼                                                      │
+                 RankSub (xN)  ◄──── KVWorker :31502                           │
+                 :8006                                                         │
+                          │                                                    │
+                          │                                                    │
                   Discovery Server :8100                                       │
-                           └───────────────────────────────────────────────────┘
-
-External dependencies (outside container):
-  - KVWorker    141.61.84.245:31501 / 31502
-  - ETCD        141.61.84.245:2379
+                          └────────────────────────────────────────────────────┘
 ```
 
 ## 目录结构
