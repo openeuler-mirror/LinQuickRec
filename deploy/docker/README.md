@@ -233,11 +233,11 @@ docker compose top                    # 容器内进程
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
 | `SERVER_PORT` | 8080 | HTTP 监听端口 |
-| `FEATURE_SERVICE_ADDR` | feature-service:8001 | Feature 服务地址 |
-| `RECALL_SERVICE_ADDR` | recall-service:8002 | Recall 服务地址 |
-| `PRECALC_SERVICE_ADDR` | precalc-service:8003 | Precalc 服务地址 |
-| `RANK_SERVICE_ADDR` | rank-master-service:8004 | RankMaster 服务地址 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
+| `FEATURE_SERVICE_NAME` | feature_service | Feature 服务注册名 |
+| `RECALL_SERVICE_NAME` | recall_service | Recall 服务注册名 |
+| `PRECALC_SERVICE_NAME` | precalc_service | Precalc 服务注册名 |
+| `RANK_SERVICE_NAME` | rank_service | RankMaster 服务注册名 |
 
 ### Recall
 
