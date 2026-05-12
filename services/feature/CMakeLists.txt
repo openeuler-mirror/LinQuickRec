@@ -25,14 +25,14 @@ set(ABSL_LIBS
     absl_spinlock_wait
 )
 
-set(PROTO_FILE "${CMAKE_SOURCE_DIR}/proto/feature.proto")
+set(PROTO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../proto/feature.proto")
 set(PROTO_SRC "${CMAKE_CURRENT_BINARY_DIR}/feature.pb.cc")
 set(PROTO_HDR "${CMAKE_CURRENT_BINARY_DIR}/feature.pb.h")
 
 add_custom_command(
     OUTPUT ${PROTO_SRC} ${PROTO_HDR}
     COMMAND protobuf::protoc
-    ARGS --proto_path=${CMAKE_SOURCE_DIR}/proto
+    ARGS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../../proto
          --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
          ${PROTO_FILE}
     DEPENDS ${PROTO_FILE}
@@ -51,7 +51,7 @@ add_executable(feature_server
 target_include_directories(feature_server PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
 )
 
