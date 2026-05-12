@@ -34,4 +34,5 @@ Thumbs.db
 *.iml
 
 #claude code
+.claude/
 CLAUDE.md
