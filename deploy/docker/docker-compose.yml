@@ -94,6 +94,7 @@ services:
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     ports:
       - "8002:8002"
+      - "${VLLM_PORT:-8000}:8000"
     networks:
       - linquickrec-net
     deploy:
