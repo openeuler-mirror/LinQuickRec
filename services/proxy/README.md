@@ -159,9 +159,9 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 安装参考 |
-|------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` |
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
 | brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
 | protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
 | abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
