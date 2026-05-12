@@ -1,13 +1,23 @@
-#include "gateway_server.h"
+#include "proxy_server.h"
 #include "common/global_thread_pool.h"
 
 #include <gflags/gflags.h>
-#include <butil/logging.h>
 #include <brpc/server.h>
 #include <thread>
 
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");
+DEFINE_string(recall_service_name, "recall_service", "Recall service name in discovery");
+DEFINE_string(precalc_service_name, "precalc_service", "Precalc service name in discovery");
+DEFINE_string(rank_service_name, "rank_service", "Rank service name in discovery");
+DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
+DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC");
+
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
+
+    common::logger::AddConsoleSink();
+    common::logger::SetTraceIdGetter([]() { return proxy::get_current_trace_id(); });
 
     int cpu_cores = std::thread::hardware_concurrency();
     if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
@@ -15,9 +25,9 @@ int main(int argc, char* argv[]) {
         FLAGS_global_thread_pool_size = std::min(128, calculated_size);
     }
 
-    LOG(INFO) << "Proxy Service starting...";
-    LOG(INFO) << "CPU cores: " << cpu_cores
-              << ", Thread pool size: " << FLAGS_global_thread_pool_size;
+    LOG_INFO << "Proxy Service starting...";
+    LOG_INFO << "CPU cores: " << cpu_cores
+                    << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
 
@@ -25,28 +35,32 @@ int main(int argc, char* argv[]) {
 
     if (server.AddService(static_cast<google::protobuf::Service*>(&service_impl),
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add ProxyService";
+        LOG_ERROR << "Failed to add ProxyService";
         return -1;
     }
 
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
     if (server.Start(server_addr.c_str(), nullptr) != 0) {
-        LOG(ERROR) << "Failed to start server on " << server_addr;
+        LOG_ERROR << "Failed to start server on " << server_addr;
         return -1;
     }
 
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Proxy Service Started";
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Listening on: " << server_addr;
-    LOG(INFO) << "FeatureService: " << FLAGS_feature_service_addr;
-    LOG(INFO) << "RecallService:  " << FLAGS_recall_service_addr;
-    LOG(INFO) << "PrecalcService: " << FLAGS_precalc_service_addr;
-    LOG(INFO) << "RankService:    " << FLAGS_rank_service_addr;
-    LOG(INFO) << "===========================================";
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Proxy Service Started";
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Listening on: " << server_addr;
+    LOG_INFO << "Discovery:    " << FLAGS_discovery_addr;
+    LOG_INFO << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
+    LOG_INFO << "Downstream max retries: " << FLAGS_downstream_max_retries;
+    LOG_INFO << "Service names:"
+                    << " feature=" << FLAGS_feature_service_name
+                    << " recall=" << FLAGS_recall_service_name
+                    << " precalc=" << FLAGS_precalc_service_name
+                    << " rank=" << FLAGS_rank_service_name;
+    LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();
 
-    LOG(INFO) << "Proxy Service stopped";
+    LOG_INFO << "Proxy Service stopped";
     return 0;
 }

@@ -185,7 +185,7 @@ Dockerfile 基于 `lingquickrec/base:latest`，编译 `discovery_server` 和 `di
 
 典型命令模式：
 ```
-/app/gateway_server --server_port=8080 &
+/app/proxy_server --server_port=8080 &
 /app/discovery_client --service_type=proxy --service_port=8080 --discovery_addr=discovery:8100 &
 wait
 ```

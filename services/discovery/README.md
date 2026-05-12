@@ -15,10 +15,10 @@
 
 ```
 services/discovery/
-├── DESIGN.md               # 详细设计文档
-├── README.md               # 本文件
-├── CMakeLists.txt          # CMake 配置
-├── Dockerfile              # discovery_server 容器镜像
+├── CMakeLists.txt
+├── Dockerfile
+├── README.md
+├── DESIGN.md
 ├── server/
 │   ├── include/
 │   │   └── discovery_server.h
@@ -28,19 +28,66 @@ services/discovery/
 ├── client/
 │   └── src/
 │       └── main.cpp
-└── examples/               # 端到端演示示例
+└── examples/
+    ├── CMakeLists.txt
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── entrypoint.sh
+    ├── pseudo_service/
+    └── tests/
 ```
 
-## 前置条件
+## 业务流程
 
-- 编译机已安装 brpc、abseil、protobuf
-- 编译机已安装 docker
+### 服务注册与发现流程
 
-## 编译
+```
+       service container
+  ┌──────────────────────────────┐
+  │   main service (:8003)        │
+  └──────────┬───────────────────┘
+             │  TCP probe (ready?)
+  ┌──────────▼───────────────────┐
+  │    discovery_client           │
+  │  ──── Register ───────────>  │  discovery_server (:8100)
+  │  ──── heartbeat every 5s ──> │
+  │  <─── Discover ───────────── │
+  │  ──── Deregister on stop ──> │
+  └──────────────────────────────┘
+```
 
-支持两种构建方式：
+### 核心交互
 
-### 方式一：在 discovery 目录内单独构建
+| 操作 | 方向 | 协议 | 说明 |
+|------|------|------|------|
+| Register | client → server | BRPC | 注册本实例（service_type, host, port） |
+| Heartbeat | client → server | BRPC | 周期性心跳，重置超时计时器 |
+| Deregister | client → server | BRPC | 优雅退出时主动反注册 |
+| Discover | server → client | BRPC | 查询指定 service_type 的 UP 实例列表 |
+
+### 状态转换
+
+```
+  Register
+    │
+    ▼
+┌────────┐     heartbeat timeout     ┌────────┐     cleanup timeout    ┌─────────┐
+│  UP    │ ────────────────────────>  │  DOWN  │ ─────────────────────> │ REMOVED │
+└────────┘                           └────────┘                        └─────────┘
+    │
+    └── Deregister ──> REMOVED
+```
+
+## 编译命令
+
+| 依赖 | 版本要求 | 安装参考 |
+|------|----------|----------|
+| CMake | >= 3.14 | `apt install cmake` |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 独立构建
 
 ```bash
 cd services/discovery
@@ -49,7 +96,7 @@ cmake ..
 make discovery_server discovery_client -j$(nproc)
 ```
 
-### 方式二：在项目根目录整体构建
+### 整体构建（从项目根目录）
 
 ```bash
 mkdir -p build && cd build
@@ -59,31 +106,29 @@ make discovery_server discovery_client -j$(nproc)
 
 ### 编译产物
 
-| 二进制 | 路径 | 用途 |
-|--------|------|------|
-| `build/bin/discovery_server` | 服务端 | 运行在发现中心容器 |
-| `build/bin/discovery_client` | 客户端 | 每个业务容器内运行一份 |
+| 二进制 | 说明 |
+|--------|------|
+| `build/bin/discovery_server` | 服务端，运行在发现中心容器 |
+| `build/bin/discovery_client` | 客户端，部署在每个业务容器 |
 
-## 使用方法
+## 启动方式
 
-### 启动 Discovery Server
+### Discovery Server
 
 ```bash
 ./bin/discovery_server --server_port=8100
 ```
 
-可选参数：
-
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--server_port` | 8100 | 监听端口 |
 | `--heartbeat_check_interval_ms` | 1000 | 健康检查扫描间隔（ms） |
-| `--heartbeat_grace_factor` | 2.0 | 心跳超时倍数，last_heartbeat 超过 interval×factor 标记 DOWN |
+| `--heartbeat_grace_factor` | 2.0 | 心跳超时倍数，超过 interval×factor 标记 DOWN |
 | `--cleanup_factor` | 5.0 | 清理倍数，超过 interval×factor 从注册表移除 |
 
-### 启动 Discovery Client
+### Discovery Client
 
-在每个业务服务的容器中额外启动 `discovery_client`：
+在每个业务服务容器中额外启动 `discovery_client`：
 
 ```bash
 ./discovery_client \
@@ -92,14 +137,14 @@ make discovery_server discovery_client -j$(nproc)
   --discovery_addr=<discovery_server_ip>:8100
 ```
 
-必填参数：
+**必填参数：**
 
 | 参数 | 说明 |
 |------|------|
-| `--service_type` | 服务类型名，使用 snake_case 格式（如 proxy、feature_service、recall_service、precalc_service、rank_master、rank_sub） |
+| `--service_type` | 服务类型名，snake_case 格式（如 proxy, feature_service） |
 | `--service_port` | 本容器主服务的监听端口 |
 
-可选参数：
+**可选参数：**
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
@@ -110,57 +155,21 @@ make discovery_server discovery_client -j$(nproc)
 | `--fail_threshold` | 3 | 连续失败次数阈值，超过则反注册 |
 | `--startup_timeout` | 30 | 等待主服务端口就绪超时（秒） |
 
-### Docker 镜像构建
+## 容器搭建
 
-构建前需先完成编译。
-
-**Discovery Server** 镜像（默认从项目根目录构建）：
+### 镜像构建
 
 ```bash
-docker build -t discovery-server \
-  -f services/discovery/Dockerfile .
+docker build -t linquickrec/discovery:latest \
+  -f deploy/docker/discovery/Dockerfile .
 ```
 
-若在 `services/discovery/` 目录下单独构建，需指定 `DISCOVERY_SERVER_BIN` 参数：
+### 启动服务
 
 ```bash
-cd services/discovery
-docker build -t discovery-server \
-  -f Dockerfile \
-  --build-arg DISCOVERY_SERVER_BIN=build/bin/discovery_server \
-  .
-```
-
-### 获取已注册的服务列表
-
-需要调用下游服务的消费者（如 Proxy）通过 BRPC 调用 Discovery Server 的 `Discover` RPC 获取实例列表，自行实现选择逻辑：
-
-1. 周期性调用 `Discover("feature_service")` 获取 UP 实例列表
-2. 本地缓存实例列表
-3. 每次调用下游时从列表中选择一个实例，并创建 BRPC Channel 发起调用
-
-## 工作流程
-
-```
-       service container
-  ┌──────────────────────────┐
-  │   main service (:8003)   │
-  └──────────┬───────────────┘
-             │  TCP probe
-  ┌──────────▼───────────────┐
-  │    discovery_client      │───> Register → Discovery Server (:8100)
-  │                          │───> heartbeat every 5s
-  │                          │───> port down → Deregister
-  │                          │───> SIGTERM   → Deregister
-  └──────────────────────────┘
+docker run -p 8100:8100 linquickrec/discovery:latest
 ```
 
 ## 端到端示例
 
-`examples/` 目录包含一个完整的 docker-compose 演示：
-
-1. **pseudo_service** — 纯 POSIX socket 的模拟业务服务，无 brpc 依赖，用于验证注册与心跳
-2. **tests/** — 模块级功能测试：`test_discover`、`test_register`、`test_heartbeat_cycle`
-3. **docker-compose.yml** — 一键启动 1 个 discovery-server + 6 个伪业务容器 + 1 个测试客户端
-
-详细操作步骤见 [examples/README.md](examples/README.md)。
+`examples/` 目录包含完整的 docker-compose 演示，参见 [examples/README.md](examples/README.md)。

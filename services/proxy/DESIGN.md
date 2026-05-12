@@ -60,12 +60,12 @@ services/proxy/
 ├── DESIGN.md              # 本文档 - 详细设计
 ├── server/
 │   ├── include/
-│   │   └── gateway_server.h   # ProxyServiceImpl 声明
+│   │   └── proxy_server.h   # ProxyServiceImpl 声明
 │   └── src/
 │       ├── main.cpp            # 入口：BRPC 服务器初始化
-│       └── gateway_server.cpp  # 服务实现：业务编排逻辑
+│       └── proxy_server.cpp  # 服务实现：业务编排逻辑
 └── client/
-    └── gateway_test_client.cpp # 测试客户端（HTTP 调用）
+    └── proxy_test_client.cpp # 测试客户端（HTTP 调用）
 ```
 
 ### 2.3 核心组件
