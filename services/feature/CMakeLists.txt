@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(hiredis REQUIRED)
+# find_package(hiredis REQUIRED)
 
 set(BRPC_INCLUDE_DIR /usr/local/include /usr/local/include/absl/strings/)
 set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread leveldb)
@@ -60,7 +60,7 @@ target_link_libraries(feature_server PRIVATE
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
-    hiredis::hiredis
+    # hiredis::hiredis
     Threads::Threads
     common_lib
 )
