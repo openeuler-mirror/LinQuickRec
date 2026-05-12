@@ -1,22 +1,22 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
-# === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/FeatureService/
-ARG ENTRYPOINT_FILE=deploy/docker/feature/entrypoint.sh
+ARG SERVICE_DIR=services/feature/
 ARG DISCOVERY_DIR=services/discovery/
+ARG ENTRYPOINT_FILE=deploy/docker/feature/entrypoint.sh
 
 WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/FeatureService/
-RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/FeatureService -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc)
-
+COPY ${SERVICE_DIR} /app/services/feature/
 COPY ${DISCOVERY_DIR} /app/services/discovery/
+
+RUN mkdir -p /app/build && cd /app/build && \
+    cmake ../services/feature -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) feature_server
+
 RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
     cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
     make discovery_client -j$(nproc) && \

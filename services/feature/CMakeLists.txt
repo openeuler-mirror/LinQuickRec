@@ -39,7 +39,9 @@ add_custom_command(
     DEPENDS ${PROTO_FILE}
 )
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+if(NOT TARGET common_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+endif()
 
 add_executable(feature_server
     server/src/feature_server.cpp

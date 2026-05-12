@@ -30,10 +30,10 @@ add_subdirectory(services/rank_master)
 add_subdirectory(services/rank_sub)
 add_subdirectory(services/proxy)
 add_subdirectory(services/discovery)
-add_subdirectory(services/feature_service)
+add_subdirectory(services/feature)
 
 # 其他子目录
-add_subdirectory(kvworker)
+add_subdirectory(services/kv_worker)
 
 # 打印配置信息
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -47,5 +47,6 @@ message(STATUS "  - services/rank_master/")
 message(STATUS "  - services/rank_sub/")
 message(STATUS "  - services/proxy/")
 message(STATUS "  - services/discovery/")
-message(STATUS "  - services/feature_service/")
+message(STATUS "  - services/feature/")
+message(STATUS "  - services/kv_worker/")
 message(STATUS "===========================================")

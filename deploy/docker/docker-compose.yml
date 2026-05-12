@@ -23,7 +23,7 @@ services:
   discovery-server:
     build:
       context: ../..
-      dockerfile: services/discovery/Dockerfile
+      dockerfile: deploy/docker/discovery/Dockerfile
     image: lingquickrec/discovery:v1.2
     container_name: discovery-server
     ports:
