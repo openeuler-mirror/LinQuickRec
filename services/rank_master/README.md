@@ -113,17 +113,17 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 
 ```bash
 docker build -t linquickrec/rank-master:latest \
-    -f deploy/docker/rank-master/Dockerfile .
+  -f deploy/docker/rank-master/Dockerfile .
 ```
 
 ### 启动容器
 
 ```bash
 docker run -d --name rank-master \
-    -p 8005:8005 \
-    -e RANK_SUB_HOST=rank-sub-service \
-    -e SUB_WORKER_ADDRESSES=rank-sub-service:8006 \
-    linquickrec/rank-master:latest
+  -p 8005:8005 \
+  -e RANK_SUB_HOST=rank-sub-service \
+  -e SUB_WORKER_ADDRESSES=rank-sub-service:8006 \
+  linquickrec/rank-master:latest
 ```
 
 ### 环境变量

@@ -233,16 +233,18 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 
 ```bash
 # 在项目根目录下执行
-docker build -t linquickrec/proxy:latest -f deploy/docker/proxy/Dockerfile .
+docker build -t linquickrec/proxy:latest \
+  -f deploy/docker/proxy/Dockerfile .
 ```
 
 ### 运行容器
 
 ```bash
 # 依赖外部 discovery server
-docker run -p 8080:8080 \
-    linquickrec/proxy:latest \
-    --discovery_addr="discovery-server:8100"
+docker run -d --name proxy-service \
+  -p 8080:8080 \
+  linquickrec/proxy:latest \
+  --discovery_addr="discovery-server:8100"
 ```
 
 ## 测试方法
