@@ -29,7 +29,7 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8080 | 允许调整 | HTTP 监听端口 |
-| `--discovery_addr` | string | "127.0.0.1:8100" | 允许调整 | Discovery 地址 |
+| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（env: `DISCOVERY_ADDR`） |
 | `--discovery_refresh_interval_ms` | int32 | 5000 | 不建议修改 | 缓存刷新间隔 (ms) |
 | `--downstream_max_retries` | int32 | 2 | 不建议修改 | 下游最大重试次数 |
 | `--feature_service_name` | string | "feature_service" | 不建议修改 | Feature 服务注册名 |
@@ -107,9 +107,9 @@
 |------|------|--------|---------|------|
 | `--service_type` | string | — | 必须指定 | 服务类型名 |
 | `--service_port` | int32 | — | 必须指定 | 本容器主服务端口 |
-| `--discovery_addr` | string | "127.0.0.1:8100" | 允许调整 | Discovery 地址 |
+| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（env: `DISCOVERY_ADDR`） |
 | `--host` | string | "auto" | 不建议修改 | 本容器 IP |
-| `--heartbeat_interval` | int32 | 5 | 允许调整 | 心跳间隔 (秒) |
+| `--heartbeat_interval` | int32 | 5 | 不建议修改 | 心跳间隔 (秒) |
 | `--health_check_timeout` | int32 | 2 | 不建议修改 | TCP 探测超时 (秒) |
 | `--fail_threshold` | int32 | 3 | 不建议修改 | 连续失败次数阈值 |
-| `--startup_timeout` | int32 | 30 | 允许调整 | 等待主服务就绪超时 (秒) |
+| `--startup_timeout` | int32 | 30 | 不建议修改 | 等待主服务就绪超时 (秒) |
