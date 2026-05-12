@@ -12,6 +12,7 @@ cd /app/build
     --kvworker_port=${KVWORKER_PORT:-31502} \
     --etcd_address=${ETCD_ADDRESS:-141.61.84.245:2379} \
     --scoring_delay_ms=${SCORING_DELAY_MS:-100} \
+    --enable_timing_stats=${ENABLE_TIMING_STATS:-true} \
     "$@" &
 SERVICE_PID=$!
 
