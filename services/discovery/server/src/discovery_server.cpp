@@ -2,9 +2,13 @@
 
 // common/logger.h is included via discovery_server.h
 
+#include "common/error.h"
+
 #include <chrono>
 #include <cstdint>
 #include <sstream>
+
+using namespace common::error;
 
 DEFINE_int32(server_port, 8100, "Discovery server listening port");
 DEFINE_int32(heartbeat_check_interval_ms, 1000, "Health check scan interval (ms)");
@@ -46,6 +50,26 @@ void DiscoveryServiceImpl::Register(
     brpc::ClosureGuard guard(done);
 
     const auto& inst = request->instance();
+
+    if (inst.service_name().empty()) {
+        response->set_success(false);
+        response->set_message("invalid service_name");
+        LOG_WARN << "Register failed: empty service_name";
+        return;
+    }
+    if (inst.host().empty()) {
+        response->set_success(false);
+        response->set_message("invalid host");
+        LOG_WARN << "Register failed: empty host";
+        return;
+    }
+    if (inst.port() <= 0) {
+        response->set_success(false);
+        response->set_message("invalid port");
+        LOG_WARN << "Register failed: invalid port " << inst.port();
+        return;
+    }
+
     std::string instance_id = generate_instance_id(
         inst.service_name(), inst.host(), inst.port());
 
@@ -88,15 +112,28 @@ void DiscoveryServiceImpl::Deregister(
     google::protobuf::Closure* done) {
     brpc::ClosureGuard guard(done);
 
+    bool found = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto svc_it = registry_.find(request->service_name());
         if (svc_it != registry_.end()) {
-            svc_it->second.erase(request->instance_id());
-            if (svc_it->second.empty()) {
-                registry_.erase(svc_it);
+            auto inst_it = svc_it->second.find(request->instance_id());
+            if (inst_it != svc_it->second.end()) {
+                svc_it->second.erase(inst_it);
+                found = true;
+                if (svc_it->second.empty()) {
+                    registry_.erase(svc_it);
+                }
             }
         }
+    }
+
+    if (!found) {
+        response->set_success(false);
+        response->set_message("instance not found");
+        LOG_WARN << "Deregister failed: instance not found "
+                  << request->service_name() << " [" << request->instance_id() << "]";
+        return;
     }
 
     response->set_success(true);
@@ -115,7 +152,7 @@ void DiscoveryServiceImpl::Heartbeat(
 
     int64_t now = butil::gettimeofday_us();
     bool needs_reregister = false;
-
+    Status status = OkStatus;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto svc_it = registry_.find(request->service_name());
@@ -130,14 +167,21 @@ void DiscoveryServiceImpl::Heartbeat(
                 }
             } else {
                 needs_reregister = true;
+                status = Status::Error(ModuleCode::DISCOVERY, ErrorType::NOT_FOUND, 0x0002,
+                                       "instance not found: " + request->instance_id());
             }
         } else {
             needs_reregister = true;
+            status = Status::Error(ModuleCode::DISCOVERY, ErrorType::NOT_FOUND, 0x0001,
+                                   "service not found: " + request->service_name());
         }
     }
 
     response->set_success(!needs_reregister);
     response->set_needs_reregister(needs_reregister);
+    if (status.IsError()) {
+        response->set_error_message(status.Message());
+    }
 }
 
 void DiscoveryServiceImpl::Discover(
@@ -156,6 +200,12 @@ void DiscoveryServiceImpl::Discover(
                 *response->add_instances() = entry.to_proto();
             }
         }
+        response->set_error_code(0);
+    } else {
+        Status st = Status::Error(ModuleCode::DISCOVERY, ErrorType::NOT_FOUND, 0x0001,
+                                  "service not found: " + request->service_name());
+        response->set_error_code(static_cast<int32_t>(st.Code()));
+        response->set_error_message(st.Message());
     }
 }
 

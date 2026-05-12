@@ -218,14 +218,16 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
                      << ", sku_count: " << response->sku_ids_size();
         } else {
             LOG_ERROR << result.error_message;
-            cntl->SetFailed(result.error_message);
+            response->set_error_code(static_cast<int32_t>(result.status.Code()));
+            response->set_error_message(result.error_message);
         }
 
     } catch (const std::exception& e) {
         auto status = common::error::Status(recall_errors::INTERNAL_ERROR,
             "Exception caught: " + std::string(e.what()));
         LOG_ERROR << status.ToString();
-        cntl->SetFailed(status.ToString());
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
     }
 }
 

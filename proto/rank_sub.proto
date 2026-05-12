@@ -17,6 +17,8 @@ message RankSubRequest {
 message RankSubResponse {
     repeated uint32 skus_id = 1;
     repeated uint64 skus_score = 2;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 // 精排子图服务定义

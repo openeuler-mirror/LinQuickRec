@@ -49,6 +49,7 @@ message HeartbeatRequest {
 message HeartbeatResponse {
     bool success = 1;
     bool needs_reregister = 2;
+    string error_message = 101;
 }
 
 message DiscoverRequest {
@@ -58,6 +59,8 @@ message DiscoverRequest {
 
 message DiscoverResponse {
     repeated ServiceInstance instances = 1;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 service DiscoveryService {

@@ -21,6 +21,8 @@ message RecallRequest {
 // 召回服务 - 响应
 message RecallResponse {
     repeated uint64 sku_ids = 1;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 // 召回服务定义
