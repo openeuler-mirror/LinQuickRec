@@ -51,10 +51,10 @@ constexpr int SCORE_SCALE = 100;
 RankMasterServiceImpl::RankMasterServiceImpl()
     : sub_worker_channels_() {
 
-    LOG(INFO) << "RankMasterServiceImpl initialized";
-    LOG(INFO) << "Sub-worker count: " << FLAGS_sub_worker_count;
-    LOG(INFO) << "Top-K: " << FLAGS_top_k;
-    LOG(INFO) << "Discovery addr: " << FLAGS_discovery_addr;
+    LOG_INFO << "RankMasterServiceImpl initialized";
+    LOG_INFO << "Sub-worker count: " << FLAGS_sub_worker_count;
+    LOG_INFO << "Top-K: " << FLAGS_top_k;
+    LOG_INFO << "Discovery addr: " << FLAGS_discovery_addr;
 
     std::vector<std::string> addresses;
 
@@ -65,12 +65,12 @@ RankMasterServiceImpl::RankMasterServiceImpl()
         for (const auto& inst : instances) {
             addresses.push_back(inst.host + ":" + std::to_string(inst.port));
         }
-        LOG(INFO) << "Discovered " << instances.size() << " rank_sub instances via Discovery";
+        LOG_INFO << "Discovered " << instances.size() << " rank_sub instances via Discovery";
     }
 
     // Fallback 到静态配置
     if (addresses.empty()) {
-        LOG(INFO) << "Using static sub_worker_addresses: " << FLAGS_sub_worker_addresses;
+        LOG_INFO << "Using static sub_worker_addresses: " << FLAGS_sub_worker_addresses;
         std::stringstream ss(FLAGS_sub_worker_addresses);
         std::string addr;
 
@@ -84,14 +84,14 @@ RankMasterServiceImpl::RankMasterServiceImpl()
     }
 
     if (addresses.empty()) {
-        LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
+        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
             "No sub-worker addresses provided").ToString();
         addresses.push_back("127.0.0.1:8006");
     }
 
-    LOG(INFO) << "Sub-worker addresses resolved: ";
+    LOG_INFO << "Sub-worker addresses resolved: ";
     for (const auto& addr : addresses) {
-        LOG(INFO) << "  " << addr;
+        LOG_INFO << "  " << addr;
     }
 
     for (int i = 0; i < FLAGS_sub_worker_count; ++i) {
@@ -104,9 +104,9 @@ RankMasterServiceImpl::RankMasterServiceImpl()
 
         if (channel->Init(worker_addr.c_str(), &opts) == 0) {
             sub_worker_channels_.push_back(std::move(channel));
-            LOG(INFO) << "Initialized channel to sub-worker " << i << ": " << worker_addr;
+            LOG_INFO << "Initialized channel to sub-worker " << i << ": " << worker_addr;
         } else {
-            LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
+            LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
                 "Failed to initialize channel to sub-worker " + std::to_string(i) + ": " + worker_addr).ToString();
             sub_worker_channels_.push_back(std::move(channel));
         }
@@ -114,7 +114,7 @@ RankMasterServiceImpl::RankMasterServiceImpl()
 }
 
 RankMasterServiceImpl::~RankMasterServiceImpl() {
-    LOG(INFO) << "RankMasterServiceImpl destroyed";
+    LOG_INFO << "RankMasterServiceImpl destroyed";
 }
 
 void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
@@ -147,7 +147,7 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
     } catch (const std::exception& e) {
         auto status = common::error::Status(rank_master_errors::INTERNAL_ERROR,
             "Thread pool task failed: " + std::string(e.what()));
-        LOG(ERROR) << status.ToString();
+        LOG_ERROR << status.ToString();
         cntl->SetFailed(status.ToString());
     }
 }
@@ -160,7 +160,7 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
 
     if (worker_index >= static_cast<int>(sub_worker_channels_.size()) ||
         !sub_worker_channels_[worker_index]) {
-        LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
+        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
             "Invalid sub-worker index: " + std::to_string(worker_index)).ToString();
         return false;
     }
@@ -179,12 +179,12 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
     int64_t end_us = butil::gettimeofday_us();
 
     if (cntl.Failed()) {
-        LOG(ERROR) << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
+        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
             "Sub-worker " + std::to_string(worker_index) + " call failed: " + cntl.ErrorText()).ToString();
         return false;
     }
 
-    LOG(INFO) << "Sub-worker " << worker_index
+    LOG_INFO << "Sub-worker " << worker_index
               << " returned " << response->skus_score_size() << " scores"
               << ", cost=" << (end_us - start_us) / 1000.0 << " ms"
               << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms";
@@ -222,7 +222,7 @@ void RankMasterServiceImpl::select_top_k(const std::map<uint64_t, double>& all_s
         }
     }
 
-    LOG(INFO) << "Selected top " << candidates.size() << " from "
+    LOG_INFO << "Selected top " << candidates.size() << " from "
               << all_scores.size() << " candidates";
 }
 
@@ -232,14 +232,14 @@ common::error::Status RankMasterServiceImpl::validate_and_parse(
     if (request->user_feat_key().empty()) {
         auto status = common::error::Status(rank_master_errors::EMPTY_USER_FEAT_KEY,
             "Empty user_feat_key in request");
-        LOG(ERROR) << status.ToString();
+        LOG_ERROR << status.ToString();
         return status;
     }
 
     if (request->skus().empty()) {
         auto status = common::error::Status(rank_master_errors::EMPTY_SKUS,
             "Empty skus in request");
-        LOG(ERROR) << status.ToString();
+        LOG_ERROR << status.ToString();
         return status;
     }
 
@@ -248,11 +248,11 @@ common::error::Status RankMasterServiceImpl::validate_and_parse(
     if (sku_ids.empty()) {
         auto status = common::error::Status(rank_master_errors::NO_SKU_PARSED,
             "No SKU IDs parsed from skus");
-        LOG(ERROR) << status.ToString();
+        LOG_ERROR << status.ToString();
         return status;
     }
 
-    LOG(DEBUG) << "Total SKU count: " << sku_ids.size();
+    LOG_DEBUG << "Total SKU count: " << sku_ids.size();
     return common::error::Status::OK();
 }
 
@@ -288,7 +288,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             const RankSubResponse& sub_response = result.second;
 
             if (worker_index < 0) {
-                LOG(WARNING) << "Worker " << worker_index << " failed";
+                LOG_WARN << "Worker " << worker_index << " failed";
                 ++failed_workers;
                 continue;
             }
@@ -302,7 +302,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             }
         } catch (const std::exception& e) {
             ++failed_workers;
-            LOG(ERROR) << common::error::Status(rank_master_errors::INTERNAL_ERROR,
+            LOG_ERROR << common::error::Status(rank_master_errors::INTERNAL_ERROR,
                 "Exception caught while collecting sub-worker result: " + std::string(e.what())).ToString();
         }
     }
@@ -310,12 +310,12 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     if (failed_workers > 0 && all_scores.empty()) {
         auto status = common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
             "All " + std::to_string(failed_workers) + " sub-workers failed");
-        LOG(ERROR) << status.ToString();
+        LOG_ERROR << status.ToString();
         return status;
     }
 
     if (failed_workers > 0) {
-        LOG(WARNING) << failed_workers << " sub-worker(s) failed, proceeding with partial results";
+        LOG_WARN << failed_workers << " sub-worker(s) failed, proceeding with partial results";
     }
 
     return common::error::Status::OK();
@@ -326,7 +326,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
 
     int64_t server_receive_us = butil::gettimeofday_us();
 
-    LOG(INFO) << "RankMaster request received";
+    LOG_INFO << "RankMaster request received";
 
     std::vector<uint64_t> all_sku_ids;
     auto status = validate_and_parse(request, all_sku_ids);
@@ -345,7 +345,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     int64_t parallel_call_end_us = butil::gettimeofday_us();
     int64_t parallel_call_cost_us = parallel_call_end_us - parallel_call_start_us;
 
-    LOG(INFO) << "Collected scores for " << all_scores.size() << " SKUs";
+    LOG_INFO << "Collected scores for " << all_scores.size() << " SKUs";
 
     int64_t select_topk_start_us = butil::gettimeofday_us();
 
@@ -361,13 +361,13 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
-    LOG(INFO) << "RankMaster processing completed:"
+    LOG_INFO << "RankMaster processing completed:"
               << " input_skus=" << all_sku_ids.size()
               << " scored_skus=" << all_scores.size()
               << " output_candidates=" << response->candidates_size();
 
     if (FLAGS_enable_timing_stats) {
-        LOG(INFO) << "Server timing breakdown:"
+        LOG_INFO << "Server timing breakdown:"
                   << " parallel_call_cost=" << parallel_call_cost_us / 1000.0 << " ms"
                   << " select_topk_cost=" << select_topk_cost_us / 1000.0 << " ms"
                   << " server_process_total=" << server_process_us / 1000.0 << " ms";
@@ -376,7 +376,7 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;
 
-    LOG(INFO) << "RankMaster completed, cost=" << cost_us / 1000.0 << " ms";
+    LOG_INFO << "RankMaster completed, cost=" << cost_us / 1000.0 << " ms";
 
     return common::error::Status::OK();
 }

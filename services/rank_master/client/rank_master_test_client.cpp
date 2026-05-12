@@ -187,7 +187,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    LOG(INFO) << "Client timing breakdown:"
+    LOG_INFO << "Client timing breakdown:"
               << " total_latency=" << total_latency_us / 1000.0 << " ms"
               << " network_latency=" << cntl.latency_us() / 1000.0 << " ms";
 
