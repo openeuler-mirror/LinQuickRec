@@ -9,19 +9,21 @@ RankServiceSub 是推荐系统精排层的工作节点，负责从元戎 KVWorke
 ## 目录结构
 
 ```
-services/rank_service_sub/
-├── DESIGN.md                    # 详细设计文档
-├── README.md                    # 本文件
-├── CMakeLists.txt               # CMake 构建配置
-├── build.sh                     # 编译脚本
+services/rank_sub/
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── rank_sub_client.cpp
 ├── server/
 │   ├── include/
-│   │   └── rank_sub_server.h    # RankSubServiceImpl 声明
+│   │   └── rank_sub_server.h
 │   └── src/
-│       ├── main.cpp             # 服务入口
-│       └── rank_sub_server.cpp  # 服务实现
-└── client/
-    └── rank_sub_client.cpp      # 测试客户端
+│       ├── main.cpp
+│       └── rank_sub_server.cpp
+└── tests/
+    └── test_rank_sub.cpp
 ```
 
 ## 编译命令

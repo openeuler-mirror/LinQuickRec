@@ -9,19 +9,23 @@ RankServiceMaster 是推荐系统精排层的主控节点，采用 Scatter-Gathe
 ## 目录结构
 
 ```
-services/rank_service_master/
-├── DESIGN.md                        # 详细设计文档
-├── README.md                        # 本文件
-├── CMakeLists.txt                   # CMake 构建配置
-├── build.sh                         # 编译脚本
+services/rank_master/
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── rank_master_test_client.cpp
 ├── server/
 │   ├── include/
-│   │   └── rank_master_server.h     # RankMasterServiceImpl 声明
+│   │   ├── discovery_resolver.h
+│   │   └── rank_master_server.h
 │   └── src/
-│       ├── main.cpp                 # 服务入口
-│       └── rank_master_server.cpp   # 服务实现
-└── client/
-    └── rank_master_test_client.cpp  # 测试客户端
+│       ├── discovery_resolver.cpp
+│       ├── main.cpp
+│       └── rank_master_server.cpp
+└── tests/
+    └── test_rank_master.cpp
 ```
 
 ## 编译命令

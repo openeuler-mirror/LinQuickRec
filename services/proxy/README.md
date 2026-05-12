@@ -20,22 +20,22 @@ Proxy 通过 [discovery 服务](../discovery/README.md) 动态获取下游实例
 
 ```
 services/proxy/
-├── CMakeLists.txt                     # 构建配置
-├── Dockerfile                         # 容器镜像
-├── README.md                          # 本文档
-├── DESIGN.md                          # 详细设计文档
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── proxy_test_client.cpp
 ├── server/
 │   ├── include/
-│   │   ├── proxy_server.h             # ProxyServiceImpl 类声明
-│   │   └── service_discovery.h        # 服务发现客户端
+│   │   ├── proxy_server.h
+│   │   └── service_discovery.h
 │   └── src/
-│       ├── main.cpp                   # 服务入口
-│       ├── proxy_server.cpp           # 核心编排逻辑
-│       └── service_discovery.cpp      # 服务发现实现
-├── client/
-│   └── proxy_test_client.cpp          # 手动测试客户端
+│       ├── main.cpp
+│       ├── proxy_server.cpp
+│       └── service_discovery.cpp
 └── tests/
-    └── integration_test.cpp           # 单进程集成测试
+    └── integration_test.cpp
 ```
 
 ## 业务流程
