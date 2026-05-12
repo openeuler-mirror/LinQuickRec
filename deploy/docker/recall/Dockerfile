@@ -1,4 +1,4 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
 ENV PROXY_IP="141.1.95.55"
 ENV PROXY_PORT="3128"

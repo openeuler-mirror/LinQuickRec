@@ -57,7 +57,7 @@ deploy/docker/
 | 依赖 | 说明 |
 |------|------|
 | Docker + Compose v2 | `docker compose` 命令可用 |
-| `brpc_base:latest` | 基础镜像，需提前构建或导入（包含 brpc、protobuf、gRPC、abseil 等依赖） |
+| `linquickrec/base:latest` | 基础镜像，需提前构建或导入（包含 brpc、protobuf、gRPC、abseil 等依赖） |
 | NVIDIA GPU + nvidia-container-toolkit | Recall 服务运行 vLLM 需要 GPU |
 
 ## 快速开始
@@ -179,55 +179,49 @@ docker compose ps                     # 容器状态
 docker compose top                    # 容器内进程
 ```
 
+每个目录包含一个 `Dockerfile` 和一个 `entrypoint.sh`。
+
 ## 基础镜像
 
-所有服务基于 `brpc_base:latest`，包含 brpc、protobuf、gRPC、abseil-cpp、gflags、leveldb、rapidjson、CURL 等依赖。
-
-构建基础镜像需要在宿主机上提前准备好，不在本项目范围内。
+所有服务基于 `linquickrec/base:latest`，包含 brpc、protobuf、abseil-cpp、gflags、leveldb、rapidjson 等依赖。
 
 ## Dockerfile 说明
 
+### Discovery（discovery/Dockerfile）
+
+编译 `discovery_server`，监听 8100 端口，提供服务注册/发现/心跳 RPC。
+
+### Proxy（proxy/Dockerfile）
+
+编译 `proxy_server` 和 `discovery_client`。通过 sidecar 模式向 discovery-server 注册自身，并通过 discovery 动态发现下游实例。
+
 ### Recall（recall/Dockerfile）
 
-Recall 服务额外包含 vLLM 和模型文件：
+Recall 服务与 vLLM 同容器部署，额外安装 vLLM wheel 包和模型文件（Qwen3-0.6B）：
 
-1. 安装 vLLM wheel 包（`vllm-0.11-0rc6+cu129-cp311-cp311-linux_aarch64.whl`）
+1. 安装 PyTorch + vLLM
 2. 复制 vLLM 启动脚本（`start_vllm_back.sh`、`start_vllm.sh`）
 3. 复制模型文件（`Qwen3-0.6B/`、`Qwen3-8B/`）
-4. 编译 Recall 服务
+4. 编译 recall_server
 5. 暴露端口 8001（brpc）和 8000（vLLM）
-
-注意：Dockerfile 中的 COPY 路径（如 `/home/w00921547/share/`）是构建机器上的绝对路径，需要在构建机器上执行。
 
 ### Precalc（precalc/Dockerfile）
 
-1. 复制 proto、common、PrecalcService 源码
-2. CMake 编译
-3. 暴露端口 8004
+编译 `precalc_server`，监听 8004 端口，将用户特征预计算结果写入 KVWorker。
 
 ### RankMaster（rank-master/Dockerfile）
 
-1. 复制 proto、common、RankServiceMaster 源码
-2. CMake 编译
-3. 暴露端口 8005
+编译 `rank_master_server`，监听 8005 端口，将候选商品分发给多个 RankSub 并行打分后归并结果。
 
 ### RankSub（rank-sub/Dockerfile）
 
-1. 复制 proto、common、RankServiceSub 源码
-2. CMake 编译
-3. 暴露端口 8006
+编译 `rank_sub_server`，监听 8006 端口，从 KVWorker 读取特征 tensor 并对分配到的 SKU 打分。
 
 ### Feature（feature/Dockerfile）
 
 1. 复制 proto、common、FeatureService 源码
 2. CMake 编译
 3. 暴露端口 8003
-
-### Proxy（proxy/Dockerfile）
-
-1. 复制 proto、common、Proxy 源码
-2. CMake 编译
-3. 暴露端口 8080
 
 ## EntryPoint 说明
 
@@ -270,7 +264,7 @@ Recall 服务额外包含 vLLM 和模型文件：
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `ETCD_ADDRESS` | 141.61.84.245:2379 | etcd 地址 |
 | `TTL_SECONDS` | 5 | KV 缓存 TTL |
-| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 |
+| `PRECALC_RESULT_SIZE_MB` | 8.5 | 预计算结果大小 (MB) |
 | `PAYLOAD_SIZE_KB` | 100 | Payload 大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
 
@@ -289,8 +283,8 @@ Recall 服务额外包含 vLLM 和模型文件：
 | `SUB_WORKER_COUNT` | 3 | RankSub 工作线程数 |
 | `SUB_WORKER_ADDRESSES` | rank-sub-service:8006 | RankSub 服务地址 |
 | `TOP_K` | 100 | 返回 Top-K 结果 |
-| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名（用于健康检查） |
-| `RANK_SUB_PORT` | 8006 | RankSub 端口（用于健康检查） |
+| `RANK_SUB_HOST` | rank-sub-service | RankSub 主机名 |
+| `RANK_SUB_PORT` | 8006 | RankSub 端口 |
 | `RANK_SUB_STARTUP_TIMEOUT` | 120 | 等待 RankSub 就绪秒数 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 服务发现地址 |
 
@@ -328,7 +322,7 @@ Recall 服务额外包含 vLLM 和模型文件：
 
 ```bash
 # 启动流程：
-1. 启动 gateway_server，配置所有下游服务地址
+1. 启动 proxy_server，配置所有下游服务地址
 2. 启动 discovery_client 注册服务
 ```
 
@@ -345,10 +339,10 @@ Recall 服务额外包含 vLLM 和模型文件：
 
 如果不使用 docker-compose，也可以单独构建和运行：
 
-```bash
-# 在项目根目录下执行（因为需要 COPY proto/ 和 common/）
+在项目根目录下执行：
 
-# 构建 Recall（需要 GPU 构建机器，且文件路径需匹配）
+```bash
+# 构建 Recall（需要 GPU 构建机器，文件路径需匹配）
 docker build -f deploy/docker/recall/Dockerfile -t lingquickrec/recall:latest .
 
 # 构建 Precalc
@@ -365,11 +359,64 @@ docker build -f deploy/docker/feature/Dockerfile -t lingquickrec/feature:latest 
 
 # 构建 Proxy
 docker build -f deploy/docker/proxy/Dockerfile -t lingquickrec/proxy:latest .
+
+# 构建 Discovery
+docker build -f deploy/docker/discovery/Dockerfile -t lingquickrec/discovery:latest .
 ```
 
-### 推送到镜像仓库
+## 本地运行
+
+### 服务发现中心
 
 ```bash
-docker tag lingquickrec/recall:latest <registry>/lingquickrec/recall:latest
-docker push <registry>/lingquickrec/recall:latest
+docker run -d --name discovery \
+    -p 8100:8100 \
+    linquickrec/discovery:latest
 ```
+
+### Proxy（依赖 discovery-server）
+
+```bash
+docker run -d --name proxy \
+    -p 8080:8080 \
+    -e DISCOVERY_ADDR=host.docker.internal:8100 \
+    linquickrec/proxy:latest
+```
+
+### Precalc
+
+```bash
+docker run -d --name precalc \
+    -p 8004:8004 \
+    linquickrec/precalc:latest
+```
+
+### RankSub
+
+```bash
+docker run -d --name rank-sub \
+    -p 8006:8006 \
+    linquickrec/rank-sub:latest
+```
+
+### RankMaster（需 RankSub 已运行）
+
+```bash
+docker run -d --name rank-master \
+    -p 8005:8005 \
+    -e RANK_SUB_HOST=host.docker.internal \
+    -e SUB_WORKER_ADDRESSES=host.docker.internal:8006 \
+    linquickrec/rank-master:latest
+```
+
+### Recall（需 GPU）
+
+```bash
+docker run -d --gpus all --name recall \
+    -p 8001:8001 -p 8000:8000 \
+    linquickrec/recall:latest
+```
+
+## 端到端演示
+
+`examples/` 目录提供完整的 docker-compose 编排，参见 [services/discovery/examples/README.md](../../services/discovery/examples/README.md)。

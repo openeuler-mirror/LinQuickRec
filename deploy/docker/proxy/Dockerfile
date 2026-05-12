@@ -1,28 +1,25 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
-# === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/Proxy/
-ARG ENTRYPOINT_FILE=deploy/docker/proxy/entrypoint.sh
+ARG SERVICE_DIR=services/proxy/
 ARG DISCOVERY_DIR=services/discovery/
+ARG ENTRYPOINT_FILE=deploy/docker/proxy/entrypoint.sh
 
 WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/Proxy/
-RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/Proxy -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc)
-
+COPY ${SERVICE_DIR} /app/services/proxy/
 COPY ${DISCOVERY_DIR} /app/services/discovery/
-RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
-    cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
-    make discovery_client -j$(nproc) && \
-    cp bin/discovery_client /app/discovery_client && \
-    rm -rf /tmp/build_discovery
-RUN chmod +x /app/discovery_client
+
+RUN mkdir -p /app/build && cd /app/build && \
+    cmake ../services/proxy -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) proxy_server proxy_test_client proxy_integration_test
+
+RUN mkdir -p /app/build/discovery && cd /app/build/discovery && \
+    cmake ../services/discovery -DCMAKE_BUILD_TYPE=Release && \
+    make discovery_client -j$(nproc)
 
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

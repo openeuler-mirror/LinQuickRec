@@ -1,9 +1,9 @@
-FROM brpc_base:latest
+FROM linquickrec/base:latest
 
 # === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/PrecalcService/
+ARG SERVICE_DIR=services/precalc_service/
 ARG ENTRYPOINT_FILE=deploy/docker/precalc/entrypoint.sh
 ARG DISCOVERY_DIR=services/discovery/
 
@@ -11,9 +11,9 @@ WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/PrecalcService/
+COPY ${SERVICE_DIR} /app/services/precalc_service/
 RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/PrecalcService -DCMAKE_BUILD_TYPE=Release && \
+    cmake ../services/precalc_service -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 COPY ${DISCOVERY_DIR} /app/services/discovery/

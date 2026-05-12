@@ -24,7 +24,7 @@ services/recall/
     └── recall_test_client.cpp   # 测试客户端
 ```
 
-## 编译
+## 编译命令
 
 ```bash
 cd services/recall
@@ -40,12 +40,12 @@ make -j$(nproc)
 | `recall_server` | 召回服务主程序 |
 | `recall_test_client` | 测试客户端 |
 
-## 使用方法
+## 启动方式
 
 ### 启动 RecallService
 
 ```bash
-./recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
+./bin/recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
 ```
 
 参数说明：
@@ -62,10 +62,10 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./recall_test_client --server=127.0.0.1:8001 --user_id=12345
+./bin/recall_test_client --server=127.0.0.1:8001 --user_id=12345
 ```
 
-## Docker 集成
+## 容器搭建
 
 RecallService 与 vLLM 同容器部署，容器启动时先启动 vLLM，再启动 RecallService：
 
@@ -84,7 +84,7 @@ docker run --gpus all --init --name recall-service \
 docker run --gpus all --name recall-service recall-image
 ```
 
-## 工作流程
+## 业务流程
 
 ```
        Client (Proxy)
