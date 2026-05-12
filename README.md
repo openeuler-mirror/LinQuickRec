@@ -175,9 +175,9 @@ Content-Type: application/json
 
 ### 前置依赖
 
-| 依赖 | 版本要求 | 安装参考 |
-|------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` |
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
 | brpc | >= 1.4 | 基础镜像 `linquickrec/base:latest` 已内置 |
 | protobuf | >= 3.0 | 同上 |
 | abseil-cpp | latest | 同上 |
