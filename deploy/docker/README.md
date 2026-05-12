@@ -41,26 +41,36 @@
 
 ```
 deploy/docker/
-├── docker-compose.yml      # 主编排文件（7 个服务）
-├── .env                    # 环境变量配置（对应 K8s ConfigMap）
-├── recall/
-│   ├── Dockerfile          # Recall 服务镜像（含 vLLM + Qwen3-0.6B）
-│   └── entrypoint.sh       # 启动 vLLM → 等待就绪 → 启动 Recall 服务
-├── precalc/
-│   ├── Dockerfile          # Precalc 服务镜像
-│   └── entrypoint.sh       # 启动 Precalc 服务
-├── rank-master/
-│   ├── Dockerfile          # RankMaster 服务镜像
-│   └── entrypoint.sh       # 等待 RankSub 就绪 → 启动 RankMaster 服务
-├── rank-sub/
-│   ├── Dockerfile          # RankSub 服务镜像
-│   └── entrypoint.sh       # 启动 RankSub 服务
+├── docker-compose.yml          # 主编排文件（8 个服务）
+├── .env                        # 环境变量配置
+├── README.md                   # 本文档
+├── discovery/
+│   ├── Dockerfile              # Discovery 服务镜像
+│   ├── entrypoint.sh           # 启动 Discovery 服务
+│   └── examples/
+│       ├── Dockerfile          # 端到端演示镜像（pseudo_service + test tools）
+│       └── entrypoint.sh       # 注册伪服务到 discovery server
 ├── feature/
-│   ├── Dockerfile          # Feature 服务镜像（mock）
-│   └── entrypoint.sh       # 启动 Feature 服务
-└── proxy/
-    ├── Dockerfile          # Proxy 网关镜像
-    └── entrypoint.sh       # 启动 Gateway 代理服务
+│   ├── Dockerfile              # Feature 服务镜像（mock）
+│   └── entrypoint.sh           # 启动 Feature 服务
+├── kv_worker/
+│   ├── Dockerfile              # 元戎数据系统 Worker 镜像
+│   └── entrypoint.sh           # 启动 datasystem
+├── precalc/
+│   ├── Dockerfile              # Precalc 服务镜像
+│   └── entrypoint.sh           # 启动 Precalc 服务
+├── proxy/
+│   ├── Dockerfile              # Proxy 网关镜像
+│   └── entrypoint.sh           # 启动 Proxy + discovery_client sidecar
+├── rank-master/
+│   ├── Dockerfile              # RankMaster 服务镜像
+│   └── entrypoint.sh           # 等待 RankSub 就绪 → 启动 RankMaster
+├── rank-sub/
+│   ├── Dockerfile              # RankSub 服务镜像
+│   └── entrypoint.sh           # 启动 RankSub 服务
+└── recall/
+    ├── Dockerfile              # Recall 服务镜像（含 vLLM + Qwen3-0.6B）
+    └── entrypoint.sh           # 启动 vLLM → 等待就绪 → 启动 Recall
 ```
 
 ## 前置条件
