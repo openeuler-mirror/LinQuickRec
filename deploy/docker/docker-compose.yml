@@ -26,7 +26,7 @@ services:
     build:
       context: ../..
       dockerfile: services/discovery/Dockerfile
-    image: lingquickrec-discovery
+    image: lingquickrec/discovery:v1.2
     container_name: discovery-server
     ports:
       - "${DISCOVERY_PORT:-8100}:8100"
@@ -46,7 +46,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/feature/Dockerfile
-    image: lingquickrec-feature
+    image: lingquickrec/feature:v1.2
     container_name: feature-service
     depends_on:
       discovery-server:
@@ -66,7 +66,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/recall/Dockerfile
-    image: lingquickrec-recall
+    image: lingquickrec/recall:v1.2
     container_name: recall-service
     depends_on:
       discovery-server:
@@ -101,7 +101,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/precalc/Dockerfile
-    image: lingquickrec-precalc
+    image: lingquickrec/precalc:v1.2
     container_name: precalc-service
     depends_on:
       discovery-server:
@@ -127,7 +127,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-sub/Dockerfile
-    image: lingquickrec-rank-sub
+    image: lingquickrec/rank-sub:v1.2
     depends_on:
       discovery-server:
         condition: service_healthy
@@ -151,7 +151,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-master/Dockerfile
-    image: lingquickrec-rank-master
+    image: lingquickrec/rank-master:v1.2
     container_name: rank-master-service
     depends_on:
       discovery-server:
@@ -179,7 +179,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/proxy/Dockerfile
-    image: lingquickrec-proxy
+    image: lingquickrec/proxy:v1.2
     container_name: proxy-service
     depends_on:
       discovery-server:
