@@ -231,9 +231,9 @@ docker compose top                    # 容器内进程
 | 环境变量 | 默认值 | 配置级别 | 说明 |
 |---------|--------|---------|------|
 | `SERVER_PORT` | 8003 | 允许调整 | 监听端口 |
-| `KVWORKER_HOST` | — | 必须指定 | KVWorker 地址 |
-| `KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
-| `ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
+| `PRECALC_KVWORKER_HOST` | — | 必须指定 | KVWorker 地址 |
+| `PRECALC_KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
+| `PRECALC_ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
 | `TTL_SECONDS` | 5 | 允许调整 | KV 缓存 TTL |
 | `PRECALC_RESULT_SIZE_MB` | 8.5 | 允许调整 | 预计算结果大小 (MB) |
 | `PAYLOAD_SIZE_KB` | 100 | 允许调整 | Payload 大小 |
@@ -262,9 +262,9 @@ docker compose top                    # 容器内进程
 | 环境变量 | 默认值 | 配置级别 | 说明 |
 |---------|--------|---------|------|
 | `SERVER_PORT` | 8005 | 允许调整 | 监听端口 |
-| `KVWORKER_HOST` | — | 必须指定 | KVWorker 地址 |
-| `KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
-| `ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
+| `RANKSUB_KVWORKER_HOST` | — | 必须指定 | KVWorker 地址 |
+| `RANKSUB_KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
+| `RANKSUB_ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
 | `SCORING_DELAY_MS` | 100 | 允许调整 | 打分延迟 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 

@@ -14,9 +14,6 @@
 |------|--------|---------|------|
 | `DISCOVERY_PORT` | 8100 | 允许调整 | 服务发现中心端口 |
 | `PROXY_PORT` | 8080 | 允许调整 | 网关对外 HTTP 端口 |
-| `KVWORKER_HOST` | — | 必须指定 | 元戎数据系统主机地址 |
-| `KVWORKER_PORT` | — | 必须指定 | 元戎数据系统端口 |
-| `ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
 
 ## Discovery
 
@@ -63,10 +60,9 @@
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
-| `--server_port` | int32 | 8003 | 允许调整 | 监听端口 |
-| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址 |
-| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口 |
-| `--etcd_address` | string | — | 必须指定 | ETCD 地址 |
+| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址（env: `PRECALC_KVWORKER_HOST`） |
+| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口（env: `PRECALC_KVWORKER_PORT`） |
+| `--etcd_address` | string | — | 必须指定 | ETCD 地址（env: `PRECALC_ETCD_ADDRESS`） |
 | `--precalc_result_size_mb` | double | 8.5 | 允许调整 | 预计算结果大小 (MB) |
 | `--ttl_seconds` | int32 | 5 | 允许调整 | KV 缓存 TTL |
 | `--user_feat_key_size_kb` | int32 | 100 | 不建议修改 | user_feat_key 大小 (KB) |
@@ -90,9 +86,9 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
-| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址 |
-| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口 |
-| `--etcd_address` | string | — | 必须指定 | ETCD 地址 |
+| `--kvworker_host` | string | — | 必须指定 | KVWorker 地址（env: `RANKSUB_KVWORKER_HOST`） |
+| `--kvworker_port` | int32 | — | 必须指定 | KVWorker 端口（env: `RANKSUB_KVWORKER_PORT`） |
+| `--etcd_address` | string | — | 必须指定 | ETCD 地址（env: `RANKSUB_ETCD_ADDRESS`） |
 | `--scoring_delay_ms` | int32 | 100 | 允许调整 | 打分延迟 (ms) |
 | `--enable_timing_stats` | bool | true | 不建议修改 | 启用时延统计 |
 
