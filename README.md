@@ -127,6 +127,50 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 | KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
 | vLLM | — | — | 模型服务 | Qwen3-0.6B |
 
+## 对外接口
+
+系统通过 Proxy 对外暴露 HTTP 接口，客户端通过 `POST /Proxy/Recommend` 提交推荐请求并接收排序结果。Proxy 通过 [服务发现](#服务发现) 自动调度下游服务，客户端无需感知内部拓扑。
+
+### 请求
+
+```
+POST /Proxy/Recommend
+Content-Type: application/json
+```
+
+```json
+{
+  "user_id": 12345,
+  "payload": "optional data"
+}
+```
+
+### 响应
+
+**成功：**
+
+```json
+{
+  "candidates": [100001, 100002, 100003],
+  "error_code": 0,
+  "error_message": ""
+}
+```
+
+**失败：**
+
+```json
+{
+  "candidates": [],
+  "error_code": 16973825,
+  "error_message": "FeatureService: connection refused"
+}
+```
+
+### error_code 编码
+
+错误码采用 `0xMMTTCCCC` 格式，详见 [错误码体系](#错误码体系) 和 [proxy/README.md](services/proxy/README.md)。
+
 ## 编译命令
 
 ### 前置依赖
