@@ -3,7 +3,7 @@ FROM linquickrec/base:latest
 # === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/rank_service_sub/
+ARG SERVICE_DIR=services/rank_sub/
 ARG ENTRYPOINT_FILE=deploy/docker/rank-sub/entrypoint.sh
 ARG DISCOVERY_DIR=services/discovery/
 
@@ -11,7 +11,7 @@ WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/rank_service_sub/
+COPY ${SERVICE_DIR} /app/services/rank_sub/
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/rank_service_sub -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
