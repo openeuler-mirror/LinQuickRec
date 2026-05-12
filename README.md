@@ -4,7 +4,32 @@
 
 本项目是一个搜推广时延模拟与通信优化验证系统，采用 BRPC 通信框架和 Protocol Buffers 序列化协议，通过多阶段流水线架构模拟推荐系统的完整调用链路。系统关注平均时延和 P99 时延两项主要指标。
 
-各服务通过 [Discovery](services/discovery/README.md) 服务发现中心实现动态注册与实例发现，无需静态配置下游地址。
+### 服务发现
+
+所有需被调用的服务通过 `discovery_client` sidecar 进程向 [Discovery](services/discovery/README.md) 注册。上游服务通过 `Discover()` RPC 获取下游 UP 实例列表，按 round-robin 选取，失败自动重试。
+
+### 错误码体系
+
+错误码采用 `0xMMTTCCCC` 格式：
+
+- **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
+- **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
+- **CCCC (16bit)** — 具体错误码
+
+详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系)。
+
+### 负载均衡
+
+上游服务通过 Discovery 获取下游服务的全部 UP 实例列表，使用 round-robin 策略选取目标实例。单次调用失败后自动重试下一个实例，连续多次失败触发熔断（10s cooldown）。
+
+### 负载仿真
+
+系统通过以下方式模拟真实推荐场景的负载特征：
+
+- **时延注入**：RankSub 通过 `--scoring_delay_ms` 参数模拟不同计算开销的商品打分时延
+- **数据仿真**：测试客户端可指定 SKU 数量、tensor 大小、payload 大小等参数，模拟不同规模的数据传输
+- **并发仿真**：Proxy 全局线程池可配置并发度，模拟不同并发请求量下的系统行为
+- **副本扩缩**：Recall、Precalc、RankMaster、RankSub 均支持多副本部署，通过 docker-compose scale 模拟集群规模变化
 
 ## 系统架构
 
@@ -57,20 +82,6 @@
                    └──────────────┘
 ```
 
-## 服务列表
-
-| 服务 | 端口 | Proto Service | 状态 | 依赖 |
-|------|------|---------------|------|------|
-| Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
-| Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
-| Recall | 8001 | RecallService | ✅ 已完成 | vLLM |
-| Precalc | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
-| RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
-| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
-| Feature | 8003 | FeatureService | 待合入 | Redis(6379) |
-| KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
-| vLLM | — | — | 模型服务 | Qwen3-0.6B |
-
 ## 技术栈
 
 | 类别 | 技术 |
@@ -87,6 +98,20 @@
 | AI 框架 | 元戎 (openYuanrong) |
 | 部署 | Kubernetes (deploy/k8s/) |
 
+## 服务列表
+
+| 服务 | 端口 | Proto Service | 状态 | 依赖 |
+|------|------|---------------|------|------|
+| Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
+| Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
+| Recall | 8001 | RecallService | ✅ 已完成 | vLLM |
+| Precalc | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
+| RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
+| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
+| Feature | 8003 | FeatureService | 待合入 | Redis(6379) |
+| KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
+| vLLM | — | — | 模型服务 | Qwen3-0.6B |
+
 ## 编译命令
 
 ### 前置依赖
@@ -99,27 +124,21 @@
 | abseil-cpp | latest | 同上 |
 | gflags | latest | 同上 |
 
-### 从项目根目录构建
+### 全量构建（推荐）
+
+```bash
+./build.sh              # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
 
 ```bash
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make discovery_server discovery_client -j$(nproc)
+make -j$(nproc)
 ```
-
-### 从服务目录单独构建
-
-每个服务目录下提供 `build.sh` 脚本，支持参数：
-
-```bash
-cd services/<service_name>
-./build.sh                   # 默认 Release 构建
-./build.sh clean             # 清理后构建
-./build.sh debug             # Debug 构建
-./build.sh release           # Release 构建
-```
-
-产物统一输出到 `build/bin/` 目录。
 
 ### 编译产物
 
@@ -143,11 +162,45 @@ cd services/<service_name>
 | `test_register` | Discovery/examples | 注册/反注册测试 |
 | `test_heartbeat_cycle` | Discovery/examples | 生命周期测试 |
 
+## 目录结构
+
+```
+LinQuickRec-yh/
+├── CMakeLists.txt             # 项目级构建入口
+├── README.md
+├── build.sh                   # 全量编译脚本
+├── .agents/                   # AI 辅助技能（brpc-cmake, git-commit 等）
+├── common/                    # 公共基础库（错误码/日志/线程池）
+├── deploy/
+│   ├── docker/                # 各服务的容器镜像定义 + docker-compose
+│   └── k8s/                   # Kubernetes 部署配置
+├── docs/                      # 文档
+│   ├── ports.md               # 端口配置
+│   └── API.md                 # API 接口文档
+├── proto/                     # 所有服务的 proto 文件
+├── services/
+│   ├── discovery/             # 服务发现中心
+│   ├── feature/               # 特征服务（待合入）
+│   ├── kv_worker/             # 元戎数据系统 Worker 启动脚本
+│   ├── precalc/               # 前置计算服务
+│   ├── proxy/                 # 网关服务
+│   ├── rank_master/           # 精排主图服务
+│   ├── rank_sub/              # 精排子图服务
+│   └── recall/                # 召回服务
+```
+
 ## 容器搭建
 
-所有服务的 Dockerfile 统一位于 `deploy/docker/<service>/`，通过 entrypoint.sh 启动。
+所有服务的 Dockerfile 和 docker-compose 配置统一位于 `deploy/docker/`。
 
-### 构建镜像
+### 构建并启动所有服务
+
+```bash
+docker compose -f deploy/docker/docker-compose.yml build
+docker compose -f deploy/docker/docker-compose.yml up -d
+```
+
+### 单独构建某个服务
 
 ```bash
 # 构建 Discovery
@@ -168,68 +221,8 @@ docker run -p 8100:8100 linquickrec/discovery:latest
 # 启动 Proxy（依赖 Discovery）
 docker run -p 8080:8080 \
     linquickrec/proxy:latest \
-    --discovery_addr="discovery-server:8100"
+    --discovery_addr="discovery:8100"
 ```
-
-### 端到端演示
-
-参见 [Discovery/examples/README.md](services/discovery/examples/README.md)，提供完整的 docker-compose 编排，启动 9 个容器演示完整的注册/发现/心跳链路。
-
-## 目录结构
-
-```
-LinQuickRec-yh/
-├── CMakeLists.txt             # 项目级构建入口
-├── README.md
-├── .agents/                   # AI 辅助技能（brpc-cmake, git-commit 等）
-├── common/                    # 公共基础库（错误码/日志/线程池）
-├── deploy/
-│   ├── docker/                # 各服务的容器镜像定义
-│   └── k8s/                   # Kubernetes 部署配置
-├── docs/                      # 文档
-│   ├── ports.md               # 端口配置
-│   └── API.md                 # API 接口文档
-├── proto/                     # 所有服务的 proto 文件
-├── services/
-│   ├── discovery/             # 服务发现中心
-│   ├── feature/               # 特征服务（待合入）
-│   ├── kv_worker/             # 元戎数据系统 Worker 启动脚本
-│   ├── precalc/               # 前置计算服务
-│   ├── proxy/                 # 网关服务
-│   ├── rank_master/           # 精排主图服务
-│   ├── rank_sub/              # 精排子图服务
-│   └── recall/                # 召回服务
-```
-
-## 错误码体系
-
-错误码采用 `0xMMTTCCCC` 格式：
-
-- **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
-- **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
-- **CCCC (16bit)** — 具体错误码
-
-详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系) 和 [common/include/common/internal/error/error_code.h](common/include/common/internal/error/error_code.h)。
-
-## 服务发现
-
-所有需被调用的服务通过 `discovery_client` sidecar 进程向 Discovery 注册。上游服务通过 `Discover()` RPC 获取下游 UP 实例列表，按 round-robin 选取，失败自动重试。详见 [Discovery/README.md](services/discovery/README.md)。
-
-## 测试方法
-
-### 集成测试
-
-Proxy 提供单进程集成测试，零外部依赖：
-
-```bash
-cd services/proxy
-./build.sh
-./build/bin/proxy_integration_test
-```
-
-### 手动测试
-
-使用各服务的 `*_test_client` 二进制进行手动验证。
 
 ## 后续开发
 
