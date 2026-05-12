@@ -34,7 +34,7 @@
          │ Write          │ Write
          v                v
   ┌────────────┐   ┌──────────────┐
-  │ KV Worker  │   │ KV Worker    │
+  │ KVWorker   │   │ KVWorker     │
   │ 31501      │   │ 31502        │
   └────────────┘   └──────┬───────┘
                           │ Read
@@ -52,7 +52,7 @@
                           │ Read
                           v
                    ┌──────────────┐
-                   │ KV Worker    │
+                   │ KVWorker     │
                    │ 31502        │
                    └──────────────┘
 ```
@@ -63,80 +63,29 @@
 |------|------|---------------|------|------|
 | Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
 | Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
-| Recall | 8001 | RecallService | ✅ 已完成 | vLLM(8000) |
-| Precalc | 8004 | PrecalcService | ✅ 已完成 | KV Worker(31502) |
+| Recall | 8001 | RecallService | ✅ 已完成 | vLLM |
+| Precalc | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
 | RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
-| RankSub | 8006 | RankSubService | ✅ 已完成 | KV Worker(31502) |
+| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
 | Feature | 8003 | FeatureService | 待合入 | Redis(6379) |
-| KV Worker | — | KVWorkerService | 元戎提供(远程) | — |
-| vLLM | 8000 | — | 模型服务 | Qwen3-0.6B |
+| KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
+| vLLM | — | — | 模型服务 | Qwen3-0.6B |
 
-## 目录结构
+## 技术栈
 
-```
-LinQuickRec-yh/
-├── CMakeLists.txt             # 项目级构建入口
-├── README.md
-├── proto/                     # 所有服务的 proto 文件
-│   ├── proxy.proto
-│   ├── feature.proto
-│   ├── recall.proto
-│   ├── precalc.proto
-│   ├── rank_master.proto
-│   ├── rank_sub.proto
-│   └── discovery.proto
-├── common/                    # 公共基础库
-│   ├── include/common/        # 对外头文件
-│   ├── src/                   # 实现
-│   ├── tests/                 # 单元测试
-│   └── examples/              # 使用示例
-├── services/
-│   ├── discovery/             # 服务发现中心
-│   │   ├── server/            # discovery_server
-│   │   ├── client/            # discovery_client
-│   │   └── examples/          # docker-compose 端到端演示
-│   ├── proxy/                 # 网关服务
-│   │   ├── server/
-│   │   ├── client/
-│   │   └── tests/
-│   ├── recall/                # 召回服务
-│   │   ├── server/
-│   │   ├── client/
-│   │   └── tests/
-│   ├── precalc/               # 前置计算服务
-│   │   ├── server/
-│   │   ├── client/
-│   │   └── tests/
-│   ├── rank_master/           # 精排主图服务
-│   │   ├── server/
-│   │   ├── client/
-│   │   └── tests/
-│   ├── rank_sub/              # 精排子图服务
-│   │   ├── server/
-│   │   ├── client/
-│   │   └── tests/
-│   ├── feature/               # 特征服务（待合入）
-│   │   ├── CMakeLists.txt
-│   │   └── Dockerfile
-│   └── kv_worker/             # 元戎数据系统 Worker 启动脚本
-├── deploy/
-│   ├── docker/                # 各服务的容器镜像定义
-│   │   ├── discovery/         # Discovery Dockerfile + entrypoint
-│   │   ├── proxy/
-│   │   ├── recall/
-│   │   ├── precalc/
-│   │   ├── rank-master/
-│   │   ├── rank-sub/
-│   │   ├── feature_service/
-│   │   ├── kv_worker/
-│   │   └── examples/          # 端到端演示容器
-│   └── k8s/                   # Kubernetes 部署配置
-├── docs/                      # 文档
-│   ├── ports.md               # 端口配置
-│   └── API.md                 # API 接口文档
-└── .agents/
-    └── skills/                # AI 辅助技能（brpc-cmake, git-commit 等）
-```
+| 类别 | 技术 |
+|------|------|
+| 容器化 | Docker + Docker Compose |
+| 通信框架 | BRPC |
+| 序列化 | Protocol Buffers |
+| 服务发现 | BRPC RPC（自研） |
+| 日志 | common::logger（自研，流式 + 格式化） |
+| 线程池 | common::ThreadPool（自研，全局单例） |
+| 错误码 | common::error::Status（自研，0xMMTTCCCC） |
+| 模型推理 | vLLM (Qwen3-0.6B) |
+| JSON 处理 | RapidJSON |
+| AI 框架 | 元戎 (openYuanrong) |
+| 部署 | Kubernetes (deploy/k8s/) |
 
 ## 编译命令
 
@@ -226,9 +175,31 @@ docker run -p 8080:8080 \
 
 参见 [Discovery/examples/README.md](services/discovery/examples/README.md)，提供完整的 docker-compose 编排，启动 9 个容器演示完整的注册/发现/心跳链路。
 
-## 服务发现
+## 目录结构
 
-所有需被调用的服务通过 `discovery_client` sidecar 进程向 Discovery 注册。上游服务通过 `Discover()` RPC 获取下游 UP 实例列表，按 round-robin 选取，失败自动重试。详见 [Discovery/README.md](services/discovery/README.md)。
+```
+LinQuickRec-yh/
+├── CMakeLists.txt             # 项目级构建入口
+├── README.md
+├── .agents/                   # AI 辅助技能（brpc-cmake, git-commit 等）
+├── common/                    # 公共基础库（错误码/日志/线程池）
+├── deploy/
+│   ├── docker/                # 各服务的容器镜像定义
+│   └── k8s/                   # Kubernetes 部署配置
+├── docs/                      # 文档
+│   ├── ports.md               # 端口配置
+│   └── API.md                 # API 接口文档
+├── proto/                     # 所有服务的 proto 文件
+├── services/
+│   ├── discovery/             # 服务发现中心
+│   ├── feature/               # 特征服务（待合入）
+│   ├── kv_worker/             # 元戎数据系统 Worker 启动脚本
+│   ├── precalc/               # 前置计算服务
+│   ├── proxy/                 # 网关服务
+│   ├── rank_master/           # 精排主图服务
+│   ├── rank_sub/              # 精排子图服务
+│   └── recall/                # 召回服务
+```
 
 ## 错误码体系
 
@@ -239,6 +210,10 @@ docker run -p 8080:8080 \
 - **CCCC (16bit)** — 具体错误码
 
 详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系) 和 [common/include/common/internal/error/error_code.h](common/include/common/internal/error/error_code.h)。
+
+## 服务发现
+
+所有需被调用的服务通过 `discovery_client` sidecar 进程向 Discovery 注册。上游服务通过 `Discover()` RPC 获取下游 UP 实例列表，按 round-robin 选取，失败自动重试。详见 [Discovery/README.md](services/discovery/README.md)。
 
 ## 测试方法
 
@@ -256,22 +231,6 @@ cd services/proxy
 
 使用各服务的 `*_test_client` 二进制进行手动验证。
 
-## 技术栈
-
-| 类别 | 技术 |
-|------|------|
-| 容器化 | Docker + Docker Compose |
-| 通信框架 | BRPC |
-| 序列化 | Protocol Buffers |
-| 服务发现 | BRPC RPC（自研） |
-| 日志 | common::logger（自研，流式 + 格式化） |
-| 线程池 | common::ThreadPool（自研，全局单例） |
-| 错误码 | common::error::Status（自研，0xMMTTCCCC） |
-| 模型推理 | vLLM (Qwen3-0.6B) |
-| JSON 处理 | RapidJSON |
-| AI 框架 | 元戎 (openYuanrong) |
-| 部署 | Kubernetes (deploy/k8s/) |
-
 ## 后续开发
 
 - [x] common 公共基础库（错误码/日志/线程池）
@@ -283,7 +242,7 @@ cd services/proxy
 - [x] API 接口文档
 - [ ] Feature 服务端和客户端（待其他开发者合入）
 - [ ] 集成 Redis 进行特征存储
-- [ ] 实现 KV Worker 内存管理
+- [ ] 实现 KVWorker 内存管理
 - [ ] 实现轻量级探针和数据采集
 - [ ] 构建监控可视化界面
 - [ ] 添加健康检查
