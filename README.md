@@ -8,7 +8,7 @@
 
 所有服务容器在启动时通过一个 sidecar 进程向服务发现中心（`discovery_server`，端口 8100）完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 sidecar 以固定间隔发送心跳维持 UP 状态；心跳超时后服务发现中心将实例标记为 DOWN，超过清理时间后从注册表移除。
 
-Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向服务发现中心查询指定服务类型的全部 UP 实例，通过 round-robin 策略选取目标实例发起调用。
+Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向服务发现中心查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
 
 调用失败时的降级策略：
 
@@ -25,7 +25,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 
 ### 错误码体系
 
-错误码采用 `0xMMTTCCCC` 格式：
+全域错误码体系采用 `0xMMTTCCCC` 格式，不同服务之间均使用统一的错误码体系：
 
 - **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
 - **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
@@ -101,17 +101,17 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 
 | 类别 | 技术 |
 |------|------|
-| 容器化 | Docker + Docker Compose |
 | 通信框架 | BRPC |
 | 序列化 | Protocol Buffers |
 | 服务发现 | BRPC RPC（自研） |
-| 日志 | common::logger（自研，流式 + 格式化） |
-| 线程池 | common::ThreadPool（自研，全局单例） |
-| 错误码 | common::error::Status（自研，0xMMTTCCCC） |
+| 日志 | common::logger |
+| 线程池 | common::ThreadPool |
+| 错误码 | common::error::Status（0xMMTTCCCC）|
 | 模型推理 | vLLM (Qwen3-0.6B) |
 | JSON 处理 | RapidJSON |
-| AI 框架 | 元戎 (openYuanrong) |
-| 部署 | Kubernetes (deploy/k8s/) |
+| KVCache | 元戎 (openYuanrong) |
+| 容器化 | Docker + Docker Compose |
+| 容器化部署 | Kubernetes |
 
 ## 服务列表
 
@@ -139,10 +139,11 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 | abseil-cpp | latest | 同上 |
 | gflags | latest | 同上 |
 
-### 全量构建（推荐）
+### 脚本构建
 
 ```bash
-./build.sh              # Release 构建
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
 ./build.sh debug        # Debug 构建
 ./build.sh clean        # 清理后构建
 ```
@@ -196,7 +197,7 @@ LinQuickRec-yh/
 ├── services/
 │   ├── discovery/             # 服务发现中心
 │   ├── feature/               # 特征服务（待合入）
-│   ├── kv_worker/             # 元戎数据系统 Worker 启动脚本
+│   ├── kv_worker/             # 元戎数据系统
 │   ├── precalc/               # 前置计算服务
 │   ├── proxy/                 # 网关服务
 │   ├── rank_master/           # 精排主图服务
@@ -208,14 +209,16 @@ LinQuickRec-yh/
 
 所有服务的 Dockerfile 和 docker-compose 配置统一位于 `deploy/docker/`。
 
-### 构建并启动所有服务
+### 构建与启动
 
 ```bash
 docker compose -f deploy/docker/docker-compose.yml build
 docker compose -f deploy/docker/docker-compose.yml up -d
 ```
 
-### 单独构建某个服务
+### 单独构建
+
+单独构建指定容器可以使用如下示例命令：
 
 ```bash
 # 构建 Discovery
@@ -227,18 +230,6 @@ docker build -t linquickrec/proxy:latest \
     -f deploy/docker/proxy/Dockerfile .
 ```
 
-### 启动容器
-
-```bash
-# 启动 Discovery
-docker run -p 8100:8100 linquickrec/discovery:latest
-
-# 启动 Proxy（依赖 Discovery）
-docker run -p 8080:8080 \
-    linquickrec/proxy:latest \
-    --discovery_addr="discovery:8100"
-```
-
 ## 后续开发
 
 - [x] common 公共基础库（错误码/日志/线程池）
@@ -248,9 +239,8 @@ docker run -p 8080:8080 \
 - [x] Proxy 网关服务
 - [x] Discovery 服务发现中心
 - [x] API 接口文档
-- [ ] Feature 服务端和客户端（待其他开发者合入）
+- [ ] Feature 服务端和客户端
 - [ ] 集成 Redis 进行特征存储
-- [ ] 实现 KVWorker 内存管理
 - [ ] 实现轻量级探针和数据采集
 - [ ] 构建监控可视化界面
 - [ ] 添加健康检查
