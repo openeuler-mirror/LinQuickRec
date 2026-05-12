@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 
     brpc::Server server;
 
-    if (server.AddService(&rank_sub_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server.AddService(&rank_sub_service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Failed to add RankSubService";
         return -1;
     }
