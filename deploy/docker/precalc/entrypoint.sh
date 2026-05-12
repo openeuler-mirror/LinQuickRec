@@ -6,7 +6,7 @@ echo "Starting Precalc Service"
 echo "==========================================="
 
 cd /app/build
-./precalc_server \
+./bin/precalc_server \
     --server_port=${SERVER_PORT:-8004} \
     --kvworker_host=${KVWORKER_HOST:-141.61.84.245} \
     --kvworker_port=${KVWORKER_PORT:-31502} \
