@@ -1,244 +1,275 @@
-# LingQuickRec - 搜推广时延模拟系统
+# LingQuickRec — 搜推广时延模拟系统
 
 ## 项目简介
 
-本项目是一个用于模拟搜推广过程时延并验证通信优化效果的实验系统。系统关注平均时延和 P99 时延两项主要指标。
+本项目是一个搜推广时延模拟与通信优化验证系统，采用 BRPC 通信框架和 Protocol Buffers 序列化协议，通过多阶段流水线架构模拟推荐系统的完整调用链路。系统关注平均时延和 P99 时延两项主要指标。
+
+各服务通过 [discovery](services/discovery/README.md) 服务发现中心实现动态注册与实例发现，无需静态配置下游地址。
 
 ## 系统架构
 
 ```
-用户请求
-    ↓
-┌─────────────────┐
-│  Proxy 服务     │
-│  (网关)         │
-└─────────────────┘
-    ↓
-┌─────────────────┐
-│  Feature 服务   │←──→ Redis (6379)
-│  (特征服务)     │
-│  端口：8003     │
-└─────────────────┘
-    ↓
-┌─────────────────┬─────────────────┬─────────────────┐
-│  Recall 服务    │  Precalc 服务   │  Rank 服务      │
-│  (召回服务)     │  (前置计算)     │  (精排服务)     │
-│  端口：8001     │  端口：8004     │  Master:8005    │
-│  RecallKVWorker │  RankKVWorker   │  Sub:8006       │
-│  端口：31501    │  端口：31502    │  RankKVWorker   │
-│  (远程)         │  (远程)         │  端口：31502    │
-└─────────────────┴─────────────────┴─────────────────┘
-       ↓                  ↓                  ↓
-    ┌─────────────────┐         ┌─────────────────┐
-    │ RecallKVWorker  │         │  RankKVWorker   │
-    │ (元戎 KVCache)  │         │ (元戎 KVCache)  │
-    │ 141.61.84.245   │         │ 141.61.84.245   │
-    │ 不依赖 Redis    │         │ 不依赖 Redis    │
-    └─────────────────┘         └─────────────────┘
+                  外部请求
+                      |
+                      v
+              ┌────────────────┐
+              │   Proxy 网关   │  ←── 通过 discovery 动态发现下游
+              │   (port 8080)  │
+              └────────────────┘
+                      |
+                      v
+         ┌────────────────────────────┐
+         │  FeatureService (8003)     │  ←── Redis (6379)
+         │  [待合入]                  │
+         └────────────────────────────┘
+                      |
+                      v
+    ┌─────────────────┼─────────────────┐
+    v                 v                  v
+┌──────────┐   ┌────────────┐   ┌──────────────┐
+│ Recall   │   │ Precalc    │   │ RankMaster   │
+│ (8001)   │   │ (8004)     │   │ (8005)       │
+│ vLLM     │   │ KVWorker   │   │ ┌──────────┐ │
+│          │   │ (31502)    │   │ │ RankSub  │ │
+└────┬─────┘   └────────────┘   │ │ (8006) xN│ │
+     │                          │ └──────────┘ │
+     v                          └──────┬───────┘
+┌──────────┐                          │
+│ KVWorker │                          v
+│ (31501)  │                   ┌──────────┐
+└──────────┘                   │ KVWorker │
+                               │ (31502)  │
+                               └──────────┘
 ```
 
 ## 服务列表
 
-| 服务名            | 端口   | Proto Service 名 | 状态    | 依赖                                                     |
-| -------------- | ---- | --------------- | ----- | ------------------------------------------------------ |
-| Proxy          | -    | Proxy           | 规划中   | feature(8003), recall(8001), precalc(8004), rank(8005) |
-| FeatureService | 8003 | FeatureService  | 规划中   | redis(6379)                                            |
-| RecallService  | 8001 | RecallService   | ✅ 已完成 | recall\_kvworker(31501)                                |
-| PrecalcService | 8004 | PrecalcService  | 进行中   | rank\_kvworker(31502)                                  |
-| RankMaster     | 8005 | RankMasterService | ✅ 已完成 | rank\_kvworker(31502), precalc(8004)                   |
-| RankSub        | 8006 | RankSubService  | ✅ 已完成 | rank\_kvworker(31502)                                  |
-| RecallKVWorker | 31501 | KVWorkerService | 元戎提供 (远程) | 无                                                      |
-| RankKVWorker   | 31502 | KVWorkerService | 元戎提供 (远程) | 无                                                      |
-| Redis          | 6379 | -               | 基础设施  | -                                                      |
-| vLLM           | 8000 | -               | 模型服务  | -                                                      |
+| 服务 | 端口 | Proto Service | 状态 | 依赖 |
+|------|------|---------------|------|------|
+| discovery-server | 8100 | DiscoveryService | ✅ 已完成 | — |
+| Proxy | 8080 | ProxyService | ✅ 已完成 | discovery, feature, recall, precalc, rank |
+| RecallService | 8001 | RecallService | ✅ 已完成 | vLLM(8000) |
+| PrecalcService | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
+| RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
+| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
+| FeatureService | 8003 | FeatureService | 待合入 | Redis(6379) |
+| kv_worker | — | KVWorkerService | 元戎提供(远程) | — |
+| vLLM | 8000 | — | 模型服务 | — |
 
 ## 目录结构
 
 ```
-Vllm-brpc-Gateway/
-├── docker-compose.yml          # 容器编排配置
-├── Dockerfile.base             # 基础镜像
+LinQuickRec-yh/
+├── CMakeLists.txt             # 项目级构建入口
 ├── README.md
-├── proto/                      # 所有服务的 proto 文件
-│   ├── proxy.proto             # 网关服务（Proxy）
-│   ├── feature.proto           # 特征服务（FeatureService）
-│   ├── recall.proto            # 召回服务（RecallService）
-│   ├── precalc.proto           # 前置计算服务（PrecalcService）
-│   └── rank.proto              # 精排服务（RankService）
-├── services/                   # 5 个业务服务（文件夹名与 proto 中 service 名对应）
-│   ├── Proxy/                  # 网关服务
+├── proto/                     # 所有服务的 proto 文件
+│   ├── proxy.proto
+│   ├── feature.proto
+│   ├── recall.proto
+│   ├── precalc.proto
+│   ├── rank_master.proto
+│   ├── rank_sub.proto
+│   └── discovery.proto
+├── common/                    # 公共基础库
+│   ├── include/common/        # 对外头文件
+│   ├── src/                   # 实现
+│   ├── tests/                 # 单元测试
+│   └── examples/              # 使用示例
+├── services/
+│   ├── discovery/             # 服务发现中心
+│   │   ├── server/            # discovery_server
+│   │   ├── client/            # discovery_client
+│   │   └── examples/          # docker-compose 端到端演示
+│   ├── proxy/                 # 网关服务
+│   │   ├── server/
+│   │   ├── client/
+│   │   └── tests/
+│   ├── recall/                # 召回服务
+│   │   ├── server/
+│   │   ├── client/
+│   │   └── tests/
+│   ├── precalc/               # 前置计算服务
+│   │   ├── server/
+│   │   ├── client/
+│   │   └── tests/
+│   ├── rank_master/           # 精排主图服务
+│   │   ├── server/
+│   │   ├── client/
+│   │   └── tests/
+│   ├── rank_sub/              # 精排子图服务
+│   │   ├── server/
+│   │   ├── client/
+│   │   └── tests/
+│   ├── feature/               # 特征服务（待合入）
 │   │   ├── CMakeLists.txt
 │   │   └── Dockerfile
-│   ├── feature_service/        # 特征服务
-│   │   ├── CMakeLists.txt
-│   │   └── Dockerfile
-│   ├── RankService/            # 精排服务
-│   │   ├── CMakeLists.txt
-│   │   └── Dockerfile
-│   ├── precalc_service/        # 前置计算服务
-│   │   ├── CMakeLists.txt
-│   │   └── Dockerfile
-│   └── recall/                 # 召回服务（已实现）
-│       ├── server/
-│       │   └── recall_server.cpp       # 服务端代码
-│       ├── client/
-│       │   └── recall_test_client.cpp  # 客户端测试代码
-│       ├── include/                    # 工具头文件（线程池等）
-│       ├── backup/                     # 备份代码
-│       ├── CMakeLists.txt
-│       └── Dockerfile
-├── kvworker/                   # KVWorker 服务（元戎）
-│   ├── recall_kvworker/        # Recall 专用 KVWorker
-│   │   ├── Dockerfile
-│   │   ├── CMakeLists.txt
-│   │   └── config.yaml
-│   └── rank_kvworker/          # Rank 专用 KVWorker
-│       ├── Dockerfile
-│       ├── CMakeLists.txt
-│       └── config.yaml
-├── docs/                       # 文档目录
-│   ├── API.md                  # API 接口文档
-│   └── ports.md                # 端口配置文档
-├── redis/
-│   └── redis.conf
-└── vllm/                       # vLLM 模型服务
-    └── Dockerfile
+│   └── kv_worker/             # 元戎数据系统 Worker 启动脚本
+├── deploy/
+│   ├── docker/                # 各服务的容器镜像定义
+│   │   ├── discovery/         # discovery-server Dockerfile + entrypoint
+│   │   ├── proxy/
+│   │   ├── recall/
+│   │   ├── precalc/
+│   │   ├── rank-master/
+│   │   ├── rank-sub/
+│   │   ├── feature_service/
+│   │   ├── kv_worker/
+│   │   └── examples/          # 端到端演示容器
+│   └── k8s/                   # Kubernetes 部署配置
+├── docs/                      # 文档
+│   ├── ports.md               # 端口配置
+│   └── API.md                 # API 接口文档
+└── .agents/
+    └── skills/                # AI 辅助技能（brpc-cmake, git-commit 等）
 ```
 
-## 快速开始
+## 编译命令
 
-### 1. 构建基础镜像
+### 前置依赖
+
+| 依赖 | 版本要求 | 安装参考 |
+|------|----------|----------|
+| CMake | >= 3.14 | `apt install cmake` |
+| brpc | >= 1.4 | 基础镜像 `linquickrec/base:latest` 已内置 |
+| protobuf | >= 3.0 | 同上 |
+| abseil-cpp | latest | 同上 |
+| gflags | latest | 同上 |
+
+### 从项目根目录构建
 
 ```bash
-docker build -t lingquickrec/base:latest -f Dockerfile.base .
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make discovery_server discovery_client -j$(nproc)
 ```
 
-### 2. 构建并启动所有服务
+### 从服务目录单独构建
+
+每个服务目录下提供 `build.sh` 脚本，支持参数：
 
 ```bash
-docker-compose up --build
+cd services/<service_name>
+./build.sh                   # 默认 Release 构建
+./build.sh clean             # 清理后构建
+./build.sh debug             # Debug 构建
+./build.sh release           # Release 构建
 ```
 
-### 3. 单独启动某个服务
+产物统一输出到 `build/bin/` 目录。
+
+### 编译产物
+
+| 二进制 | 所属服务 | 说明 |
+|--------|---------|------|
+| `discovery_server` | discovery | 服务发现中心服务端 |
+| `discovery_client` | discovery | 服务发现客户端（sidecar 进程） |
+| `proxy_server` | proxy | 网关服务 |
+| `proxy_test_client` | proxy | 网关手动测试客户端 |
+| `proxy_integration_test` | proxy | 网关集成测试 |
+| `recall_server` | recall | 召回服务 |
+| `recall_test_client` | recall | 召回测试客户端 |
+| `precalc_server` | precalc | 前置计算服务 |
+| `precalc_test_client` | precalc | 前置计算测试客户端 |
+| `rank_master_server` | rank_master | 精排主图服务 |
+| `rank_master_test_client` | rank_master | 精排主图测试客户端 |
+| `rank_sub_server` | rank_sub | 精排子图服务 |
+| `rank_sub_client` | rank_sub | 精排子图测试客户端 |
+| `pseudo_service` | discovery/examples | 模拟业务服务 |
+| `test_discover` | discovery/examples | 发现功能测试 |
+| `test_register` | discovery/examples | 注册/反注册测试 |
+| `test_heartbeat_cycle` | discovery/examples | 生命周期测试 |
+
+## 容器搭建
+
+所有服务的 Dockerfile 统一位于 `deploy/docker/<service>/`，通过 entrypoint.sh 启动。
+
+### 构建镜像
 
 ```bash
-# 只启动网关服务
-docker-compose up gateway
+# 构建 discovery-server
+docker build -t linquickrec/discovery:latest \
+    -f deploy/docker/discovery/Dockerfile .
 
-# 只启动召回服务
-docker-compose up recall
+# 构建 proxy
+docker build -t linquickrec/proxy:latest \
+    -f deploy/docker/proxy/Dockerfile .
 ```
 
-### 4. 查看日志
+### 启动容器
 
 ```bash
-# 查看所有服务日志
-docker-compose logs -f
+# 启动 discovery-server
+docker run -p 8100:8100 linquickrec/discovery:latest
 
-# 查看特定服务日志
-docker-compose logs -f gateway
+# 启动 proxy（依赖 discovery-server）
+docker run -p 8080:8080 \
+    linquickrec/proxy:latest \
+    --discovery_addr="discovery-server:8100"
 ```
 
-### 5. 停止服务
+### 端到端演示
+
+参见 [discovery/examples/README.md](services/discovery/examples/README.md)，提供完整的 docker-compose 编排，启动 9 个容器演示完整的注册/发现/心跳链路。
+
+## 服务发现
+
+所有需被调用的服务通过 `discovery_client` sidecar 进程向 `discovery-server` 注册。上游服务通过 `Disover()` RPC 获取下游 UP 实例列表，按 round-robin 选取，失败自动重试。详见 [discovery/README.md](services/discovery/README.md)。
+
+## 错误码体系
+
+错误码采用 `0xMMTTCCCC` 格式：
+
+- **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
+- **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
+- **CCCC (16bit)** — 具体错误码
+
+详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系) 和 [common/include/common/internal/error/error_code.h](common/include/common/internal/error/error_code.h)。
+
+## 测试方法
+
+### 集成测试
+
+Proxy 提供单进程集成测试，零外部依赖：
 
 ```bash
-# 停止所有服务
-docker-compose down
-
-# 停止并删除数据卷
-docker-compose down -v
+cd services/proxy
+./build.sh
+./build/bin/proxy_integration_test
 ```
 
-## 服务间通信
+### 手动测试
 
-所有服务通过 Docker 网络直接通信，使用容器名作为主机名：
-
-```cpp
-// 示例：网关服务访问特征服务
-std::string feature_host = "feature";  // 容器名
-int feature_port = 8003;
-
-// 示例：Precalc 服务访问 RecallKVWorker
-std::string kvworker_host = "recall_kvworker";  // 容器名
-int kvworker_port = 8002;
-```
-
-## 环境变量配置
-
-每个服务可以通过环境变量配置依赖服务的地址：
-
-```yaml
-environment:
-  - FEATURE_HOST=feature
-  - RECALL_HOST=recall
-  - RANKING_HOST=ranking
-  - PRECOMPUTE_HOST=precompute
-  - KVWORKER_HOST=kvworker
-  - REDIS_HOST=redis
-```
-
-## 监控指标
-
-- **端到端时延**：网关服务统计（平均、P99）
-- **服务间通信时延**：每个 BRPC 客户端统计
-- **计算时延**：每个服务端统计
-- **trace\_id 全链路追踪**：所有服务传递 trace\_id
-
-## 开发指南
-
-### 添加新服务
-
-1. 在 `services/` 下创建新目录
-2. 创建 `Dockerfile`、`CMakeLists.txt`、`proto/`、`src/`
-3. 在 `docker-compose.yml` 中添加服务配置
-4. 在 `proto/` 中添加 proto 文件
-
-### 修改现有服务
-
-1. 修改对应服务的源代码
-2. 重新构建：`docker-compose up --build <service_name>`
-
-### 调试单个服务
-
-```bash
-# 进入容器
-docker-compose exec gateway /bin/bash
-
-# 查看服务状态
-docker-compose ps
-```
+使用各服务的 `*_test_client` 二进制进行手动验证。
 
 ## 技术栈
 
-- **容器化**: Docker + Docker Compose
-- **通信框架**: BRPC
-- **序列化**: Protocol Buffers
-- **缓存**: Redis
-- **AI 框架**: 元戎 (openYuanrong)
-- **模型**: Qwen3-0.6B
-- **JSON 处理**: RapidJSON
-
-## 注意事项
-
-1. **GPU 支持**: RecallKVWorker 和 RankKVWorker 需要 GPU 支持，确保安装了 NVIDIA Docker
-2. **网络配置**: 所有容器在同一 Docker 网络中，通过容器名通信
-3. **数据持久化**: Redis 和 KVWorker 的数据可以通过 volume 持久化
-4. **资源限制**: 可以在 docker-compose.yml 中为每个容器设置资源限制
-5. **KVWorker 独立性**: RecallKVWorker 和 RankKVWorker 是两个独立的容器，都不依赖 Redis
+| 类别 | 技术 |
+|------|------|
+| 容器化 | Docker + Docker Compose |
+| 通信框架 | BRPC |
+| 序列化 | Protocol Buffers |
+| 服务发现 | BRPC RPC（自研） |
+| 日志 | common::logger（自研，流式 + 格式化） |
+| 线程池 | common::ThreadPool（自研，全局单例） |
+| 错误码 | common::error::Status（自研，0xMMTTCCCC） |
+| 模型推理 | vLLM (Qwen3-0.6B) |
+| JSON 处理 | RapidJSON |
+| AI 框架 | 元戎 (openYuanrong) |
+| 部署 | Kubernetes (deploy/k8s/) |
 
 ## 后续开发
 
-- [x] RecallService 服务端和客户端实现（已完成）
-- [x] API 接口文档创建（已完成）
-- [ ] PrecalcService 服务端和客户端实现（进行中）
-- [ ] ProxyService 服务端和客户端实现
-- [ ] FeatureService 服务端和客户端实现
-- [ ] RankService 服务端和客户端实现
+- [x] common 公共基础库（错误码/日志/线程池）
+- [x] RecallService 服务端和客户端
+- [x] PrecalcService 服务端和客户端
+- [x] RankServiceMaster + RankServiceSub 精排服务
+- [x] Proxy 网关服务
+- [x] Discovery 服务发现中心
+- [x] API 接口文档
+- [ ] FeatureService 服务端和客户端（待其他开发者合入）
 - [ ] 集成 Redis 进行特征存储
 - [ ] 实现 KVWorker 内存管理
-- [ ] 集成 Qwen3-0.6B 模型推理
 - [ ] 实现轻量级探针和数据采集
 - [ ] 构建监控可视化界面
 - [ ] 添加健康检查
 - [ ] 添加自动扩缩容支持
-
