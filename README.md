@@ -251,14 +251,7 @@ LinQuickRec-yh/
 
 ## 容器搭建
 
-所有服务的 Dockerfile 和 docker-compose 配置统一位于 `deploy/docker/`。
-
-### 构建与启动
-
-```bash
-docker compose -f deploy/docker/docker-compose.yml build
-docker compose -f deploy/docker/docker-compose.yml up -d
-```
+容器构建与部署详见 [deploy/docker/README.md](deploy/docker/README.md)。
 
 ### 单独构建
 
