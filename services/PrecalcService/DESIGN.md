@@ -71,8 +71,11 @@ services/PrecalcService/
 │   └── src/
 │       ├── main.cpp             # 服务入口
 │       └── precalc_server.cpp   # 服务实现
-└── client/
-    └── precalc_test_client.cpp  # 测试客户端
+├── client/
+│   └── precalc_test_client.cpp  # 测试客户端
+├── tests/
+│   └── test_precalc.cpp         # 单元测试
+└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义
@@ -86,6 +89,7 @@ option cc_generic_services = true;
 
 message PrecalcRequest {
     string user_feat = 1;  // 用户特征数据（100KB）
+    string trace_id = 2;   // 分布式追踪 ID
 }
 
 message PrecalcResponse {
@@ -103,6 +107,7 @@ service PrecalcService {
 | 字段              | 大小       | 说明                               |
 | --------------- | -------- | -------------------------------- |
 | `user_feat`     | \~100KB  | 用户特征原始数据                         |
+| `trace_id`      | 可变       | 分布式追踪 ID，用于跨服务链路追踪               |
 | `user_feat_key` | 16 bytes | KVWorker 存储键（user\_feat 前 16 字符） |
 | `payload`       | \~100KB  | 模拟负载数据                           |
 
@@ -114,15 +119,18 @@ service PrecalcService {
 
 **请求处理流程**：
 
-1. 验证 `user_feat` 非空
-2. 提取 `user_feat_key`：取 `user_feat` 的前 16 个字符
-3. 生成前置计算结果：`generate_precalc_result(FLAGS_precalc_result_size_mb)`
-4. 写入 KVWorker：
+1. 提取 `trace_id` 并注入日志系统（分布式追踪）
+2. 通过全局线程池异步执行处理任务
+3. 验证 `user_feat` 非空
+4. 提取 `user_feat_key`：取 `user_feat` 的前 16 个字符
+5. 生成前置计算结果：`generate_precalc_result(FLAGS_precalc_result_size_mb)`
+6. 写入 KVWorker：
    - `KVClient::Create(key, size, param, buffer)` 分配缓冲区
    - `memcpy(buffer, data, size)` 填充数据
    - `KVClient::Set(buffer)` 提交写入
-5. 生成 payload：`generate_random_string(FLAGS_payload_size_kb * 1024)`
-6. 返回 `PrecalcResponse`
+7. 生成 payload：`generate_random_string(FLAGS_payload_size_kb * 1024)`
+8. 返回 `PrecalcResponse`
+9. 若启用 `enable_timing_stats`，记录 `kvwrite_cost` 和 `server_process_total` 耗时
 
 ### 6.2 KVWorker 写入流程
 
@@ -253,10 +261,11 @@ Upstream                  PrecalcService                KVWorker
 
 | 场景                     | 行为                                               |
 | ---------------------- | ------------------------------------------------ |
-| **空 user\_feat**       | 返回空 `user_feat_key` 和空 `payload`，记录 ERROR        |
-| **KVWorker Init 失败**   | 返回空响应，记录 ERROR                                   |
-| **KVWorker Create 失败** | 返回空响应，记录 ERROR                                   |
-| **KVWorker Set 失败**    | 返回空响应，记录 ERROR                                   |
+| **空 user\_feat**       | 返回 `EMPTY_USER_FEAT` 错误，记录 ERROR                   |
+| **KVWorker Init 失败**   | 返回 `KVCLIENT_INIT_FAILED` 错误，记录 ERROR              |
+| **KVWorker Create 失败** | 返回 `KVCLIENT_CREATE_FAILED` 错误，记录 ERROR            |
+| **KVWorker Set 失败**    | 返回 `KVCLIENT_SET_FAILED` 错误，记录 ERROR               |
+| **线程池任务异常**          | 返回 `INTERNAL_ERROR` 错误，记录 ERROR                     |
 | **user\_feat 长度 < 16** | 取全部字符作为 key                                      |
 | **TTL 过期**             | 下游 RankSub 读取时返回 key not found                   |
 | **KVWorker 不可达**       | 所有请求失败，需检查网络或 KVWorker 状态                        |

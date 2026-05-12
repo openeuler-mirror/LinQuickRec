@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.14)
 project(rank_master_service)
 
 # 添加 common 库
-add_subdirectory(${CMAKE_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+if(NOT TARGET common_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,7 +58,7 @@ set(ABSL_LIBS
 )
 
 # 设置 proto 文件路径
-set(PROTO_DIR "${CMAKE_SOURCE_DIR}/../../proto")
+set(PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 # 元戎 SDK 配置
@@ -124,7 +126,7 @@ add_executable(rank_master_server
 )
 
 target_include_directories(rank_master_server PRIVATE
-    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
@@ -159,7 +161,7 @@ add_executable(rank_master_test_client
 )
 
 target_include_directories(rank_master_test_client PRIVATE
-    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}
@@ -207,7 +209,7 @@ add_executable(rank_master_test
 )
 
 target_include_directories(rank_master_test PRIVATE
-    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${PROTO_OUT_DIR}
     ${PROTO_DIR}
     ${PROTOBUF_INCLUDE_DIRS}

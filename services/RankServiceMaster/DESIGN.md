@@ -69,12 +69,17 @@ services/RankServiceMaster/
 ├── build.sh                     # 编译脚本
 ├── server/
 │   ├── include/
-│   │   └── rank_master_server.h # RankMasterServiceImpl 声明
+│   │   ├── rank_master_server.h # RankMasterServiceImpl 声明
+│   │   └── discovery_resolver.h # DiscoveryResolver 声明
 │   └── src/
 │       ├── main.cpp             # 服务入口
-│       └── rank_master_server.cpp # 服务实现
-└── client/
-    └── rank_master_test_client.cpp # 测试客户端
+│       ├── rank_master_server.cpp # 服务实现
+│       └── discovery_resolver.cpp # Discovery 服务发现实现
+├── client/
+│   └── rank_master_test_client.cpp # 测试客户端
+├── tests/
+│   └── test_rank_master.cpp    # 单元测试
+└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义
@@ -90,6 +95,7 @@ message RankMasterRequest {
     string user_feat_key = 1;  // KVWorker 中的用户特征键
     string skus = 2;           // 候选 SKU 列表（6位数字拼接，~100KB）
     string payload = 3;        // 模拟负载（~100KB）
+    string trace_id = 4;       // 分布式追踪 ID
 }
 
 message RankMasterResponse {
@@ -197,6 +203,39 @@ for (int i = 0; i < sub_worker_count; ++i) {
 - Docker 内部 DNS 轮询解析 `rank-sub-service` 到不同容器
 - 所有 Channel 初始化时连接到同一服务名，DNS 自动负载均衡
 
+### 6.5 Discovery 集成
+
+RankMaster 支持通过 Discovery Service 动态发现 RankSub 实例，同时保留静态配置作为回退。
+
+**地址解析优先级**：
+
+1. 若 `--discovery_addr` 非空：通过 DiscoveryResolver 查询 `rank_sub` 服务实例
+2. 若 Discovery 查询结果为空或未配置：使用 `--sub_worker_addresses` 静态地址
+
+**DiscoveryResolver 组件**：
+
+```cpp
+class DiscoveryResolver {
+public:
+    struct Instance {
+        std::string host;
+        int32_t port;
+        std::string instance_id;
+    };
+
+    std::vector<Instance> discover(const std::string& service_name);
+    std::string select_one(const std::string& service_name);  // RoundRobin
+    void refresh(const std::string& service_name);
+
+private:
+    brpc::Channel channel_;
+    std::map<std::string, std::vector<Instance>> cache_;  // 服务名 → 实例列表
+    std::atomic<size_t> rr_counter_{0};                   // RoundRobin 计数器
+};
+```
+
+**trace_id 传播**：Master 调用子图时，将 `trace_id` 传递到 `RankSubRequest`，实现跨服务链路追踪。
+
 ### 6.5 动态扩缩容
 
 ```
@@ -236,9 +275,11 @@ for (int i = 0; i < sub_worker_count; ++i) {
 | `SERVER_PORT`          | 8005                    | 服务端口         |
 | `SUB_WORKER_COUNT`     | 10                      | 子图数量         |
 | `SUB_WORKER_ADDRESSES` | "rank-sub-service:8006" | 子图地址         |
+| `DISCOVERY_ADDR`       | ""                      | Discovery 服务地址 |
 | `RANK_SUB_HOST`        | "rank-sub-service"      | 子图主机名（等待就绪用） |
 | `RANK_SUB_PORT`        | 8006                    | 子图端口（等待就绪用）  |
 | `TOP_K`                | 100                     | 返回前 K 个商品    |
+| `SUB_WORKER_TIMEOUT_MS`| 5000                    | 子图调用超时（毫秒） |
 
 ## 7. 配置参数总表
 
@@ -247,8 +288,10 @@ for (int i = 0; i < sub_worker_count; ++i) {
 | `--server_port`          | int32  | 8005             | 服务监听端口       |
 | `--sub_worker_count`     | int32  | 10               | 子图数量         |
 | `--sub_worker_addresses` | string | "127.0.0.1:8006" | 子图地址列表（逗号分隔） |
+| `--discovery_addr`       | string | ""               | Discovery 服务地址（空则使用静态地址） |
 | `--top_k`                | int32  | 100              | 返回前 K 个商品    |
 | `--enable_timing_stats`  | bool   | true             | 是否启用详细时延统计   |
+| `--sub_worker_timeout_ms`| int32  | 5000             | 子图调用超时时间（毫秒） |
 
 ## 8. 端口分配
 
@@ -296,22 +339,24 @@ Client              RankMaster (:8005)           RankSub #0..N (:8006)
 
 | 场景                    | 行为                           |
 | --------------------- | ---------------------------- |
-| **空 user\_feat\_key** | 记录 ERROR，返回空响应               |
-| **空 skus**            | 记录 ERROR，返回空响应               |
-| **SKU 解析失败**          | 跳过无效 token，记录 WARNING        |
+| **空 user\_feat\_key** | 返回 `EMPTY_USER_FEAT_KEY` 错误，记录 ERROR |
+| **空 skus**            | 返回 `EMPTY_SKUS` 错误，记录 ERROR |
+| **SKU 解析失败**          | 返回 `NO_SKU_PARSED` 错误，记录 ERROR |
 | **子图调用失败**            | 跳过该子图结果，记录 ERROR，其他子图正常归并    |
-| **所有子图失败**            | 返回空 candidates 列表            |
-| **部分子图慢**             | 延迟取决于最慢的子图（5s 超时兜底）          |
+| **所有子图失败**            | 返回 `SUB_WORKER_CALL_FAILED` 错误 |
+| **部分子图慢**             | 延迟取决于最慢的子图（`sub_worker_timeout_ms` 超时兜底） |
 | **子图数量 > 地址数量**       | 循环使用地址（RoundRobin）           |
-| **Channel 初始化失败**     | 保留空 Channel，后续调用会失败          |
+| **Channel 初始化失败**     | 返回 `SUB_WORKER_CHANNEL_INVALID` 错误，保留空 Channel |
 | **动态扩缩容**             | 需重启 RankMaster 以更新 Channel 池 |
+| **Discovery 不可用**     | 回退到静态地址配置                    |
+| **线程池任务异常**          | 返回 `INTERNAL_ERROR` 错误，记录 ERROR |
 
 ## 11. 演进规划
 
 | 版本       | 特性                                          |
 | -------- | ------------------------------------------- |
 | **V1.0** | 核心功能：哈希分片 + 并行调用 + Top-K 归并                 |
-| **V1.1** | 动态发现：集成 Discovery Service，自动感知 RankSub 实例变化 |
+| **V1.1** | 动态发现：集成 Discovery Service，自动感知 RankSub 实例变化（已完成） |
 | **V1.2** | 超时控制：每个子图独立超时，部分超时不阻塞整体                     |
 | **V1.3** | 重试机制：子图调用失败自动重试到其他实例                        |
 | **V2.0** | 自适应分片：根据子图负载动态调整分片策略                        |

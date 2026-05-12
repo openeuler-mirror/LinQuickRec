@@ -70,12 +70,18 @@ services/recall/
 ├── build.sh                     # 编译脚本
 ├── server/
 │   ├── include/
-│   │   └── recall_server.h      # RecallServiceImpl 声明
+│   │   ├── recall_server.h      # RecallServiceImpl 声明
+│   │   └── vllm_client.h        # VllmClient 声明
 │   └── src/
 │       ├── main.cpp             # 服务入口
-│       └── recall_server.cpp    # 服务实现
-└── client/
-    └── recall_test_client.cpp   # 测试客户端
+│       ├── recall_server.cpp    # 服务实现
+│       └── vllm_client.cpp      # vLLM HTTP 客户端实现
+├── client/
+│   └── recall_test_client.cpp   # 测试客户端
+├── tests/
+│   └── test_recall.cpp          # 单元测试
+├── backup/                      # 备份目录
+└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义
@@ -95,6 +101,7 @@ message RecallRequest {
     uint64 user_id = 1;
     repeated KRUserLog user_logs = 2;
     string other = 3;
+    string trace_id = 4;     // 分布式追踪 ID
 }
 
 message RecallResponse {
@@ -113,6 +120,7 @@ service RecallService {
 | `user_id` | uint64 | 用户唯一标识 |
 | `user_logs` | KRUserLog[] | 用户行为日志，每条包含特征向量 |
 | `other` | string | 附加信息（JSON 格式） |
+| `trace_id` | string | 分布式追踪 ID，用于跨服务链路追踪 |
 | `sku_ids` | uint64[] | 召回的候选 SKU ID 列表 |
 
 ## 5. 组件详述
@@ -123,12 +131,14 @@ service RecallService {
 
 **请求处理流程**：
 
-1. 接收 `RecallRequest`，提取 `user_id`、`user_logs`、`other`
-2. 调用 `proto_to_json()` 将 Proto 请求转为 JSON
-3. 调用 `build_vllm_request()` 构建符合 Qwen3-0.6B 的 Chat Completion 请求
-4. 通过 BRPC HTTP Channel 向 vLLM 发送 POST 请求
-5. 调用 `parse_vllm_response()` 解析 LLM 返回的 SKU ID
-6. 填充 `RecallResponse` 返回
+1. 提取 `trace_id` 并注入日志系统（分布式追踪）
+2. 验证 `user_id` 非 0
+3. 调用 `proto_to_json()` 将 Proto 请求转为 JSON
+4. 调用 `build_vllm_request()` 构建符合 Qwen3-0.6B 的 Chat Completion 请求
+5. 通过 BRPC HTTP Channel 向 vLLM 发送 POST 请求
+6. 调用 `parse_vllm_response()` 解析 LLM 返回的 SKU ID
+7. 填充 `RecallResponse` 返回
+8. 若启用 `enable_timing_stats`，记录 `vllm_call_cost`、`parse_cost`、`server_process_total` 耗时
 
 ### 6.2 Protocol Converter（协议转换层）
 
@@ -146,6 +156,7 @@ service RecallService {
 ```
 你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。
 请恰好生成 {sku_count} 个 SKU ID，不要多也不要少。
+每个SKU ID 都是一个 64 位无符号整数，范围在 100000 到 1000000 之间。
 返回格式：用逗号分隔的数字，例如：12345,67890,11111,...
 ```
 
@@ -176,8 +187,9 @@ RecallService ◀──JSON──── vLLM
 
 **关键配置**：
 - 连接方式：pooled（连接池复用）
-- 超时时间：`vllm_timeout_ms`（默认 5000ms）
+- 超时时间：`vllm_timeout_ms`（默认 100000ms）
 - 协议：HTTP/1.1
+- 模型参数：`max_tokens=10240`, `temperature=0.7`, `top_p=0.9`
 
 ### 6.5 启动流程（entrypoint.sh）
 
@@ -231,8 +243,9 @@ deploy:
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
-| `--vllm_timeout_ms` | int32 | 5000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
+| `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
+| `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
+| `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
 
 ## 8. 端口分配
 
@@ -275,9 +288,12 @@ Client                   RecallService                    vLLM
 
 | 场景 | 行为 |
 |------|------|
+| **user_id 为 0** | 返回 `EMPTY_USER_ID` 错误，记录 ERROR |
 | **vLLM 启动慢** | entrypoint.sh 等待最多 120 秒，超时则容器退出 |
-| **vLLM 请求超时** | 返回错误响应，`success=false`，`error_message="vLLM service error"` |
-| **vLLM 返回无效 JSON** | `parse_vllm_response` 返回 false，记录 ERROR 日志 |
+| **vLLM 请求超时** | 返回错误响应，`success=false`，记录 ERROR |
+| **vLLM 返回无效 JSON** | `parse_vllm_response` 返回 `VLLM_RESPONSE_PARSE_FAILED` 错误，记录 ERROR |
+| **vLLM 无 choices** | 返回 `VLLM_NO_CHOICES` 错误，记录 ERROR |
+| **vLLM 无 content** | 返回 `VLLM_NO_CONTENT` 错误，记录 ERROR |
 | **LLM 输出格式错误** | 逐 token 解析，跳过无效 token，记录 WARNING |
 | **LLM 返回 SKU 数量不足** | 返回已解析的 SKU，数量可能少于 `sku_count` |
 | **LLM 返回 SKU 数量过多** | 全部返回，不做截断 |
