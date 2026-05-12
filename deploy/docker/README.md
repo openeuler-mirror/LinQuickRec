@@ -111,7 +111,8 @@ docker compose logs discovery-server
 |------|--------|------|------|------|
 | discovery-server | discovery-server | 8100 | linquickrec-discovery | 服务注册与发现中心 |
 | feature-service | feature-service | 8001 | linquickrec-feature | 特征服务（mock） |
-| recall-service | recall-service | 8002 | linquickrec-recall | 召回服务（含 vLLM，需 GPU） |
+| recall-service | recall-service | 8002 | linquickrec-recall | 召回服务（需 GPU） |
+| vLLM | recall-service | 8000 | — | 大模型推理服务，与 recall 同容器部署 |
 | precalc-service | precalc-service | 8003 | linquickrec-precalc | 预计算服务 |
 | rank-sub-service | — (动态) | 8005 | linquickrec-rank-sub | 排序子服务，默认 3 副本 |
 | rank-master-service | rank-master-service | 8004 | linquickrec-rank-master | 排序主服务 |
