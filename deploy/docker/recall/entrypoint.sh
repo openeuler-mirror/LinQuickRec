@@ -41,5 +41,5 @@ echo "Starting Discovery Client..."
     --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} &
 DISCOVERY_PID=$!
 
-echo "All services started, waiting for any process to exit..."
-wait -n $RECALL_PID $DISCOVERY_PID $VLLM_PID
+echo "All services started, waiting for recall/discovery to exit..."
+wait -n $RECALL_PID $DISCOVERY_PID
