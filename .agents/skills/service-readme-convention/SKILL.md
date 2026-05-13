@@ -104,13 +104,13 @@ Direct startup command:
 Docker build:
 
 ```bash
-docker build -t lingquickrec/<name>:latest -f services/<name>/Dockerfile .
+docker build -t linquickrec/<name>:latest -f services/<name>/Dockerfile .
 ```
 
 Docker run:
 
 ```bash
-docker run -p <port>:<port> lingquickrec/<name>:latest
+docker run -p <port>:<port> linquickrec/<name>:latest
 ```
 
 ### 7. 测试方法 (optional, proxy convention)

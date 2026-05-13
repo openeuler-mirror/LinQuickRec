@@ -136,7 +136,7 @@ docker compose up -d --scale rank-sub-service=5
 
 - **不设 container_name**：scale 时多个容器不能同名
 - **端口范围映射**：`8005-8015:8005`（宿主机访问用）
-- **同一网络**：所有实例加入 `lingquickrec` 网络
+- **同一网络**：所有实例加入 `linquickrec` 网络
 
 ## 业务流程
 
