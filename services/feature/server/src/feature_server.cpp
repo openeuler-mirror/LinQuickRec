@@ -1,16 +1,17 @@
 #include "feature_server.h"
 
-#include <butil/logging.h>
 #include <random>
 #include <sstream>
 
-DEFINE_int32(server_port, 8003, "Feature service port");
+#include "common/logger.h"
+
+DEFINE_int32(server_port, 8001, "Feature service port");
 
 namespace feature {
 
 FeatureServiceImpl::FeatureServiceImpl()
     : thread_pool_(common::get_global_thread_pool()) {
-    LOG(INFO) << "FeatureServiceImpl (mock) initialized with global thread pool size: "
+    LOG_INFO << "FeatureServiceImpl (mock) initialized with global thread pool size: "
               << thread_pool_.size();
 }
 
@@ -29,7 +30,7 @@ void FeatureServiceImpl::GetUserFeatures(
         user_id = request->kr_feat_req().user_id();
     }
 
-    LOG(INFO) << "GetUserFeatures (mock): user_id=" << user_id;
+    LOG_INFO << "GetUserFeatures (mock): user_id=" << user_id;
 
     try {
         auto future = thread_pool_.submit([this, request]() {
@@ -40,15 +41,15 @@ void FeatureServiceImpl::GetUserFeatures(
 
         if (result.success) {
             response->CopyFrom(result.response);
-            LOG(INFO) << "GetUserFeatures (mock) response: user_logs="
+            LOG_INFO << "GetUserFeatures (mock) response: user_logs="
                       << result.response.kr_feat_rsp().user_logs_size()
                       << " other=" << result.response.kr_feat_rsp().other();
         } else {
-            LOG(ERROR) << "GetUserFeatures failed: " << result.error_message;
+            LOG_ERROR << "GetUserFeatures failed: " << result.error_message;
             static_cast<brpc::Controller*>(controller)->SetFailed(result.error_message);
         }
     } catch (const std::exception& e) {
-        LOG(ERROR) << "GetUserFeatures exception: " << e.what();
+        LOG_ERROR << "GetUserFeatures exception: " << e.what();
         static_cast<brpc::Controller*>(controller)->SetFailed(
             std::string("Thread pool error: ") + e.what());
     }
@@ -62,7 +63,7 @@ void FeatureServiceImpl::GetSKUFeatures(
 
     brpc::ClosureGuard done_guard(done);
 
-    LOG(INFO) << "GetSKUFeatures (mock): sku_count="
+    LOG_INFO << "GetSKUFeatures (mock): sku_count="
               << request->sku_ids_size();
 
     try {
@@ -74,14 +75,14 @@ void FeatureServiceImpl::GetSKUFeatures(
 
         if (result.success) {
             response->CopyFrom(result.response);
-            LOG(INFO) << "GetSKUFeatures (mock) response: sku_feats="
+            LOG_INFO << "GetSKUFeatures (mock) response: sku_feats="
                       << result.response.kr_sku_feats_size();
         } else {
-            LOG(ERROR) << "GetSKUFeatures failed: " << result.error_message;
+            LOG_ERROR << "GetSKUFeatures failed: " << result.error_message;
             static_cast<brpc::Controller*>(controller)->SetFailed(result.error_message);
         }
     } catch (const std::exception& e) {
-        LOG(ERROR) << "GetSKUFeatures exception: " << e.what();
+        LOG_ERROR << "GetSKUFeatures exception: " << e.what();
         static_cast<brpc::Controller*>(controller)->SetFailed(
             std::string("Thread pool error: ") + e.what());
     }

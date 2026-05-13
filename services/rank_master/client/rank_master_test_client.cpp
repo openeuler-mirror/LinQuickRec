@@ -5,30 +5,26 @@
  * 用于测试 RankMasterService 的功能，支持自定义输入内容
  */
 
-// 1. 对应的头文件
-#include "rank_master.pb.h"
-
-// 2. 标准库头文件
+#include <cstdint>
+#include <cstring>
 #include <iostream>
+#include <memory>
+#include <random>
 #include <string>
 #include <vector>
-#include <cstdint>
-#include <random>
-#include <memory>
-#include <cstring>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
+
+#include "common/logger.h"
+
 #include <datasystem/kv_client.h>
 
-// 5. 本项目内其他头文件
 #include "common/random_utils.h"
+#include "rank_master.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8005", "服务器地址 (ip:port)");
 DEFINE_int32(timeout_ms, 30000, "超时时间（毫秒）");
@@ -187,7 +183,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    LOG(INFO) << "Client timing breakdown:"
+    LOG_INFO << "Client timing breakdown:"
               << " total_latency=" << total_latency_us / 1000.0 << " ms"
               << " network_latency=" << cntl.latency_us() / 1000.0 << " ms";
 

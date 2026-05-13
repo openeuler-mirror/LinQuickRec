@@ -1,29 +1,28 @@
-#include "discovery.pb.h"
+#include <atomic>
+#include <chrono>
+#include <csignal>
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <thread>
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <gflags/gflags.h>
 
-#include "common/logger.h"
-
-#include <string>
-#include <thread>
-#include <chrono>
-#include <cstring>
-#include <csignal>
-#include <atomic>
-#include <iostream>
-
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #endif
+
+#include "common/logger.h"
+#include "discovery.pb.h"
 
 DEFINE_string(service_type, "",
     "Service type in snake_case (e.g. proxy, feature_service)");

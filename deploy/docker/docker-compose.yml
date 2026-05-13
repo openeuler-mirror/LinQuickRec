@@ -3,18 +3,31 @@
 # 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译二进制。
 #
 # 使用方法：
-#   1. 构建并启动所有服务：
+#   1. 构建所有服务容器：
+#      docker compose build
+#
+#   2. 启动所有服务：
+#      docker compose up -d
+#
+#   3. 构建并启动所有服务：
 #      docker compose up --build -d
 #
-#   2. 单独启动某个服务：
-#      docker compose up --build -d recall-service
+#   4. 单独启动某个服务：
+#      docker compose up -d <service_name>
+#      例如：docker compose up -d recall-service
 #
-#   3. 调整 rank-sub 副本数：
-#      docker compose up --build -d --scale rank-sub-service=5
+#   5. 调整副本数（Recall、Precalc、RankMaster、RankSub 均支持多副本）：
+#      docker compose up -d --scale rank-sub-service=5
 #      （同时修改 .env 中 SUB_WORKER_COUNT 和 SUB_WORKER_ADDRESSES）
 #
-#   4. 停止所有服务：
+#   6. 停止所有服务：
 #      docker compose down
+#
+#   7. 删除所有服务容器：
+#      docker compose down --remove-orphans
+#
+#   8. 删除所有服务镜像：
+#      docker compose down --rmi all
 
 services:
   # ========================
@@ -24,12 +37,12 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/discovery/Dockerfile
-    image: lingquickrec/discovery:v1.2
+    image: linquickrec/discovery:latest
     container_name: discovery-server
     ports:
       - "${DISCOVERY_PORT:-8100}:8100"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 8100 || exit 1"]
@@ -44,16 +57,16 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/feature/Dockerfile
-    image: lingquickrec/feature:v1.2
+    image: linquickrec/feature:latest
     container_name: feature-service
     depends_on:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8003"
+      SERVER_PORT: "8001"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
 
   # ========================
@@ -64,7 +77,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/recall/Dockerfile
-    image: lingquickrec/recall:v1.2
+    image: linquickrec/recall:latest
     volumes:
       - /usr/local/cuda-12.9:/usr/local/cuda
     container_name: recall-service
@@ -72,7 +85,7 @@ services:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8001"
+      SERVER_PORT: "8002"
       VLLM_PORT: "${VLLM_PORT:-8000}"
       VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
       VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
@@ -82,9 +95,10 @@ services:
       VLLM_STARTUP_TIMEOUT: "${VLLM_STARTUP_TIMEOUT:-120}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     ports:
-      - "8001:8001"
+      - "8002:8002"
+      - "${VLLM_PORT:-8000}:8000"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     deploy:
       resources:
         reservations:
@@ -101,22 +115,22 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/precalc/Dockerfile
-    image: lingquickrec/precalc:v1.2
+    image: linquickrec/precalc:latest
     container_name: precalc-service
     depends_on:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8004"
-      KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
-      KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
-      ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
+      SERVER_PORT: "8003"
+      KVWORKER_HOST: "${PRECALC_KVWORKER_HOST:-141.61.84.245}"
+      KVWORKER_PORT: "${PRECALC_KVWORKER_PORT:-31502}"
+      ETCD_ADDRESS: "${PRECALC_ETCD_ADDRESS:-141.61.84.245:2379}"
       TTL_SECONDS: "${TTL_SECONDS:-5}"
       PRECALC_RESULT_SIZE_MB: "${PRECALC_RESULT_SIZE_MB:-8.5}"
       PAYLOAD_SIZE_KB: "${PAYLOAD_SIZE_KB:-100}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
 
   # ========================
@@ -127,19 +141,19 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-sub/Dockerfile
-    image: lingquickrec/rank-sub:v1.2
+    image: linquickrec/rank-sub:latest
     depends_on:
       discovery-server:
         condition: service_healthy
     environment:
-      SERVER_PORT: "8006"
-      KVWORKER_HOST: "${KVWORKER_HOST:-141.61.84.245}"
-      KVWORKER_PORT: "${KVWORKER_PORT:-31502}"
-      ETCD_ADDRESS: "${ETCD_ADDRESS:-141.61.84.245:2379}"
+      SERVER_PORT: "8005"
+      KVWORKER_HOST: "${RANKSUB_KVWORKER_HOST:-141.61.84.245}"
+      KVWORKER_PORT: "${RANKSUB_KVWORKER_PORT:-31502}"
+      ETCD_ADDRESS: "${RANKSUB_ETCD_ADDRESS:-141.61.84.245:2379}"
       SCORING_DELAY_MS: "${SCORING_DELAY_MS:-100}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
     deploy:
       replicas: ${RANK_SUB_REPLICAS:-3}
@@ -151,7 +165,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-master/Dockerfile
-    image: lingquickrec/rank-master:v1.2
+    image: linquickrec/rank-master:latest
     container_name: rank-master-service
     depends_on:
       discovery-server:
@@ -159,17 +173,17 @@ services:
       rank-sub-service:
         condition: service_started
     environment:
-      SERVER_PORT: "8005"
+      SERVER_PORT: "8004"
       SUB_WORKER_COUNT: "${SUB_WORKER_COUNT:-3}"
-      SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8006}"
+      SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8005}"
       TOP_K: "${TOP_K:-100}"
       SUB_WORKER_TIMEOUT_MS: "${SUB_WORKER_TIMEOUT_MS:-5000}"
       RANK_SUB_HOST: "rank-sub-service"
-      RANK_SUB_PORT: "8006"
+      RANK_SUB_PORT: "8005"
       RANK_SUB_STARTUP_TIMEOUT: "${RANK_SUB_STARTUP_TIMEOUT:-120}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
 
   # ========================
@@ -179,7 +193,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/proxy/Dockerfile
-    image: lingquickrec/proxy:v1.2
+    image: linquickrec/proxy:latest
     container_name: proxy-service
     depends_on:
       discovery-server:
@@ -194,17 +208,13 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: "8080"
-      FEATURE_SERVICE_ADDR: "feature-service:8003"
-      RECALL_SERVICE_ADDR: "recall-service:8001"
-      PRECALC_SERVICE_ADDR: "precalc-service:8004"
-      RANK_SERVICE_ADDR: "rank-master-service:8005"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
     ports:
       - "${PROXY_PORT:-8080}:8080"
     networks:
-      - lingquickrec-net
+      - linquickrec-net
     restart: unless-stopped
 
 networks:
-  lingquickrec-net:
+  linquickrec-net:
     driver: bridge

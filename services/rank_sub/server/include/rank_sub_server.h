@@ -1,21 +1,21 @@
 #ifndef RANK_SUB_SERVER_H
 #define RANK_SUB_SERVER_H
 
-#include "rank_sub.pb.h"
-#include <brpc/server.h>
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-#include <string>
-#include <vector>
-#include <cstdint>
-
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
 #include "common/sku_utils.h"
+#include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);

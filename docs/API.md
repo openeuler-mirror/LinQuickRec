@@ -184,7 +184,7 @@ for (int i = 0; i < kr_rsp.user_logs_size(); ++i) {
 
 **服务名称**: `RecallService`  
 **包名**: `recall`  
-**端口**: 8001  
+**端口**: 8002  
 **Proto 文件**: `recall.proto`  
 **实现状态**: ✅ 已完成
 
@@ -228,7 +228,7 @@ service RecallService {
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--server_port` | 8001 | 服务器监听端口 |
+| `--server_port` | 8002 | 服务器监听端口 |
 | `--sku_count` | 1000 | 返回的 SKU ID 数量 |
 | `--thread_pool_size` | 128 | 线程池大小 |
 | `--vllm_timeout_ms` | 5000 | vLLM 请求超时时间 |
@@ -272,7 +272,7 @@ for (int i = 0; i < response.sku_ids_size(); ++i) {
 ```bash
 # 启动 Recall 服务
 ./bin/recall_server \
-    --server_port=8001 \
+    --server_port=8002 \
     --vllm_base_url="http://127.0.0.1:8000" \
     --vllm_endpoint="/v1/chat/completions" \
     --model_name="/workspace/share/Qwen3-0.6B" \
@@ -288,7 +288,7 @@ for (int i = 0; i < response.sku_ids_size(); ++i) {
 
 **服务名称**: `PrecalcService`  
 **包名**: `precalc`  
-**端口**: 8004  
+**端口**: 8003  
 **Proto 文件**: `precalc.proto`  
 **实现状态**: ✅ 已完成
 
@@ -323,7 +323,7 @@ service PrecalcService {
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--server_port` | 8004 | 服务器监听端口 |
+| `--server_port` | 8003 | 服务器监听端口 |
 | `--kvworker_host` | "127.0.0.1" | 元戎 KVWorker 主机地址 |
 | `--kvworker_port` | 8002 | 元戎 KVWorker 端口 |
 | `--precalc_result_size_mb` | 8.5 | 前置计算结果大小（MB），默认 8.5MB |
@@ -368,7 +368,7 @@ LOG(INFO) << "  Payload size: " << response.payload().size() << " bytes";
 ```bash
 # 启动 Precalc 服务
 ./bin/precalc_server \
-    --server_port=8004 \
+    --server_port=8003 \
     --result_size_mb=8.5 \
     --ttl_seconds=5 \
     --logtostderr

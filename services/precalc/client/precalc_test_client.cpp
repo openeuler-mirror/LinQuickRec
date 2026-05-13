@@ -5,25 +5,19 @@
  * 用于测试前置计算服务的功能，支持自定义输入内容
  */
 
-// 1. 对应的头文件
-#include "precalc.pb.h"
-
-// 2. 标准库头文件
 #include <iostream>
 #include <string>
 #include <vector>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <butil/logging.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
+#include "common/logger.h"
 #include "common/random_utils.h"
+#include "precalc.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8004", "服务器地址 (ip:port)");
 DEFINE_int32(user_feat_size_kb, 100, "用户特征数据大小（KB，当 --user_feat 为空时使用）");
@@ -87,7 +81,7 @@ int main(int argc, char* argv[]) {
     }
 
     // 打印时延统计
-    LOG(INFO) << "Client timing breakdown:"
+    LOG_INFO << "Client timing breakdown:"
               << " total_latency=" << total_latency_us / 1000.0 << " ms"
               << " network_latency=" << cntl.latency_us() / 1000.0 << " ms";
 

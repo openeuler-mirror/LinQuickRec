@@ -1,15 +1,8 @@
-// 1. 对应的头文件
 #include "precalc_server.h"
 
-// 2. 标准库头文件
-
-// 3. 系统库头文件
-
-// 4. 其他库头文件
-#include <gflags/gflags.h>
 #include <brpc/server.h>
+#include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
@@ -29,8 +22,8 @@ int main(int argc, char* argv[]) {
     
     brpc::Server server;
     
-    if (server.AddService(&precalc_service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add PrecalcService";
+    if (server.AddService(&precalc_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add PrecalcService";
         return -1;
     }
     
@@ -38,14 +31,14 @@ int main(int argc, char* argv[]) {
     server_options.num_threads = 128;
     
     if (server.Start(FLAGS_server_port, &server_options) != 0) {
-        LOG(ERROR) << "Failed to start server on port " << FLAGS_server_port;
+        LOG_ERROR << "Failed to start server on port " << FLAGS_server_port;
         return -1;
     }
     
-    LOG(INFO) << "PrecalcService started on port " << FLAGS_server_port;
+    LOG_INFO << "PrecalcService started on port " << FLAGS_server_port;
     
     server.RunUntilAskedToQuit();
     
-    LOG(INFO) << "PrecalcService stopped";
+    LOG_INFO << "PrecalcService stopped";
     return 0;
 }

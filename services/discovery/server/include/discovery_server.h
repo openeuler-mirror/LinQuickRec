@@ -1,23 +1,22 @@
 #ifndef DISCOVERY_SERVER_H
 #define DISCOVERY_SERVER_H
 
-#include "discovery.pb.h"
+#include <atomic>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
-#include <brpc/server.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
 #include "common/logger.h"
-
-#include <string>
-#include <vector>
-#include <map>
-#include <mutex>
-#include <memory>
-#include <thread>
-#include <atomic>
-#include <cstdint>
+#include "discovery.pb.h"
 
 DECLARE_int32(server_port);
 DECLARE_int32(heartbeat_check_interval_ms);

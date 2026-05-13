@@ -2,8 +2,9 @@
 // 测试 parse_skus_from_string、simulate_score 纯逻辑函数
 
 #include "rank_sub_server.h"
-#include <iostream>
+
 #include <cassert>
+#include <iostream>
 #include <string>
 #include <vector>
 

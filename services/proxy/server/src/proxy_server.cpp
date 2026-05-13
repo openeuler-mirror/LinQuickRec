@@ -1,19 +1,19 @@
 #include "proxy_server.h"
 
-#include <chrono>
-#include <sstream>
-#include <iomanip>
-#include <random>
-#include <vector>
-#include <cstring>
-#include <memory>
 #include <algorithm>
+#include <chrono>
+#include <cstring>
 #include <functional>
 #include <future>
+#include <iomanip>
+#include <memory>
+#include <random>
+#include <sstream>
+#include <vector>
 
-#include <brpc/server.h>
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 
 #include "common/global_thread_pool.h"
 

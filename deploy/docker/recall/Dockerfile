@@ -68,7 +68,7 @@ RUN chmod +x /app/discovery_client
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8001 8000
+EXPOSE 8002 8000
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 

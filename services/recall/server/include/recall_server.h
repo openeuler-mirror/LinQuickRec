@@ -1,25 +1,25 @@
 #ifndef RECALL_SERVER_H
 #define RECALL_SERVER_H
 
-#include "recall.pb.h"
-#include <brpc/server.h>
+#include <atomic>
+#include <string>
+
 #include <brpc/channel.h>
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
 #include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
-#include <string>
-#include <atomic>
-
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
+#include "recall.pb.h"
 #include "vllm_client.h"
 
 DECLARE_string(vllm_base_url);

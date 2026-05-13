@@ -1,8 +1,9 @@
 #include "rank_sub_server.h"
-#include "common/global_thread_pool.h"
-#include <gflags/gflags.h>
-#include <brpc/server.h>
 
+#include <brpc/server.h>
+#include <gflags/gflags.h>
+
+#include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
@@ -22,8 +23,8 @@ int main(int argc, char* argv[]) {
 
     brpc::Server server;
 
-    if (server.AddService(&rank_sub_service, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add RankSubService";
+    if (server.AddService(&rank_sub_service, brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add RankSubService";
         return -1;
     }
     
@@ -31,14 +32,14 @@ int main(int argc, char* argv[]) {
     server_options.num_threads = 128;
     
     if (server.Start(FLAGS_server_port, &server_options) != 0) {
-        LOG(ERROR) << "Failed to start server on port " << FLAGS_server_port;
+        LOG_ERROR << "Failed to start server on port " << FLAGS_server_port;
         return -1;
     }
     
-    LOG(INFO) << "RankSubService started on port " << FLAGS_server_port;
+    LOG_INFO << "RankSubService started on port " << FLAGS_server_port;
     
     server.RunUntilAskedToQuit();
     
-    LOG(INFO) << "RankSubService stopped";
+    LOG_INFO << "RankSubService stopped";
     return 0;
 }

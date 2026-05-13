@@ -14,9 +14,11 @@ services/rank_sub/
 ├── README.md                    # 本文件
 ├── CMakeLists.txt               # CMake 构建配置
 ├── build.sh                     # 编译脚本
+├── client/
+│   └── rank_sub_client.cpp      # 测试客户端
 ├── server/
 │   ├── include/
-│   │   └── rank_sub_server.h    # RankSubServiceImpl 声明
+│   │   └── rank_sub_server.h
 │   └── src/
 │       ├── main.cpp             # 服务入口
 │       └── rank_sub_server.cpp  # 服务实现
@@ -28,19 +30,39 @@ services/rank_sub/
 
 ## 编译命令
 
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 脚本构建
+
 ```bash
-cd services/rank_service_sub
+cd services/rank_sub
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/rank_sub
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 ```
 
 ### 编译产物
 
-| 二进制 | 用途 |
+| 二进制 | 说明 |
 |--------|------|
 | `rank_sub_server` | 精排子图服务主程序 |
 | `rank_sub_client` | 测试客户端 |
+| `rank_sub_test` | 单元测试 |
 
 ## 启动方式
 
@@ -48,7 +70,7 @@ make -j$(nproc)
 
 ```bash
 ./bin/rank_sub_server \
-  --server_port=8006 \
+  --server_port=8005 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31502 \
   --scoring_delay_ms=100
@@ -58,7 +80,7 @@ make -j$(nproc)
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--server_port` | int32 | 8006 | 服务监听端口 |
+| `--server_port` | int32 | 8005 | 服务监听端口 |
 | `--kvworker_host` | string | "141.61.84.245" | KVWorker 主机地址 |
 | `--kvworker_port` | int32 | 31502 | KVWorker 端口 |
 | `--etcd_address` | string | "141.61.84.245:2379" | ETCD 地址 |
@@ -68,29 +90,44 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./bin/rank_sub_client --server=127.0.0.1:8006
+./bin/rank_sub_client --server=127.0.0.1:8005
 ```
 
 ## 容器搭建
+
+### 构建镜像
+
+```bash
+docker build -t linquickrec/rank-sub:latest \
+  -f deploy/docker/rank-sub/Dockerfile .
+```
+
+### 启动容器
+
+```bash
+docker run -d --name rank-sub \
+  -p 8005:8005 \
+  linquickrec/rank-sub:latest
+```
 
 ### 启动多个实例
 
 ```bash
 # 启动 10 个 RankSub 实例
-docker-compose up -d --scale rank-sub-service=10
+docker compose up -d --scale rank-sub-service=10
 
 # 扩容到 20 个
-docker-compose up -d --scale rank-sub-service=20
+docker compose up -d --scale rank-sub-service=20
 
 # 缩容到 5 个
-docker-compose up -d --scale rank-sub-service=5
+docker compose up -d --scale rank-sub-service=5
 ```
 
 ### 环境变量
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SERVER_PORT` | 8006 | 服务端口 |
+| `SERVER_PORT` | 8005 | 服务端口 |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 主机 |
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
 | `SCORING_DELAY_MS` | 100 | 模拟打分延迟 |
@@ -98,7 +135,7 @@ docker-compose up -d --scale rank-sub-service=5
 ### 注意事项
 
 - **不设 container_name**：scale 时多个容器不能同名
-- **端口范围映射**：`8006-8015:8006`（宿主机访问用）
+- **端口范围映射**：`8005-8015:8005`（宿主机访问用）
 - **同一网络**：所有实例加入 `lingquickrec` 网络
 
 ## 业务流程
@@ -110,7 +147,7 @@ docker-compose up -d --scale rank-sub-service=5
             ▼
    ┌─────────────────────┐         ┌──────────────────┐
    │  RankSubService     │  Read   │  KVWorker         │
-   │  (:8006)            │────────▶│  (:31502)         │
+   │  (:8005)            │────────▶│  (:31502)         │
    │                     │         │                   │
    │  1. Read user_feat  │◀────────│  8.5MB tensor     │
    │  2. Parse SKUs      │         │                   │
@@ -130,10 +167,10 @@ docker-compose up -d --scale rank-sub-service=5
    │                ▼                                   ▼      │
    │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐     │
    │  │ RankSub #0   │ │ RankSub #1   │ │ RankSub #N   │     │
-   │  │ :8006        │ │ :8006        │ │ :8006        │     │
+   │  │ :8005        │ │ :8005        │ │ :8005        │     │
    │  └──────────────┘ └──────────────┘ └──────────────┘     │
    │                     ▲                                   │
-   │                     │ rank-sub-service:8006             │
+   │                     │ rank-sub-service:8005             │
    │           ┌─────────┴──────────┐                       │
    │           │  RankMaster (:8005)│                       │
    │           └────────────────────┘                       │
@@ -144,5 +181,5 @@ docker-compose up -d --scale rank-sub-service=5
 
 | 端口 | 服务 | 协议 | 说明 |
 |------|------|------|------|
-| 8006 | RankServiceSub | BRPC | 精排子图服务端口（所有实例统一） |
+| 8005 | RankServiceSub | BRPC | 精排子图服务端口（所有实例统一） |
 | 31502 | KVWorker (Rank) | 元戎 SDK | 分布式缓存端口 |
