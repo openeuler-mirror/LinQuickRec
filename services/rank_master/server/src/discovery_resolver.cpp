@@ -1,5 +1,6 @@
 #include "discovery_resolver.h"
 
+#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 DiscoveryResolver::DiscoveryResolver(const std::string& discovery_addr)

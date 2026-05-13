@@ -6,7 +6,7 @@ echo "Starting RankSub Service"
 echo "==========================================="
 
 cd /app/build
-./rank_sub_server \
+./bin/rank_sub_server \
     --server_port=${SERVER_PORT:-8005} \
     --kvworker_host=${KVWORKER_HOST:-141.61.84.245} \
     --kvworker_port=${KVWORKER_PORT:-31502} \

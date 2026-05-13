@@ -6,8 +6,8 @@ echo "Starting Feature Service (mock)"
 echo "==========================================="
 
 cd /app/build
-./feature_server \
-    --server_port=${SERVER_PORT:-8003} \
+./bin/feature_server \
+    --server_port=${SERVER_PORT:-8001} \
     "$@" &
 SERVICE_PID=$!
 

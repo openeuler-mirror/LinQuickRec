@@ -62,7 +62,7 @@ RankServiceMaster 是推荐系统精排层的主控节点，负责将召回的�
 ## 3. 目录结构
 
 ```
-services/rank_service_master/
+services/rank_master/
 ├── DESIGN.md                    # 本文档
 ├── README.md                    # 模块介绍与使用说明
 ├── CMakeLists.txt               # CMake 构建配置
@@ -79,7 +79,6 @@ services/rank_service_master/
 │   └── rank_master_test_client.cpp # 测试客户端
 ├── tests/
 │   └── test_rank_master.cpp    # 单元测试
-└── utils/                       # 工具目录
 ```
 
 ## 4. Protobuf 协议定义

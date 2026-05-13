@@ -13,7 +13,7 @@ COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
 COPY ${SERVICE_DIR} /app/services/precalc/
 RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/precalc_service -DCMAKE_BUILD_TYPE=Release && \
+    cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 COPY ${DISCOVERY_DIR} /app/services/discovery/

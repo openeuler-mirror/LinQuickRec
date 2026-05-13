@@ -44,9 +44,9 @@ FeatureService 是推荐系统的特征服务层，负责提供用户特征和 S
 ## 3. 目录结构
 
 ```
-services/FeatureService/
+services/feature/
 ├── CMakeLists.txt               # CMake 构建配置
-├── Dockerfile                   # Docker 构建文件
+├── build.sh                     # 编译脚本
 ├── server/
 │   ├── include/
 │   │   └── feature_server.h     # FeatureServiceImpl 声明
