@@ -26,11 +26,9 @@ using namespace datasystem;
 DEFINE_int32(server_port, 8003, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
 DEFINE_int32(kvworker_port, 31502, "元戎 KVWorker 端口 (PrecalcService)");
-DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");
 DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
-DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB），默认 100KB");
-DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
+
 DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 
 namespace precalc {
@@ -40,7 +38,6 @@ using namespace common::error;
 PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG_INFO << "PrecalcServiceImpl initialized";
     LOG_INFO << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
-    LOG_INFO << "user_feat_key size: " << FLAGS_user_feat_key_size_kb << " KB";
     LOG_INFO << "TTL: " << FLAGS_ttl_seconds << " seconds";
 }
 
@@ -194,12 +191,6 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
               << ", key_size=" << user_feat_key.size() << " bytes"
               << ", payload_size=" << payload.size() << " bytes ("
               << payload.size() / 1024.0 << " KB)";
-
-    if (FLAGS_enable_timing_stats) {
-        LOG_INFO << "Server timing breakdown:"
-                  << " kvwrite_cost=" << kvwrite_cost_us / 1000.0 << " ms"
-                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
-    }
 
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;

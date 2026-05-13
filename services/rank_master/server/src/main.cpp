@@ -1,5 +1,7 @@
 #include "rank_master_server.h"
 
+#include <thread>
+
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
@@ -18,7 +20,16 @@ int main(int argc, char* argv[]) {
     log_config.max_files = 5;
     log_config.enable_trace_id = true;
     common::logger::Initialize(log_config);
-    
+
+    int cpu_cores = std::thread::hardware_concurrency();
+    if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
+        int calculated_size = std::max(4, cpu_cores * 2);
+        FLAGS_global_thread_pool_size = std::min(128, calculated_size);
+    }
+
+    LOG_INFO << "CPU cores: " << cpu_cores
+              << ", Thread pool size: " << FLAGS_global_thread_pool_size;
+
     rank::RankMasterServiceImpl rank_master_service;
 
     brpc::Server server;

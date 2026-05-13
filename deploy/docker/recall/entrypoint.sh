@@ -31,6 +31,7 @@ cd /app/build
     --model_name=${MODEL_NAME:-/app/models/Qwen3-0.6B/} \
     --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-100000} \
     --sku_count=${SKU_COUNT:-100} \
+    --global_thread_pool_size=${GLOBAL_THREAD_POOL_SIZE:-0} \
     "$@" &
 RECALL_PID=$!
 

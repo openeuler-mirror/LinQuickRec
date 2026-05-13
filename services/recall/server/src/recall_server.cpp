@@ -34,7 +34,7 @@ DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
 DEFINE_int32(server_port, 8002, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
 DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
-DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
+
 
 namespace recall {
 
@@ -272,13 +272,6 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     int64_t parse_end_us = butil::gettimeofday_us();
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
-
-    if (FLAGS_enable_timing_stats) {
-        LOG_INFO << "Server timing breakdown:"
-                  << " vllm_call_cost=" << (vllm_end_us - vllm_start_us) / 1000.0 << " ms"
-                  << " parse_cost=" << (parse_end_us - parse_start_us) / 1000.0 << " ms"
-                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
-    }
 
     LOG_INFO << "Recall completed, cost=" << server_process_us / 1000.0 << " ms";
 

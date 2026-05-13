@@ -22,7 +22,7 @@ DECLARE_string(etcd_address);
 DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
-DECLARE_bool(enable_timing_stats);
+
 DECLARE_int32(payload_size_kb);
 
 namespace precalc {

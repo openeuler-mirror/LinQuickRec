@@ -21,7 +21,7 @@ DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
 DECLARE_int32(kvworker_port);
 DECLARE_string(etcd_address);
-DECLARE_bool(enable_timing_stats);
+
 
 namespace rank {
 

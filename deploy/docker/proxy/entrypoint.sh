@@ -30,7 +30,7 @@ done
     --recall_timeout_ms=${RECALL_TIMEOUT_MS:-5000} \
     --precalc_timeout_ms=${PRECALC_TIMEOUT_MS:-5000} \
     --rank_timeout_ms=${RANK_TIMEOUT_MS:-10000} \
-    --enable_timing_stats=${ENABLE_TIMING_STATS:-true} \
+
     --global_thread_pool_size=${GLOBAL_THREAD_POOL_SIZE:-0} \
     "$@" &
 PID_PROXY=$!
