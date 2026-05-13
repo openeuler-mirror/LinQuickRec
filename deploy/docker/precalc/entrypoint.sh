@@ -14,6 +14,7 @@ cd /app/build
     --ttl_seconds=${TTL_SECONDS:-5} \
     --precalc_result_size_mb=${PRECALC_RESULT_SIZE_MB:-8.5} \
     --payload_size_kb=${PAYLOAD_SIZE_KB:-100} \
+    --global_thread_pool_size=${GLOBAL_THREAD_POOL_SIZE:-0} \
     "$@" &
 SERVICE_PID=$!
 

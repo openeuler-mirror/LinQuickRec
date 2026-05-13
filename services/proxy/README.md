@@ -8,12 +8,6 @@ Proxy 通过 [discovery 服务](../discovery/README.md) 动态获取下游实例
 
 ### 可观测性
 
-**阶段时延统计**（`--enable_timing_stats=true`）：
-
-```
-[Proxy Timing]  feature=12.34ms recall+precalc=67.89ms rank=234.56ms total=314.79ms
-```
-
 **日志**：使用 `common::logger`（项目统一日志系统），trace_id 自动附加到每行日志。
 
 ## 目录结构
@@ -215,16 +209,14 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 | `--rank_timeout_ms` | 10000 | Rank 调用超时 (ms) |
 | **其他** | | |
 | `--server_port` | 8080 | Proxy HTTP 服务监听端口 |
-| `--enable_timing_stats` | true | 是否打印阶段时延统计 |
-| `--global_thread_pool_size` | 128 (auto) | 全局线程池大小，默认自动根据 CPU 核数计算 |
+| `--global_thread_pool_size` | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 直接启动
 
 ```bash
 ./build/bin/proxy_server \
     --server_port=8080 \
-    --discovery_addr="discovery-server:8100" \
-    --enable_timing_stats=true
+    --discovery_addr="discovery-server:8100"
 ```
 
 ## 容器搭建

@@ -72,8 +72,8 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 ```bash
 ./bin/rank_master_server \
   --server_port=8004 \
-  --sub_worker_count=10 \
-  --sub_worker_addresses=rank-sub-service:8005 \
+  --discovery_addr=discovery-server:8100 \
+  --sub_worker_service_type=rank_sub \
   --top_k=100
 ```
 
@@ -82,12 +82,11 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--server_port` | int32 | 8004 | 服务监听端口 |
-| `--sub_worker_count` | int32 | 10 | 子图数量 |
-| `--sub_worker_addresses` | string | "127.0.0.1:8005" | 子图地址列表（逗号分隔） |
-| `--discovery_addr` | string | "" | Discovery 服务地址（空则使用静态地址） |
+| `--discovery_addr` | string | "" | Discovery 服务地址（空则使用 localhost fallback） |
+| `--sub_worker_service_type` | string | "rank_sub" | RankSub 在 Discovery 中注册的服务类型名 |
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
 | `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
-| `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
+| `--global_thread_pool_size` | int32 | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 使用测试客户端
 
@@ -124,8 +123,7 @@ docker build -t linquickrec/rank-master:latest \
 ```bash
 docker run -d --name rank-master \
   -p 8004:8004 \
-  -e RANK_SUB_HOST=rank-sub-service \
-  -e SUB_WORKER_ADDRESSES=rank-sub-service:8005 \
+  -e DISCOVERY_ADDR=discovery-server:8100 \
   linquickrec/rank-master:latest
 ```
 
@@ -134,11 +132,10 @@ docker run -d --name rank-master \
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `SERVER_PORT` | 8004 | 服务端口 |
-| `SUB_WORKER_COUNT` | 10 | 子图数量 |
-| `SUB_WORKER_ADDRESSES` | "rank-sub-service:8005" | 子图地址 |
-| `RANK_SUB_HOST` | "rank-sub-service" | 子图主机名 |
-| `RANK_SUB_PORT` | 8005 | 子图端口 |
+| `DISCOVERY_ADDR` | discovery-server:8100 | Discovery 服务地址 |
+| `SUB_WORKER_SERVICE_TYPE` | rank_sub | RankSub 在 Discovery 中注册的服务类型名 |
 | `TOP_K` | 100 | 返回前 K 个商品 |
+| `GLOBAL_THREAD_POOL_SIZE` | 0 | 全局线程池大小，0 表示自动计算 |
 
 ## 业务流程
 

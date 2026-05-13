@@ -30,12 +30,12 @@ services/rank_sub/
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 备注 |
-|------|----------|------|
-| CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+| 依赖         | 版本要求    | 备注                                |
+| ---------- | ------- | --------------------------------- |
+| CMake      | >= 3.14 | 编译工具链                             |
+| brpc       | >= 1.4  | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf   | >= 3.0  | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest  | `linquickrec/base:latest` 基础镜像已内置 |
 
 ### 脚本构建
 
@@ -58,11 +58,11 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 
 ### 编译产物
 
-| 二进制 | 说明 |
-|--------|------|
+| 二进制               | 说明        |
+| ----------------- | --------- |
 | `rank_sub_server` | 精排子图服务主程序 |
-| `rank_sub_client` | 测试客户端 |
-| `rank_sub_test` | 单元测试 |
+| `rank_sub_client` | 测试客户端     |
+| `rank_sub_test`   | 单元测试      |
 
 ## 启动方式
 
@@ -78,14 +78,13 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 
 参数说明：
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--server_port` | int32 | 8005 | 服务监听端口 |
-| `--kvworker_host` | string | "141.61.84.245" | KVWorker 主机地址 |
-| `--kvworker_port` | int32 | 31502 | KVWorker 端口 |
-| `--etcd_address` | string | "141.61.84.245:2379" | ETCD 地址 |
-| `--scoring_delay_ms` | int32 | 100 | 模拟打分耗时（毫秒） |
-| `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
+| 参数                          | 类型     | 默认值             | 说明                        |
+| --------------------------- | ------ | --------------- | ------------------------- |
+| `--server_port`             | int32  | 8005            | 服务监听端口                    |
+| `--kvworker_host`           | string | "141.61.84.245" | KVWorker 主机地址             |
+| `--kvworker_port`           | int32  | 31502           | KVWorker 端口               |
+| `--scoring_delay_ms`        | int32  | 100             | 模拟打分耗时（毫秒）                |
+| `--global_thread_pool_size` | int32  | 128             | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 使用测试客户端
 
@@ -125,16 +124,16 @@ docker compose up -d --scale rank-sub-service=5
 
 ### 环境变量
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `SERVER_PORT` | 8005 | 服务端口 |
-| `KVWORKER_HOST` | 141.61.84.245 | KVWorker 主机 |
-| `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `SCORING_DELAY_MS` | 100 | 模拟打分延迟 |
+| 变量                 | 默认值           | 说明          |
+| ------------------ | ------------- | ----------- |
+| `SERVER_PORT`      | 8005          | 服务端口        |
+| `KVWORKER_HOST`    | 141.61.84.245 | KVWorker 主机 |
+| `KVWORKER_PORT`    | 31502         | KVWorker 端口 |
+| `SCORING_DELAY_MS` | 100           | 模拟打分延迟      |
 
 ### 注意事项
 
-- **不设 container_name**：scale 时多个容器不能同名
+- **不设 container\_name**：scale 时多个容器不能同名
 - **端口范围映射**：`8005-8015:8005`（宿主机访问用）
 - **同一网络**：所有实例加入 `linquickrec` 网络
 
@@ -179,7 +178,8 @@ docker compose up -d --scale rank-sub-service=5
 
 ## 端口对照表
 
-| 端口 | 服务 | 协议 | 说明 |
-|------|------|------|------|
-| 8005 | RankServiceSub | BRPC | 精排子图服务端口（所有实例统一） |
-| 31502 | KVWorker (Rank) | 元戎 SDK | 分布式缓存端口 |
+| 端口    | 服务              | 协议     | 说明               |
+| ----- | --------------- | ------ | ---------------- |
+| 8005  | RankServiceSub  | BRPC   | 精排子图服务端口（所有实例统一） |
+| 31502 | KVWorker (Rank) | 元戎 SDK | 分布式缓存端口          |
+

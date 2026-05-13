@@ -89,7 +89,7 @@ make recall_server recall_test_client recall_test -j$(nproc)
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
 | `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
-| `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
+| `--global_thread_pool_size` | int32 | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 使用测试客户端
 

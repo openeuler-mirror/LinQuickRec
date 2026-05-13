@@ -30,12 +30,12 @@ services/precalc/
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 备注 |
-|------|----------|------|
-| CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+| 依赖         | 版本要求    | 备注                                |
+| ---------- | ------- | --------------------------------- |
+| CMake      | >= 3.14 | 编译工具链                             |
+| brpc       | >= 1.4  | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf   | >= 3.0  | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest  | `linquickrec/base:latest` 基础镜像已内置 |
 
 ### 脚本构建
 
@@ -58,11 +58,11 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 ### 编译产物
 
-| 二进制 | 说明 |
-|--------|------|
-| `precalc_server` | 前置计算服务主程序 |
-| `precalc_test_client` | 测试客户端 |
-| `precalc_test` | 单元测试 |
+| 二进制                   | 说明        |
+| --------------------- | --------- |
+| `precalc_server`      | 前置计算服务主程序 |
+| `precalc_test_client` | 测试客户端     |
+| `precalc_test`        | 单元测试      |
 
 ## 启动方式
 
@@ -78,17 +78,15 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 参数说明：
 
-| 参数                         | 类型     | 默认值                  | 说明                     |
-| -------------------------- | ------ | -------------------- | ---------------------- |
-| `--server_port`            | int32  | 8003                 | 服务监听端口                 |
-| `--kvworker_host`          | string | "141.61.84.245"      | 元戎 KVWorker 主机地址       |
-| `--kvworker_port`          | int32  | 31502                | 元戎 KVWorker 端口         |
-| `--etcd_address`           | string | "141.61.84.245:2379" | ETCD 地址                |
-| `--precalc_result_size_mb` | double | 8.5                  | 前置计算结果大小（MB）           |
-| `--ttl_seconds`            | int32  | 5                    | TTL 时间（秒）              |
-| `--user_feat_key_size_kb`  | int32  | 100                  | user\_feat\_key 大小（KB） |
-| `--enable_timing_stats`    | bool   | true                 | 是否启用详细时延统计             |
-| `--payload_size_kb`        | int32  | 100                  | payload 大小（KB）         |
+| 参数                          | 类型     | 默认值             | 说明                        |
+| --------------------------- | ------ | --------------- | ------------------------- |
+| `--server_port`             | int32  | 8003            | 服务监听端口                    |
+| `--kvworker_host`           | string | "141.61.84.245" | 元戎 KVWorker 主机地址          |
+| `--kvworker_port`           | int32  | 31502           | 元戎 KVWorker 端口            |
+| `--precalc_result_size_mb`  | double | 8.5             | 前置计算结果大小（MB）              |
+| `--ttl_seconds`             | int32  | 5               | TTL 时间（秒）                 |
+| `--payload_size_kb`         | int32  | 100             | payload 大小（KB）            |
+| `--global_thread_pool_size` | int32  | 128             | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 使用测试客户端
 
