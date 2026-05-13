@@ -10,10 +10,16 @@ RecallService 是推荐系统的召回层，负责从海量商品池中筛选出
 
 ```
 services/recall/
-├── DESIGN.md                    # 详细设计文档
-├── README.md                    # 本文件
-├── CMakeLists.txt               # CMake 构建配置
-├── build.sh                     # 编译脚本
+├── backup/
+│   ├── brpc_client.cpp.backup
+│   ├── brpc_server.cpp.backup
+│   └── recommend.proto.backup
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── recall_test_client.cpp
 ├── server/
 │   ├── include/
 │   │   ├── recall_server.h      # RecallServiceImpl 声明
@@ -31,33 +37,53 @@ services/recall/
 
 ## 编译命令
 
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 脚本构建
+
+```bash
+cd services/recall
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
 ```bash
 cd services/recall
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make recall_server recall_test_client recall_test -j$(nproc)
 ```
 
 ### 编译产物
 
-| 二进制 | 用途 |
+| 二进制 | 说明 |
 |--------|------|
 | `recall_server` | 召回服务主程序 |
 | `recall_test_client` | 测试客户端 |
+| `recall_test` | 单元测试 |
 
 ## 启动方式
 
 ### 启动 RecallService
 
 ```bash
-./bin/recall_server --server_port=8001 --vllm_base_url=http://127.0.0.1:8000
+./bin/recall_server --server_port=8002 --vllm_base_url=http://127.0.0.1:8000
 ```
 
 参数说明：
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--server_port` | int32 | 8001 | 服务监听端口 |
+| `--server_port` | int32 | 8002 | 服务监听端口 |
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
@@ -68,26 +94,28 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./bin/recall_test_client --server=127.0.0.1:8001 --user_id=12345
+./bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
 ```
 
 ## 容器搭建
 
-RecallService 与 vLLM 同容器部署，容器启动时先启动 vLLM，再启动 RecallService：
+RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等待就绪。
+
+### 构建镜像
 
 ```bash
-docker run --gpus all --init --name recall-service \
-  recall-image \
-  sh -c "/app/run_vllm.sh & \
-         sleep 30 && \
-         /app/recall_server --server_port=8001 & \
-         wait"
+docker build -t linquickrec/recall:latest \
+  -f deploy/docker/recall/Dockerfile .
 ```
 
-或使用 entrypoint.sh 自动管理启动顺序：
+### 启动容器
 
 ```bash
-docker run --gpus all --name recall-service recall-image
+docker run -d --name recall-service \
+  --gpus all \
+  -p 8000:8000 \
+  -p 8002:8002 \
+  linquickrec/recall:latest
 ```
 
 ## 业务流程
@@ -99,7 +127,7 @@ docker run --gpus all --name recall-service recall-image
             ▼
    ┌─────────────────────┐
    │   RecallService     │
-   │   (:8001)           │
+   │   (:8002)           │
    │                     │
    │  1. Proto → JSON    │
    │  2. Build Prompt    │──── HTTP POST ────▶ vLLM (:8000)
@@ -112,5 +140,5 @@ docker run --gpus all --name recall-service recall-image
 
 | 端口 | 服务 | 协议 | 说明 |
 |------|------|------|------|
-| 8001 | RecallService | BRPC | 召回服务 RPC 端口 |
+| 8002 | RecallService | BRPC | 召回服务 RPC 端口 |
 | 8000 | vLLM | HTTP | 大模型推理 API（容器内部） |

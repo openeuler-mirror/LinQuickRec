@@ -20,22 +20,22 @@ Proxy 通过 [discovery 服务](../discovery/README.md) 动态获取下游实例
 
 ```
 services/proxy/
-├── CMakeLists.txt                     # 构建配置
-├── Dockerfile                         # 容器镜像
-├── README.md                          # 本文档
-├── DESIGN.md                          # 详细设计文档
+├── build.sh
+├── CMakeLists.txt
+├── DESIGN.md
+├── README.md
+├── client/
+│   └── proxy_test_client.cpp
 ├── server/
 │   ├── include/
-│   │   ├── proxy_server.h             # ProxyServiceImpl 类声明
-│   │   └── service_discovery.h        # 服务发现客户端
+│   │   ├── proxy_server.h
+│   │   └── service_discovery.h
 │   └── src/
-│       ├── main.cpp                   # 服务入口
-│       ├── proxy_server.cpp           # 核心编排逻辑
-│       └── service_discovery.cpp      # 服务发现实现
-├── client/
-│   └── proxy_test_client.cpp          # 手动测试客户端
+│       ├── main.cpp
+│       ├── proxy_server.cpp
+│       └── service_discovery.cpp
 └── tests/
-    └── integration_test.cpp           # 单进程集成测试
+    └── integration_test.cpp
 ```
 
 ## 业务流程
@@ -159,27 +159,33 @@ trace_id 通过 `cntl.set_log_id()` 传递到所有下游 RPC，下游服务可�
 
 ## 编译命令
 
-### 前置依赖
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
 
-| 依赖 | 版本要求 | 安装参考 |
-|------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` / `brew install cmake` |
-| brpc | latest | [brpc 构建指南](https://github.com/apache/brpc/blob/master/docs/cn/getting_started.md) |
-| protobuf | >= 3.x | brpc 自带或单独安装 |
-| abseil-cpp | latest | brpc 自带或单独安装 |
-| gflags | latest | `apt install libgflags-dev` |
-| pthread | 系统自带 | — |
-
-### 编译
+### 脚本构建
 
 ```bash
-# 在项目根目录
+cd services/proxy
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/proxy
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 ```
 
-产物在 `build/bin/` 下：
+### 编译产物
 
 | 二进制 | 说明 |
 |--------|------|
@@ -227,16 +233,18 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 
 ```bash
 # 在项目根目录下执行
-docker build -t linquickrec/proxy:latest -f deploy/docker/proxy/Dockerfile .
+docker build -t linquickrec/proxy:latest \
+  -f deploy/docker/proxy/Dockerfile .
 ```
 
 ### 运行容器
 
 ```bash
 # 依赖外部 discovery server
-docker run -p 8080:8080 \
-    linquickrec/proxy:latest \
-    --discovery_addr="discovery-server:8100"
+docker run -d --name proxy-service \
+  -p 8080:8080 \
+  linquickrec/proxy:latest \
+  --discovery_addr="discovery-server:8100"
 ```
 
 ## 测试方法

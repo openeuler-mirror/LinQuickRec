@@ -1,15 +1,15 @@
 #ifndef DISCOVERY_RESOLVER_H
 #define DISCOVERY_RESOLVER_H
 
-#include "discovery.pb.h"
+#include <atomic>
+#include <map>
+#include <mutex>
+#include <string>
+#include <vector>
 
 #include <brpc/channel.h>
 
-#include <string>
-#include <vector>
-#include <map>
-#include <mutex>
-#include <atomic>
+#include "discovery.pb.h"
 
 class DiscoveryResolver {
 public:

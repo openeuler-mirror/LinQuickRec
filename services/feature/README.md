@@ -38,14 +38,14 @@ make -j$(nproc)
 ### 启动 FeatureService
 
 ```bash
-./bin/feature_server --server_port=8003
+./bin/feature_server --server_port=8001
 ```
 
 参数说明：
 
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `--server_port` | int32 | 8003 | 服务监听端口 |
+| `--server_port` | int32 | 8001 | 服务监听端口 |
 
 ### RPC 接口
 
@@ -64,7 +64,7 @@ docker run --name feature-service feature-image
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `SERVER_PORT` | 8003 | 服务端口 |
+| `SERVER_PORT` | 8001 | 服务端口 |
 
 ## 业务流程
 
@@ -75,7 +75,7 @@ docker run --name feature-service feature-image
             ▼
    ┌─────────────────────┐
    │   FeatureService    │
-   │   (:8003)           │
+   │   (:8001)           │
    │                     │
    │  随机生成 user_logs │
    │  (5~20 条日志)      │
@@ -89,4 +89,4 @@ docker run --name feature-service feature-image
 
 | 端口 | 服务 | 协议 | 说明 |
 |---|---|---|---|
-| 8003 | FeatureService | BRPC | 特征服务端口 |
+| 8001 | FeatureService | BRPC | 特征服务端口 |

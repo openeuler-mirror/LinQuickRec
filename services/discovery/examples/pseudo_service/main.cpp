@@ -1,11 +1,13 @@
-#include "common/logger.h"
+#include <atomic>
 #include <csignal>
 #include <cstring>
-#include <atomic>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <unistd.h>
+
+#include "common/logger.h"
 
 static std::atomic<bool> g_running{true};
 

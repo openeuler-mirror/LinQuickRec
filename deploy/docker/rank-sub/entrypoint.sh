@@ -7,18 +7,19 @@ echo "==========================================="
 
 cd /app/build
 ./bin/rank_sub_server \
-    --server_port=${SERVER_PORT:-8006} \
+    --server_port=${SERVER_PORT:-8005} \
     --kvworker_host=${KVWORKER_HOST:-141.61.84.245} \
     --kvworker_port=${KVWORKER_PORT:-31502} \
     --etcd_address=${ETCD_ADDRESS:-141.61.84.245:2379} \
     --scoring_delay_ms=${SCORING_DELAY_MS:-100} \
+    --enable_timing_stats=${ENABLE_TIMING_STATS:-true} \
     "$@" &
 SERVICE_PID=$!
 
 echo "Starting Discovery Client..."
 /app/discovery_client \
     --service_type=rank_sub \
-    --service_port=${SERVER_PORT:-8006} \
+    --service_port=${SERVER_PORT:-8005} \
     --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} &
 DISCOVERY_PID=$!
 

@@ -9,7 +9,7 @@ DiscoveryResolver::DiscoveryResolver(const std::string& discovery_addr)
     opts.timeout_ms = 3000;
     opts.max_retry = 2;
     if (channel_.Init(discovery_addr.c_str(), &opts) != 0) {
-        LOG(ERROR) << "Failed to init discovery channel to " << discovery_addr;
+        LOG_ERROR << "Failed to init discovery channel to " << discovery_addr;
     }
 }
 
@@ -25,7 +25,7 @@ DiscoveryResolver::discover(const std::string& service_name) {
     stub.Discover(&cntl, &req, &rsp, nullptr);
 
     if (cntl.Failed()) {
-        LOG(ERROR) << "Discover(" << service_name << ") failed: " << cntl.ErrorText();
+        LOG_ERROR << "Discover(" << service_name << ") failed: " << cntl.ErrorText();
         return {};
     }
 

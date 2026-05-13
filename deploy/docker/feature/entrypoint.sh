@@ -7,7 +7,7 @@ echo "==========================================="
 
 cd /app/build
 ./bin/feature_server \
-    --server_port=${SERVER_PORT:-8003} \
+    --server_port=${SERVER_PORT:-8001} \
     "$@" &
 SERVICE_PID=$!
 

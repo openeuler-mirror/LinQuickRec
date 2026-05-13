@@ -14,6 +14,8 @@ services/rank_master/
 ├── README.md                        # 本文件
 ├── CMakeLists.txt                   # CMake 构建配置
 ├── build.sh                         # 编译脚本
+├── client/
+│   └── rank_master_test_client.cpp  # 测试客户端
 ├── server/
 │   ├── include/
 │   │   ├── rank_master_server.h     # RankMasterServiceImpl 声明
@@ -22,27 +24,46 @@ services/rank_master/
 │       ├── main.cpp                 # 服务入口
 │       ├── rank_master_server.cpp   # 服务实现
 │       └── discovery_resolver.cpp   # Discovery 服务发现实现
-├── client/
-│   └── rank_master_test_client.cpp  # 测试客户端
 ├── tests/
 │   └── test_rank_master.cpp         # 单元测试
+```
 ```
 
 ## 编译命令
 
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 脚本构建
+
 ```bash
-cd services/rank_service_master
+cd services/rank_master
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/rank_master
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 ```
 
 ### 编译产物
 
-| 二进制 | 用途 |
+| 二进制 | 说明 |
 |--------|------|
 | `rank_master_server` | 精排主图服务主程序 |
 | `rank_master_test_client` | 测试客户端 |
+| `rank_master_test` | 单元测试 |
 
 ## 启动方式
 
@@ -50,9 +71,9 @@ make -j$(nproc)
 
 ```bash
 ./bin/rank_master_server \
-  --server_port=8005 \
+  --server_port=8004 \
   --sub_worker_count=10 \
-  --sub_worker_addresses=rank-sub-service:8006 \
+  --sub_worker_addresses=rank-sub-service:8005 \
   --top_k=100
 ```
 
@@ -60,9 +81,9 @@ make -j$(nproc)
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--server_port` | int32 | 8005 | 服务监听端口 |
+| `--server_port` | int32 | 8004 | 服务监听端口 |
 | `--sub_worker_count` | int32 | 10 | 子图数量 |
-| `--sub_worker_addresses` | string | "127.0.0.1:8006" | 子图地址列表（逗号分隔） |
+| `--sub_worker_addresses` | string | "127.0.0.1:8005" | 子图地址列表（逗号分隔） |
 | `--discovery_addr` | string | "" | Discovery 服务地址（空则使用静态地址） |
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
 | `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
@@ -72,7 +93,7 @@ make -j$(nproc)
 
 ```bash
 ./bin/rank_master_test_client \
-  --server=127.0.0.1:8005 \
+  --server=127.0.0.1:8004 \
   --sku_count=1000 \
   --payload_size_kb=100 \
   --tensor_size_mb=8.5 \
@@ -89,38 +110,34 @@ make -j$(nproc)
 
 ## 容器搭建
 
-### 启动顺序
+需先启动 RankSub 容器。
+
+### 构建镜像
 
 ```bash
-# 1. 先启动 RankSub（10 个实例）
-docker-compose up -d --scale rank-sub-service=10 rank-sub-service
-
-# 2. 等待 RankSub 就绪
-sleep 10
-
-# 3. 启动 RankMaster
-docker-compose up -d rank-master-service
+docker build -t linquickrec/rank-master:latest \
+  -f deploy/docker/rank-master/Dockerfile .
 ```
 
-### 动态扩缩容
+### 启动容器
 
 ```bash
-# 扩容到 20 个 RankSub
-bash deploy/scripts/scale-rank-sub.sh 20
-
-# 需要重启 RankMaster 以更新 Channel 池
-docker-compose up -d --force-recreate rank-master-service
+docker run -d --name rank-master \
+  -p 8004:8004 \
+  -e RANK_SUB_HOST=rank-sub-service \
+  -e SUB_WORKER_ADDRESSES=rank-sub-service:8005 \
+  linquickrec/rank-master:latest
 ```
 
 ### 环境变量
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `SERVER_PORT` | 8005 | 服务端口 |
+| `SERVER_PORT` | 8004 | 服务端口 |
 | `SUB_WORKER_COUNT` | 10 | 子图数量 |
-| `SUB_WORKER_ADDRESSES` | "rank-sub-service:8006" | 子图地址 |
+| `SUB_WORKER_ADDRESSES` | "rank-sub-service:8005" | 子图地址 |
 | `RANK_SUB_HOST` | "rank-sub-service" | 子图主机名 |
-| `RANK_SUB_PORT` | 8006 | 子图端口 |
+| `RANK_SUB_PORT` | 8005 | 子图端口 |
 | `TOP_K` | 100 | 返回前 K 个商品 |
 
 ## 业务流程
@@ -131,7 +148,7 @@ docker-compose up -d --force-recreate rank-master-service
             │ Rank(key, skus, payload)
             ▼
    ┌─────────────────────────────────────────────┐
-   │         RankServiceMaster (:8005)            │
+   │         RankServiceMaster (:8004)            │
    │                                              │
    │  1. Parse SKUs → [100456, 200789, ...]      │
    │  2. Hash distribute to N workers             │
@@ -154,5 +171,5 @@ docker-compose up -d --force-recreate rank-master-service
 
 | 端口 | 服务 | 协议 | 说明 |
 |------|------|------|------|
-| 8005 | RankServiceMaster | BRPC | 精排主图服务端口 |
-| 8006 | RankServiceSub | BRPC | 精排子图服务端口 |
+| 8004 | RankServiceMaster | BRPC | 精排主图服务端口 |
+| 8005 | RankServiceSub | BRPC | 精排子图服务端口 |

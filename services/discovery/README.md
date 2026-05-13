@@ -15,26 +15,29 @@
 
 ```
 services/discovery/
+├── build.sh
 ├── CMakeLists.txt
-├── Dockerfile
-├── README.md
 ├── DESIGN.md
+├── README.md
+├── client/
+│   └── src/
+│       └── main.cpp
 ├── server/
 │   ├── include/
 │   │   └── discovery_server.h
 │   └── src/
 │       ├── main.cpp
 │       └── discovery_server.cpp
-├── client/
-│   └── src/
-│       └── main.cpp
 └── examples/
     ├── CMakeLists.txt
-    ├── Dockerfile
+    ├── README.md
     ├── docker-compose.yml
-    ├── entrypoint.sh
     ├── pseudo_service/
+    │   └── main.cpp
     └── tests/
+        ├── test_discover.cpp
+        ├── test_heartbeat_cycle.cpp
+        └── test_register.cpp
 ```
 
 ## 业务流程
@@ -72,7 +75,7 @@ services/discovery/
     │
     ▼
 ┌────────┐     heartbeat timeout     ┌────────┐     cleanup timeout    ┌─────────┐
-│  UP    │ ────────────────────────>  │  DOWN  │ ─────────────────────> │ REMOVED │
+│  UP    │ ────────────────────────> │  DOWN  │ ─────────────────────> │ REMOVED │
 └────────┘                           └────────┘                        └─────────┘
     │
     └── Deregister ──> REMOVED
@@ -80,27 +83,30 @@ services/discovery/
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 安装参考 |
-|------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` |
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
 | brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
 | protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
 | abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
 
-### 独立构建
+
+### 脚本构建
+
+```bash
+cd services/discovery
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
 
 ```bash
 cd services/discovery
 mkdir -p build && cd build
-cmake ..
-make discovery_server discovery_client -j$(nproc)
-```
-
-### 整体构建（从项目根目录）
-
-```bash
-mkdir -p build && cd build
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make discovery_server discovery_client -j$(nproc)
 ```
 
@@ -108,8 +114,8 @@ make discovery_server discovery_client -j$(nproc)
 
 | 二进制 | 说明 |
 |--------|------|
-| `build/bin/discovery_server` | 服务端，运行在发现中心容器 |
-| `build/bin/discovery_client` | 客户端，部署在每个业务容器 |
+| `discovery_server` | 服务端，运行在发现中心容器 |
+| `discovery_client` | 客户端，部署在每个业务容器 |
 
 ## 启动方式
 
@@ -167,7 +173,9 @@ docker build -t linquickrec/discovery:latest \
 ### 启动服务
 
 ```bash
-docker run -p 8100:8100 linquickrec/discovery:latest
+docker run -d --name discovery-service \
+  -p 8100:8100 \
+  linquickrec/discovery:latest
 ```
 
 ## 端到端示例

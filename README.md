@@ -58,7 +58,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
                  |
                  v
   ┌──────────────────────────────┐
-  │  Feature (8003)              │<──── Redis (6379)
+  │  Feature (8001)              │<──── Redis (6379)
   │  [pending]                   │
   └──────────────┬───────────────┘
                  |
@@ -69,7 +69,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
         v                 v
   ┌────────────┐   ┌──────────────┐
   │ Recall xN  │   │ Precalc xN   │
-  │ 8001       │   │ 8004         │
+  │ 8002       │   │ 8003         │
   └──────┬─────┘   └──────┬───────┘
          │ Write          │ Write
          v                v
@@ -81,13 +81,13 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
                           v
                    ┌──────────────┐
                    │ RankMaster   │
-                   │ xN, 8005     │
+                   │ xN, 8004     │
                    └──────┬───────┘
                           │
                           v
                    ┌──────────────┐
                    │ RankSub xN   │
-                   │ 8006         │
+                   │ 8005         │
                    └──────┬───────┘
                           │ Read
                           v
@@ -119,21 +119,69 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 |------|------|---------------|------|------|
 | Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
 | Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
-| Recall | 8001 | RecallService | ✅ 已完成 | vLLM |
-| Precalc | 8004 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
-| RankMaster | 8005 | RankMasterService | ✅ 已完成 | RankSub(8006) |
-| RankSub | 8006 | RankSubService | ✅ 已完成 | KVWorker(31502) |
-| Feature | 8003 | FeatureService | ✅ 已完成（模拟实现） | — |
+| Recall | 8002 | RecallService | ✅ 已完成 | vLLM |
+| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
+| RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub(8005) |
+| RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker(31502) |
+| Feature | 8001 | FeatureService | ✅ 已完成（模拟实现） | — |
 | KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
 | vLLM | — | — | 模型服务 | Qwen3-0.6B |
+
+## 对外接口
+
+系统通过 Proxy 对外暴露 HTTP 接口，客户端通过 `POST /Proxy/Recommend` 提交推荐请求并接收排序结果。Proxy 通过 [服务发现](#服务发现) 自动调度下游服务，客户端无需感知内部拓扑。
+
+### 请求
+
+```
+POST /Proxy/Recommend
+Content-Type: application/json
+```
+
+```json
+{
+  "user_id": 12345,
+  "payload": "optional data"
+}
+```
+
+### 响应
+
+**成功：**
+
+```json
+{
+  "candidates": [100001, 100002, 100003],
+  "error_code": 0,
+  "error_message": ""
+}
+```
+
+**失败：**
+
+```json
+{
+  "candidates": [],
+  "error_code": 16973825,
+  "error_message": "FeatureService: connection refused"
+}
+```
+
+### error_code 编码
+
+错误码采用 `0xMMTTCCCC` 格式，详见 [错误码体系](#错误码体系) 和 [proxy/README.md](services/proxy/README.md)。
+
+## 配置参考
+
+所有可配置参数详见 [CONFIG.md](CONFIG.md)，包括各服务 gflag、环境变量映射及生效方式。
 
 ## 编译命令
 
 ### 前置依赖
 
-| 依赖 | 版本要求 | 安装参考 |
-|------|----------|----------|
-| CMake | >= 3.14 | `apt install cmake` |
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
 | brpc | >= 1.4 | 基础镜像 `linquickrec/base:latest` 已内置 |
 | protobuf | >= 3.0 | 同上 |
 | abseil-cpp | latest | 同上 |
@@ -207,28 +255,7 @@ LinQuickRec-yh/
 
 ## 容器搭建
 
-所有服务的 Dockerfile 和 docker-compose 配置统一位于 `deploy/docker/`。
-
-### 构建与启动
-
-```bash
-docker compose -f deploy/docker/docker-compose.yml build
-docker compose -f deploy/docker/docker-compose.yml up -d
-```
-
-### 单独构建
-
-单独构建指定容器可以使用如下示例命令：
-
-```bash
-# 构建 Discovery
-docker build -t linquickrec/discovery:latest \
-    -f deploy/docker/discovery/Dockerfile .
-
-# 构建 Proxy
-docker build -t linquickrec/proxy:latest \
-    -f deploy/docker/proxy/Dockerfile .
-```
+容器构建与部署详见 [deploy/docker/README.md](deploy/docker/README.md)。
 
 ## 后续开发
 

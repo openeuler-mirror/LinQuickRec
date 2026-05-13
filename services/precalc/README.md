@@ -14,9 +14,11 @@ services/precalc/
 ├── README.md                    # 本文件
 ├── CMakeLists.txt               # CMake 构建配置
 ├── build.sh                     # 编译脚本
+├── client/
+│   └── precalc_test_client.cpp  # 测试客户端
 ├── server/
 │   ├── include/
-│   │   └── precalc_server.h     # PrecalcServiceImpl 声明
+│   │   └── precalc_server.h
 │   └── src/
 │       ├── main.cpp             # 服务入口
 │       └── precalc_server.cpp   # 服务实现
@@ -28,19 +30,39 @@ services/precalc/
 
 ## 编译命令
 
+| 依赖 | 版本要求 | 备注 |
+|------|----------|------|
+| CMake | >= 3.14 | 编译工具链 |
+| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+
+### 脚本构建
+
 ```bash
-cd services/precalc_service
+cd services/precalc
+./build.sh              # 默认为 Release 构建
+./build.sh release      # Release 构建
+./build.sh debug        # Debug 构建
+./build.sh clean        # 清理后构建
+```
+
+### 手动构建
+
+```bash
+cd services/precalc
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+make precalc_server precalc_test_client precalc_test -j$(nproc)
 ```
 
 ### 编译产物
 
-| 二进制                   | 用途        |
-| --------------------- | --------- |
-| `precalc_server`      | 前置计算服务主程序 |
-| `precalc_test_client` | 测试客户端     |
+| 二进制 | 说明 |
+|--------|------|
+| `precalc_server` | 前置计算服务主程序 |
+| `precalc_test_client` | 测试客户端 |
+| `precalc_test` | 单元测试 |
 
 ## 启动方式
 
@@ -48,7 +70,7 @@ make -j$(nproc)
 
 ```bash
 ./bin/precalc_server \
-  --server_port=8004 \
+  --server_port=8003 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31502 \
   --ttl_seconds=5
@@ -58,7 +80,7 @@ make -j$(nproc)
 
 | 参数                         | 类型     | 默认值                  | 说明                     |
 | -------------------------- | ------ | -------------------- | ---------------------- |
-| `--server_port`            | int32  | 8004                 | 服务监听端口                 |
+| `--server_port`            | int32  | 8003                 | 服务监听端口                 |
 | `--kvworker_host`          | string | "141.61.84.245"      | 元戎 KVWorker 主机地址       |
 | `--kvworker_port`          | int32  | 31502                | 元戎 KVWorker 端口         |
 | `--etcd_address`           | string | "141.61.84.245:2379" | ETCD 地址                |
@@ -71,20 +93,31 @@ make -j$(nproc)
 ### 使用测试客户端
 
 ```bash
-./bin/precalc_test_client --server=127.0.0.1:8004
+./bin/precalc_test_client --server=127.0.0.1:8003
 ```
 
 ## 容器搭建
 
+### 构建镜像
+
 ```bash
-docker run --name precalc-service precalc-image
+docker build -t linquickrec/precalc:latest \
+  -f deploy/docker/precalc/Dockerfile .
+```
+
+### 启动容器
+
+```bash
+docker run -d --name precalc-service \
+  -p 8003:8003 \
+  linquickrec/precalc:latest
 ```
 
 环境变量配置：
 
 | 变量              | 默认值           | 说明          |
 | --------------- | ------------- | ----------- |
-| `SERVER_PORT`   | 8004          | 服务端口        |
+| `SERVER_PORT`   | 8003          | 服务端口        |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 主机 |
 | `KVWORKER_PORT` | 31502         | KVWorker 端口 |
 | `TTL_SECONDS`   | 5             | 数据 TTL      |
@@ -98,7 +131,7 @@ docker run --name precalc-service precalc-image
             ▼
    ┌─────────────────────┐         ┌──────────────────┐
    │  PrecalcService     │  Write  │  KVWorker         │
-   │  (:8004)            │────────▶│  (:31501)         │
+   │  (:8003)            │────────▶│  (:31501)         │
    │                     │         │                   │
    │  1. Extract key     │         │  key → 8.5MB data │
    │  2. Generate tensor │         │  TTL = 5s         │
@@ -116,6 +149,6 @@ docker run --name precalc-service precalc-image
 
 | 端口    | 服务                | 协议     | 说明       |
 | ----- | ----------------- | ------ | -------- |
-| 8004  | PrecalcService    | BRPC   | 前置计算服务端口 |
+| 8003  | PrecalcService    | BRPC   | 前置计算服务端口 |
 | 31502 | KVWorker (Recall) | 元戎 SDK | 分布式缓存端口  |
 

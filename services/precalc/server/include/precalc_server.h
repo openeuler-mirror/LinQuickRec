@@ -1,19 +1,19 @@
 #ifndef PRECALC_SERVER_H
 #define PRECALC_SERVER_H
 
-#include "precalc.pb.h"
-#include <brpc/server.h>
+#include <memory>
+#include <string>
+
 #include <brpc/controller.h>
+#include <brpc/server.h>
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-#include <string>
-#include <memory>
-
+#include "common/error.h"
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
-#include "common/error.h"
+#include "precalc.pb.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);

@@ -3,10 +3,10 @@
 #include <thread>
 
 #include <brpc/server.h>
-#include <butil/logging.h>
 #include <gflags/gflags.h>
 
 #include "common/global_thread_pool.h"
+#include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -17,10 +17,10 @@ int main(int argc, char* argv[]) {
         FLAGS_global_thread_pool_size = std::min(128, calculated_size);
     }
 
-    LOG(INFO) << "CPU cores: " << cpu_cores
+    LOG_INFO << "CPU cores: " << cpu_cores
               << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
-    LOG(INFO) << "Feature Service (mock) starting...";
+    LOG_INFO << "Feature Service (mock) starting...";
 
     feature::FeatureServiceImpl service_impl;
 
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
     if (server.AddService(&service_impl,
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add FeatureService";
+        LOG_ERROR << "Failed to add FeatureService";
         return -1;
     }
 
@@ -37,19 +37,19 @@ int main(int argc, char* argv[]) {
 
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
     if (server.Start(server_addr.c_str(), &server_options) != 0) {
-        LOG(ERROR) << "Failed to start server on " << server_addr;
+        LOG_ERROR << "Failed to start server on " << server_addr;
         return -1;
     }
 
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Feature Service (mock) Started";
-    LOG(INFO) << "===========================================";
-    LOG(INFO) << "Listening on: " << server_addr;
-    LOG(INFO) << "Global thread pool size: " << common::get_global_thread_pool().size();
-    LOG(INFO) << "===========================================";
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Feature Service (mock) Started";
+    LOG_INFO << "===========================================";
+    LOG_INFO << "Listening on: " << server_addr;
+    LOG_INFO << "Global thread pool size: " << common::get_global_thread_pool().size();
+    LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();
 
-    LOG(INFO) << "Feature Service stopped";
+    LOG_INFO << "Feature Service stopped";
     return 0;
 }

@@ -1,16 +1,10 @@
-// 1. 对应的头文件
 #include "recall_server.h"
 
-// 2. 标准库头文件
 #include <thread>
 
-// 3. 系统库头文件
-
-// 4. 其他库头文件
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
-// 5. 本项目内其他头文件
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
@@ -33,15 +27,15 @@ int main(int argc, char* argv[]) {
         FLAGS_global_thread_pool_size = std::min(128, calculated_size);
     }
     
-    LOG(INFO) << "CPU cores: " << cpu_cores 
+    LOG_INFO << "CPU cores: " << cpu_cores 
               << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     recall::RecallServiceImpl service_impl;
 
     brpc::Server server;
 
-    if (server.AddService(&service_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        LOG(ERROR) << "Failed to add RecallService";
+    if (server.AddService(&service_impl, brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add RecallService";
         return -1;
     }
 
@@ -49,14 +43,14 @@ int main(int argc, char* argv[]) {
     server_options.num_threads = 128;
 
     if (server.Start(FLAGS_server_port, &server_options) != 0) {
-        LOG(ERROR) << "Failed to start server on port " << FLAGS_server_port;
+        LOG_ERROR << "Failed to start server on port " << FLAGS_server_port;
         return -1;
     }
 
-    LOG(INFO) << "RecallService started on port " << FLAGS_server_port;
+    LOG_INFO << "RecallService started on port " << FLAGS_server_port;
 
     server.RunUntilAskedToQuit();
 
-    LOG(INFO) << "Recall Service stopped";
+    LOG_INFO << "Recall Service stopped";
     return 0;
 }

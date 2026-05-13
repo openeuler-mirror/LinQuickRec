@@ -1,9 +1,9 @@
 #include "discovery_server.h"
 
-#include <gflags/gflags.h>
-#include <brpc/server.h>
-
 #include <thread>
+
+#include <brpc/server.h>
+#include <gflags/gflags.h>
 
 #include "common/logger.h"
 
