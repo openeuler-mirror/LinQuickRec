@@ -2,64 +2,91 @@
 
 ## 模块简介
 
-FeatureService 是推荐系统的特征层，负责根据用户 ID 从 Redis 等数据源获取用户特征数据（行为日志、画像标签等），为下游服务（RecallService、PrecalcService）提供特征输入。
-
-当前处于开发阶段，实现尚未合入 main 分支。
+FeatureService 是推荐系统的特征层，负责提供用户特征和 SKU 特征数据，供上游服务（如 RecallService）在召回和排序阶段使用。当前为模拟实现，通过随机数生成测试特征数据，用于端到端流水线验证。支持 KuaiRand 特征类型。
 
 ## 目录结构
 
 ```
 services/feature/
-├── build.sh
-├── CMakeLists.txt
-├── DESIGN.md
-├── README.md
+├── CMakeLists.txt               # CMake 构建配置
+├── build.sh                     # 编译脚本
 ├── server/
 │   ├── include/
-│   │   └── feature_server.h
+│   │   └── feature_server.h     # FeatureServiceImpl 声明
 │   └── src/
-│       ├── feature_server.cpp
-│       └── main.cpp
+│       ├── main.cpp             # 服务入口
+│       └── feature_server.cpp   # 服务实现
 ```
 
 ## 编译命令
-
-| 依赖 | 版本要求 | 备注 |
-|------|----------|------|
-| CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
-
-### 脚本构建
-
-```bash
-cd services/feature
-./build.sh              # 默认为 Release 构建
-./build.sh release      # Release 构建
-./build.sh debug        # Debug 构建
-./build.sh clean        # 清理后构建
-```
-
-### 手动构建
 
 ```bash
 cd services/feature
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make feature_server -j$(nproc)
+make -j$(nproc)
 ```
 
 ### 编译产物
 
 | 二进制 | 说明 |
-|--------|------|
-| `feature_server` | 特征服务端 |
+|---|---|
+| `feature_server` | 特征服务主程序 |
 
 ## 启动方式
 
-待实现后补充。
+### 启动 FeatureService
+
+```bash
+./bin/feature_server --server_port=8001
+```
+
+参数说明：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `--server_port` | int32 | 8001 | 服务监听端口 |
+
+### RPC 接口
+
+| 方法 | 请求 | 响应 | 说明 |
+|---|---|---|---|
+| `GetUserFeatures` | UserFeatureRequest | UserFeatureResponse | 获取用户行为日志特征 |
+| `GetSKUFeatures` | SKUFeatureRequest | SKUFeatureResponse | 获取 SKU 特征数据 |
 
 ## 容器搭建
 
-待实现后补充。
+```bash
+docker run --name feature-service feature-image
+```
+
+环境变量配置：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `SERVER_PORT` | 8001 | 服务端口 |
+
+## 业务流程
+
+```
+       Upstream (Proxy)
+            │
+            │ GetUserFeatures(user_id)
+            ▼
+   ┌─────────────────────┐
+   │   FeatureService    │
+   │   (:8001)           │
+   │                     │
+   │  随机生成 user_logs │
+   │  (5~20 条日志)      │
+   │  每条 10~50 维向量   │
+   │                     │
+   │  返回 UserFeature   │
+   └─────────────────────┘
+```
+
+## 端口对照表
+
+| 端口 | 服务 | 协议 | 说明 |
+|---|---|---|---|
+| 8001 | FeatureService | BRPC | 特征服务端口 |

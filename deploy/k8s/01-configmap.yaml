@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: lingquickrec-config
-  namespace: lingquickrec
+  name: linquickrec-config
+  namespace: linquickrec
 data:
   KVWORKER_HOST: "141.61.84.245"
   KVWORKER_PORT: "31502"

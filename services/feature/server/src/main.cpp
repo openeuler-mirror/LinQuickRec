@@ -1,14 +1,26 @@
 #include "feature_server.h"
 
+#include <thread>
+
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
+#include "common/global_thread_pool.h"
 #include "common/logger.h"
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    LOG_INFO << "Feature Service (mock) starting...";
+    int cpu_cores = std::thread::hardware_concurrency();
+    if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
+        int calculated_size = std::max(4, cpu_cores * 2);
+        FLAGS_global_thread_pool_size = std::min(128, calculated_size);
+    }
+
+    LOG_INFO << "CPU cores: " << cpu_cores
+              << ", Thread pool size: " << FLAGS_global_thread_pool_size;
+
+    LOG_INFO << "Feature Service starting...";
 
     feature::FeatureServiceImpl service_impl;
 
@@ -20,16 +32,20 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    brpc::ServerOptions server_options;
+    server_options.num_threads = FLAGS_global_thread_pool_size;
+
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
-    if (server.Start(server_addr.c_str(), nullptr) != 0) {
+    if (server.Start(server_addr.c_str(), &server_options) != 0) {
         LOG_ERROR << "Failed to start server on " << server_addr;
         return -1;
     }
 
     LOG_INFO << "===========================================";
-    LOG_INFO << "Feature Service (mock) Started";
+    LOG_INFO << "Feature Service Started";
     LOG_INFO << "===========================================";
     LOG_INFO << "Listening on: " << server_addr;
+    LOG_INFO << "Global thread pool size: " << common::get_global_thread_pool().size();
     LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();

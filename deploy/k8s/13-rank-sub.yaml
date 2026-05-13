@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rank-sub-service
-  namespace: lingquickrec
+  namespace: linquickrec
   labels:
     app: rank-sub-service
 spec:
@@ -18,13 +18,13 @@ spec:
     spec:
       containers:
       - name: rank-sub
-        image: lingquickrec/rank-sub:latest
+        image: linquickrec/rank-sub:latest
         ports:
         - containerPort: 8006
           name: rpc
         envFrom:
         - configMapRef:
-            name: lingquickrec-config
+            name: linquickrec-config
         env:
         - name: SERVER_PORT
           value: "8006"
@@ -47,7 +47,7 @@ spec:
           periodSeconds: 15
         volumeMounts:
         - name: log
-          mountPath: /var/log/lingquickrec
+          mountPath: /var/log/linquickrec
       volumes:
       - name: log
         emptyDir: {}
@@ -56,7 +56,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rank-sub-service
-  namespace: lingquickrec
+  namespace: linquickrec
 spec:
   selector:
     app: rank-sub-service

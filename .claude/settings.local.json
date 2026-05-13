@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(git ls-tree *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git push *)",
+      "Bash(mkdir -p services/feature/server/include services/feature/server/src)",
+      "Bash(cp -r services/FeatureService/server/include/* services/feature/server/include/)",
+      "Bash(cp -r services/FeatureService/server/src/* services/feature/server/src/)",
+      "Bash(cp services/FeatureService/DESIGN.md services/feature/)",
+      "Bash(git rm *)",
+      "Bash(git stash *)",
+      "Bash(git pull *)",
+      "Bash(git branch *)"
     ]
   }
 }

@@ -22,7 +22,7 @@ for i in $(seq 1 ${RANK_SUB_STARTUP_TIMEOUT:-120}); do
 done
 
 cd /app/build
-./rank_master_server \
+./bin/rank_master_server \
     --server_port=${SERVER_PORT:-8004} \
     --sub_worker_count=${SUB_WORKER_COUNT:-3} \
     --sub_worker_addresses=${SUB_WORKER_ADDRESSES:-rank-sub-service:8005} \

@@ -175,7 +175,7 @@ services/discovery/
 
 ### 7.1 Discovery Server 容器
 
-Dockerfile 基于 `lingquickrec/base:latest`，编译 `discovery_server` 和 `discovery_client` 两个二进制。容器启动命令为 `./build/bin/discovery_server`，暴露端口 8100。
+Dockerfile 基于 `linquickrec/base:latest`，编译 `discovery_server` 和 `discovery_client` 两个二进制。容器启动命令为 `./build/bin/discovery_server`，暴露端口 8100。
 
 ### 7.2 各服务容器适配方法
 

@@ -10,20 +10,22 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 
 ```
 services/precalc/
-├── build.sh
-├── CMakeLists.txt
-├── DESIGN.md
-├── README.md
+├── DESIGN.md                    # 详细设计文档
+├── README.md                    # 本文件
+├── CMakeLists.txt               # CMake 构建配置
+├── build.sh                     # 编译脚本
 ├── client/
-│   └── precalc_test_client.cpp
+│   └── precalc_test_client.cpp  # 测试客户端
 ├── server/
 │   ├── include/
 │   │   └── precalc_server.h
 │   └── src/
-│       ├── main.cpp
-│       └── precalc_server.cpp
-└── tests/
-    └── test_precalc.cpp
+│       ├── main.cpp             # 服务入口
+│       └── precalc_server.cpp   # 服务实现
+├── client/
+│   └── precalc_test_client.cpp  # 测试客户端
+├── tests/
+│   └── test_precalc.cpp         # 单元测试
 ```
 
 ## 编译命令
@@ -70,7 +72,7 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 ./bin/precalc_server \
   --server_port=8003 \
   --kvworker_host=141.61.84.245 \
-  --kvworker_port=31501 \
+  --kvworker_port=31502 \
   --ttl_seconds=5
 ```
 
