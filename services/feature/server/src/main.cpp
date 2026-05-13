@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
     LOG_INFO << "CPU cores: " << cpu_cores
               << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
-    LOG_INFO << "Feature Service (mock) starting...";
+    LOG_INFO << "Feature Service starting...";
 
     feature::FeatureServiceImpl service_impl;
 
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     }
 
     brpc::ServerOptions server_options;
-    server_options.num_threads = 128;
+    server_options.num_threads = FLAGS_global_thread_pool_size;
 
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
     if (server.Start(server_addr.c_str(), &server_options) != 0) {
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     }
 
     LOG_INFO << "===========================================";
-    LOG_INFO << "Feature Service (mock) Started";
+    LOG_INFO << "Feature Service Started";
     LOG_INFO << "===========================================";
     LOG_INFO << "Listening on: " << server_addr;
     LOG_INFO << "Global thread pool size: " << common::get_global_thread_pool().size();
