@@ -18,7 +18,7 @@ RUN mkdir -p /app/build && cd /app/build && \
     make -j$(nproc) proxy_server proxy_test_client proxy_integration_test
 
 RUN mkdir -p /app/build/discovery && cd /app/build/discovery && \
-    cmake ../services/discovery -DCMAKE_BUILD_TYPE=Release && \
+    cmake ../../services/discovery -DCMAKE_BUILD_TYPE=Release && \
     make discovery_client -j$(nproc)
 
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh

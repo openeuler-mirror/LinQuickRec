@@ -10,30 +10,32 @@ PrecalcService 是推荐系统的前置计算层，负责将用户特征数据�
 
 ```
 services/precalc/
-├── build.sh
-├── CMakeLists.txt
-├── DESIGN.md
-├── README.md
+├── DESIGN.md                    # 详细设计文档
+├── README.md                    # 本文件
+├── CMakeLists.txt               # CMake 构建配置
+├── build.sh                     # 编译脚本
 ├── client/
-│   └── precalc_test_client.cpp
+│   └── precalc_test_client.cpp  # 测试客户端
 ├── server/
 │   ├── include/
 │   │   └── precalc_server.h
 │   └── src/
-│       ├── main.cpp
-│       └── precalc_server.cpp
-└── tests/
-    └── test_precalc.cpp
+│       ├── main.cpp             # 服务入口
+│       └── precalc_server.cpp   # 服务实现
+├── client/
+│   └── precalc_test_client.cpp  # 测试客户端
+├── tests/
+│   └── test_precalc.cpp         # 单元测试
 ```
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 备注 |
-|------|----------|------|
-| CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+| 依赖         | 版本要求    | 备注                                |
+| ---------- | ------- | --------------------------------- |
+| CMake      | >= 3.14 | 编译工具链                             |
+| brpc       | >= 1.4  | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf   | >= 3.0  | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | latest  | `linquickrec/base:latest` 基础镜像已内置 |
 
 ### 脚本构建
 
@@ -56,11 +58,11 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 
 ### 编译产物
 
-| 二进制 | 说明 |
-|--------|------|
-| `precalc_server` | 前置计算服务主程序 |
-| `precalc_test_client` | 测试客户端 |
-| `precalc_test` | 单元测试 |
+| 二进制                   | 说明        |
+| --------------------- | --------- |
+| `precalc_server`      | 前置计算服务主程序 |
+| `precalc_test_client` | 测试客户端     |
+| `precalc_test`        | 单元测试      |
 
 ## 启动方式
 
@@ -70,23 +72,21 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 ./bin/precalc_server \
   --server_port=8003 \
   --kvworker_host=141.61.84.245 \
-  --kvworker_port=31501 \
+  --kvworker_port=31502 \
   --ttl_seconds=5
 ```
 
 参数说明：
 
-| 参数                         | 类型     | 默认值                  | 说明                     |
-| -------------------------- | ------ | -------------------- | ---------------------- |
-| `--server_port`            | int32  | 8003                 | 服务监听端口                 |
-| `--kvworker_host`          | string | "141.61.84.245"      | 元戎 KVWorker 主机地址       |
-| `--kvworker_port`          | int32  | 31502                | 元戎 KVWorker 端口         |
-| `--etcd_address`           | string | "141.61.84.245:2379" | ETCD 地址                |
-| `--precalc_result_size_mb` | double | 8.5                  | 前置计算结果大小（MB）           |
-| `--ttl_seconds`            | int32  | 5                    | TTL 时间（秒）              |
-| `--user_feat_key_size_kb`  | int32  | 100                  | user\_feat\_key 大小（KB） |
-| `--enable_timing_stats`    | bool   | true                 | 是否启用详细时延统计             |
-| `--payload_size_kb`        | int32  | 100                  | payload 大小（KB）         |
+| 参数                          | 类型     | 默认值             | 说明                        |
+| --------------------------- | ------ | --------------- | ------------------------- |
+| `--server_port`             | int32  | 8003            | 服务监听端口                    |
+| `--kvworker_host`           | string | "141.61.84.245" | 元戎 KVWorker 主机地址          |
+| `--kvworker_port`           | int32  | 31502           | 元戎 KVWorker 端口            |
+| `--precalc_result_size_mb`  | double | 8.5             | 前置计算结果大小（MB）              |
+| `--ttl_seconds`             | int32  | 5               | TTL 时间（秒）                 |
+| `--payload_size_kb`         | int32  | 100             | payload 大小（KB）            |
+| `--global_thread_pool_size` | int32  | 128             | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 
 ### 使用测试客户端
 

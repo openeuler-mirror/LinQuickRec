@@ -28,10 +28,9 @@ using namespace datasystem;
 
 DEFINE_int32(server_port, 8005, "服务器监听端口");
 DEFINE_string(kvworker_host, "141.61.84.245", "KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31502, "KVWorker 端口 (Rank)");
-DEFINE_string(etcd_address, "141.61.84.245:2379", "ETCD 地址");
+DEFINE_int32(kvworker_port, 31502, "KVWorker 端口 (RankSubService)");
 DEFINE_int32(scoring_delay_ms, 100, "模拟打分耗时（毫秒）");
-DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
+
 
 namespace rank {
 
@@ -184,14 +183,6 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
               << " sku_count=" << sku_ids.size()
               << ", response_skus_id_count=" << response->skus_id_size()
               << ", response_skus_score_count=" << response->skus_score_size();
-
-    if (FLAGS_enable_timing_stats) {
-        LOG_INFO << "Server timing breakdown:"
-                  << " kv_read_cost=" << kv_read_cost_us / 1000.0 << " ms"
-                  << " scoring_cost=" << scoring_cost_us / 1000.0 << " ms"
-                  << " simulated_delay=" << FLAGS_scoring_delay_ms << " ms"
-                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
-    }
 
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;

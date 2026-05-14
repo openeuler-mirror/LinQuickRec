@@ -6,7 +6,7 @@ echo "Starting Precalc Service"
 echo "==========================================="
 
 cd /app/build
-./precalc_server \
+./bin/precalc_server \
     --server_port=${SERVER_PORT:-8003} \
     --kvworker_host=${KVWORKER_HOST:-141.61.84.245} \
     --kvworker_port=${KVWORKER_PORT:-31502} \
@@ -14,6 +14,7 @@ cd /app/build
     --ttl_seconds=${TTL_SECONDS:-5} \
     --precalc_result_size_mb=${PRECALC_RESULT_SIZE_MB:-8.5} \
     --payload_size_kb=${PAYLOAD_SIZE_KB:-100} \
+    --global_thread_pool_size=${GLOBAL_THREAD_POOL_SIZE:-0} \
     "$@" &
 SERVICE_PID=$!
 

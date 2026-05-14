@@ -63,7 +63,7 @@ if [ $? -eq 0 ]; then
     echo ""
     print_info "To run the server:"
     print_info "  cd ${BUILD_DIR}"
-    print_info "  ./bin/feature_server --server_port=8003"
+    print_info "  ./bin/feature_server --server_port=8001"
     echo ""
 else
     print_error "Build failed!"

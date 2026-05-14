@@ -24,13 +24,14 @@ done
 
 echo "Starting Recall Service..."
 cd /app/build
-./recall_server \
+./bin/recall_server \
     --server_port=${SERVER_PORT:-8002} \
     --vllm_base_url=${VLLM_BASE_URL:-http://127.0.0.1:8000} \
     --vllm_endpoint=${VLLM_ENDPOINT:-/v1/chat/completions} \
     --model_name=${MODEL_NAME:-/app/models/Qwen3-0.6B/} \
     --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-100000} \
     --sku_count=${SKU_COUNT:-100} \
+    --global_thread_pool_size=${GLOBAL_THREAD_POOL_SIZE:-0} \
     "$@" &
 RECALL_PID=$!
 
@@ -41,5 +42,5 @@ echo "Starting Discovery Client..."
     --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} &
 DISCOVERY_PID=$!
 
-echo "All services started, waiting for any process to exit..."
-wait -n $RECALL_PID $DISCOVERY_PID $VLLM_PID
+echo "All services started, waiting for recall/discovery to exit..."
+wait -n $RECALL_PID $DISCOVERY_PID

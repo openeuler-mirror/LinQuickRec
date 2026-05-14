@@ -128,34 +128,34 @@ kubectl get nodes -o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.
 
 ```bash
 # 构建镜像（在项目根目录执行）
-docker build -f deploy/docker/feature/Dockerfile -t lingquickrec/feature:latest .
-docker build -f deploy/docker/recall/Dockerfile -t lingquickrec/recall:latest .
-docker build -f deploy/docker/precalc/Dockerfile -t lingquickrec/precalc:latest .
-docker build -f deploy/docker/rank-master/Dockerfile -t lingquickrec/rank-master:latest .
-docker build -f deploy/docker/rank-sub/Dockerfile -t lingquickrec/rank-sub:latest .
-docker build -f deploy/docker/proxy/Dockerfile -t lingquickrec/proxy:latest .
+docker build -f deploy/docker/feature/Dockerfile -t linquickrec/feature:latest .
+docker build -f deploy/docker/recall/Dockerfile -t linquickrec/recall:latest .
+docker build -f deploy/docker/precalc/Dockerfile -t linquickrec/precalc:latest .
+docker build -f deploy/docker/rank-master/Dockerfile -t linquickrec/rank-master:latest .
+docker build -f deploy/docker/rank-sub/Dockerfile -t linquickrec/rank-sub:latest .
+docker build -f deploy/docker/proxy/Dockerfile -t linquickrec/proxy:latest .
 
 # 如果使用 minikube，直接加载到 minikube 的 Docker 中
-minikube image load lingquickrec/feature:latest
-minikube image load lingquickrec/recall:latest
-minikube image load lingquickrec/precalc:latest
-minikube image load lingquickrec/rank-master:latest
-minikube image load lingquickrec/rank-sub:latest
-minikube image load lingquickrec/proxy:latest
+minikube image load linquickrec/feature:latest
+minikube image load linquickrec/recall:latest
+minikube image load linquickrec/precalc:latest
+minikube image load linquickrec/rank-master:latest
+minikube image load linquickrec/rank-sub:latest
+minikube image load linquickrec/proxy:latest
 
 # 如果使用远程集群，推送到镜像仓库
-docker tag lingquickrec/recall:latest <registry>/lingquickrec/recall:latest
-docker push <registry>/lingquickrec/recall:latest
+docker tag linquickrec/recall:latest <registry>/linquickrec/recall:latest
+docker push <registry>/linquickrec/recall:latest
 # 然后修改 YAML 中的 image 为完整仓库地址
 ```
 
-> Discovery 服务镜像需单独构建：`docker build -f services/discovery/Dockerfile -t lingquickrec/discovery:latest .`
+> Discovery 服务镜像需单独构建：`docker build -f services/discovery/Dockerfile -t linquickrec/discovery:latest .`
 
 ## 集群结构
 
 ```
-namespace: lingquickrec
-├── ConfigMap: lingquickrec-config          # 共享配置
+namespace: linquickrec
+├── ConfigMap: linquickrec-config          # 共享配置
 ├── Deployment: discovery-server (1 Pod)    # 服务发现中心
 ├── Deployment: feature-service (1 Pod)     # 特征服务 (Mock)
 ├── Deployment: proxy-service (1 Pod)       # 网关服务
@@ -185,7 +185,7 @@ Proxy (8080)
 
 | 文件 | 资源 | 说明 |
 |------|------|------|
-| `00-namespace.yaml` | Namespace | 创建 `lingquickrec` 命名空间 |
+| `00-namespace.yaml` | Namespace | 创建 `linquickrec` 命名空间 |
 | `01-configmap.yaml` | ConfigMap | 共享环境变量（服务地址、KVWorker、超时、模型路径等） |
 | `09-discovery.yaml` | Deployment + Service | Discovery 服务发现中心，端口 8100 |
 | `09-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8003 |
@@ -222,56 +222,56 @@ kubectl apply -f 13-rank-sub.yaml
 
 ```bash
 # 查看所有资源
-kubectl get all -n lingquickrec
+kubectl get all -n linquickrec
 
 # 查看 Pod 状态
-kubectl get pods -n lingquickrec -o wide
+kubectl get pods -n linquickrec -o wide
 
 # 查看某个服务的日志
-kubectl logs -f deployment/discovery-server -n lingquickrec
-kubectl logs -f deployment/feature-service -n lingquickrec
-kubectl logs -f deployment/proxy-service -n lingquickrec
-kubectl logs -f deployment/recall-service -n lingquickrec
-kubectl logs -f deployment/rank-master-service -n lingquickrec
+kubectl logs -f deployment/discovery-server -n linquickrec
+kubectl logs -f deployment/feature-service -n linquickrec
+kubectl logs -f deployment/proxy-service -n linquickrec
+kubectl logs -f deployment/recall-service -n linquickrec
+kubectl logs -f deployment/rank-master-service -n linquickrec
 
 # 查看所有 RankSub Pod 的日志
-kubectl logs -f deployment/rank-sub-service -n lingquickrec --all-containers --max-log-requests=10
+kubectl logs -f deployment/rank-sub-service -n linquickrec --all-containers --max-log-requests=10
 
 # 查看事件（排查启动问题）
-kubectl get events -n lingquickrec --sort-by='.lastTimestamp'
+kubectl get events -n linquickrec --sort-by='.lastTimestamp'
 ```
 
 ### 扩缩容
 
 ```bash
 # 调整 RankSub 副本数
-kubectl scale deployment rank-sub-service --replicas=5 -n lingquickrec
+kubectl scale deployment rank-sub-service --replicas=5 -n linquickrec
 
 # 同时更新 ConfigMap 中的 SUB_WORKER_COUNT
-kubectl edit configmap lingquickrec-config -n lingquickrec
+kubectl edit configmap linquickrec-config -n linquickrec
 # 将 SUB_WORKER_COUNT 改为对应副本数
 ```
 
 > 扩缩容 RankSub 后，需要重启 RankMaster 使其读取新的 `SUB_WORKER_COUNT`：
-> `kubectl rollout restart deployment rank-master-service -n lingquickrec`
+> `kubectl rollout restart deployment rank-master-service -n linquickrec`
 
 ### 更新与回滚
 
 ```bash
 # 更新镜像（触发滚动更新）
-kubectl set image deployment/recall-service recall=lingquickrec/recall:v2 -n lingquickrec
+kubectl set image deployment/recall-service recall=linquickrec/recall:v2 -n linquickrec
 
 # 查看滚动更新状态
-kubectl rollout status deployment/recall-service -n lingquickrec
+kubectl rollout status deployment/recall-service -n linquickrec
 
 # 查看历史版本
-kubectl rollout history deployment/recall-service -n lingquickrec
+kubectl rollout history deployment/recall-service -n linquickrec
 
 # 回滚到上一版本
-kubectl rollout undo deployment/recall-service -n lingquickrec
+kubectl rollout undo deployment/recall-service -n linquickrec
 
 # 回滚到指定版本
-kubectl rollout undo deployment/recall-service --to-revision=2 -n lingquickrec
+kubectl rollout undo deployment/recall-service --to-revision=2 -n linquickrec
 ```
 
 ### 删除
@@ -318,6 +318,6 @@ kubectl delete -f 00-namespace.yaml
 - **FeatureService (Mock)**：当前为 Mock 实现，返回随机用户特征和 SKU 特征。替换为真实实现时，只需修改 `services/FeatureService/` 下的源码并重新构建镜像
 - **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
 - **RankSub 扩容**：修改副本数后需同步更新 ConfigMap 中的 `SUB_WORKER_COUNT` 并重启 RankMaster
-- **镜像版本**：当前使用 `lingquickrec/xxx:latest`，生产环境建议使用具体版本号
-- **日志存储**：各服务日志写入 `/var/log/lingquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
+- **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
+- **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
 - **启动顺序**：Discovery Server 应最先启动，其他服务依赖它进行注册和心跳
