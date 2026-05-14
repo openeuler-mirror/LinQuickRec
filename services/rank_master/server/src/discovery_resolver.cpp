@@ -3,37 +3,19 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
-DiscoveryResolver::DiscoveryResolver(const std::string& discovery_addr)
-    : addr_(discovery_addr) {
-    brpc::ChannelOptions opts;
-    opts.timeout_ms = 3000;
-    opts.max_retry = 2;
-    if (channel_.Init(discovery_addr.c_str(), &opts) != 0) {
-        LOG_ERROR << "Failed to init discovery channel to " << discovery_addr;
-    }
+DiscoveryResolver::DiscoveryResolver(const std::string& backend_type,
+                                     const std::string& address)
+    : addr_(address) {
+    provider_ = discovery::CreateDiscoveryProvider(backend_type, address);
 }
 
 std::vector<DiscoveryResolver::Instance>
 DiscoveryResolver::discover(const std::string& service_name) {
-    discovery::DiscoverRequest req;
-    req.set_service_name(service_name);
-
-    discovery::DiscoverResponse rsp;
-    brpc::Controller cntl;
-
-    discovery::DiscoveryService_Stub stub(&channel_);
-    stub.Discover(&cntl, &req, &rsp, nullptr);
-
-    if (cntl.Failed()) {
-        LOG_ERROR << "Discover(" << service_name << ") failed: " << cntl.ErrorText();
-        return {};
-    }
+    auto instances = provider_->Discover(service_name);
 
     std::vector<Instance> result;
-    for (const auto& inst : rsp.instances()) {
-        if (inst.status() == discovery::InstanceStatus::UP) {
-            result.push_back({inst.host(), inst.port(), inst.instance_id()});
-        }
+    for (const auto& inst : instances) {
+        result.push_back({inst.host(), inst.port(), inst.instance_id()});
     }
     return result;
 }

@@ -7,9 +7,8 @@
 #include <string>
 #include <vector>
 
-#include <brpc/channel.h>
-
 #include "discovery.pb.h"
+#include "discovery_provider.h"
 
 class DiscoveryResolver {
 public:
@@ -19,7 +18,8 @@ public:
         std::string instance_id;
     };
 
-    explicit DiscoveryResolver(const std::string& discovery_addr);
+    explicit DiscoveryResolver(const std::string& backend_type,
+                               const std::string& address);
 
     std::vector<Instance> discover(const std::string& service_name);
 
@@ -30,7 +30,7 @@ public:
 private:
     void refresh_unlocked(const std::string& service_name);
 
-    brpc::Channel channel_;
+    std::unique_ptr<discovery::IDiscoveryProvider> provider_;
     std::string addr_;
     std::mutex mutex_;
     std::map<std::string, std::vector<Instance>> cache_;

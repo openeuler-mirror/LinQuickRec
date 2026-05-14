@@ -24,8 +24,14 @@
 using namespace datasystem;
 
 DEFINE_int32(server_port, 8003, "服务器监听端口");
-DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31502, "元戎 KVWorker 端口 (PrecalcService)");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
+DEFINE_string(discovery_addr, "127.0.0.1:8100",
+    "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
+DEFINE_string(kv_worker_service, "kv_worker",
+    "KV Worker service name to discover");
 DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
 
@@ -39,6 +45,14 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG_INFO << "PrecalcServiceImpl initialized";
     LOG_INFO << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
     LOG_INFO << "TTL: " << FLAGS_ttl_seconds << " seconds";
+
+    std::string addr = (FLAGS_registry_backend == "etcd")
+        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+    discovery_provider_ = discovery::CreateDiscoveryProvider(
+        FLAGS_registry_backend, addr);
+    LOG_INFO << "KV Worker discovery: backend=" << FLAGS_registry_backend
+              << ", address=" << addr
+              << ", service=" << FLAGS_kv_worker_service;
 }
 
 void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controller,
@@ -103,9 +117,25 @@ common::error::Status PrecalcServiceImpl::validate_and_extract_key(
 common::error::Status PrecalcServiceImpl::write_to_kvworker(
     const std::string& user_feat_key, const std::string& precalc_result) {
 
+    auto instances = discovery_provider_->Discover(FLAGS_kv_worker_service);
+    if (instances.empty()) {
+        auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
+            "No kv_worker instances discovered for service: " + FLAGS_kv_worker_service);
+        LOG_ERROR << status.ToString();
+        return status;
+    }
+
+    static std::atomic<size_t> rr_idx{0};
+    size_t idx = rr_idx++ % instances.size();
+    const auto& inst = instances[idx];
+
     ConnectOptions connectOptions;
-    connectOptions.host = FLAGS_kvworker_host;
-    connectOptions.port = FLAGS_kvworker_port;
+    connectOptions.host = inst.host();
+    connectOptions.port = inst.port();
+
+    LOG_DEBUG << "Resolved kv_worker via discovery: "
+              << inst.host() << ":" << inst.port()
+              << " (instance " << idx << "/" << instances.size() << ")";
 
     KVClient kv_client(connectOptions);
 

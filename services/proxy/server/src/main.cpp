@@ -7,7 +7,11 @@
 
 #include "common/global_thread_pool.h"
 
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");
 DEFINE_string(recall_service_name, "recall_service", "Recall service name in discovery");
 DEFINE_string(precalc_service_name, "precalc_service", "Precalc service name in discovery");

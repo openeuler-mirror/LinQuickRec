@@ -24,14 +24,17 @@
 #include <datasystem/kv_client.h>
 
 #include "common/random_utils.h"
+#include "discovery_provider.h"
 #include "rank_master.pb.h"
 
 DEFINE_string(server, "127.0.0.1:8005", "服务器地址 (ip:port)");
 DEFINE_int32(timeout_ms, 30000, "超时时间（毫秒）");
 DEFINE_int32(sku_count, 1000, "模拟的商品数量（当 --skus 为空时使用）");
 DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
-DEFINE_string(kvworker_host, "141.61.84.245", "元戎 KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31502, "元戎 KVWorker 端口 (Rank)");
+DEFINE_string(registry_backend, "discovery_server", "Registry backend");
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379", "etcd endpoints");
+DEFINE_string(kv_worker_service, "kv_worker", "KV Worker service name");
 DEFINE_double(tensor_size_mb, 8.5, "tensor 大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒），默认 5 秒");
 DEFINE_string(user_feat_key, "", "自定义 user_feat_key（空值时随机生成 16 位数字）");
@@ -120,8 +123,25 @@ int main(int argc, char* argv[]) {
               << FLAGS_tensor_size_mb << " MB)" << std::endl;
 
     std::cout << "\nWriting to KVWorker..." << std::endl;
-    if (!write_to_kvworker(user_feat_key, tensor, FLAGS_kvworker_host,
-                          FLAGS_kvworker_port, FLAGS_ttl_seconds)) {
+
+    std::string kv_host;
+    int kv_port = 0;
+    {
+        std::string addr = (FLAGS_registry_backend == "etcd")
+            ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+        auto provider = discovery::CreateDiscoveryProvider(
+            FLAGS_registry_backend, addr);
+        auto instances = provider->Discover(FLAGS_kv_worker_service);
+        if (instances.empty()) {
+            std::cerr << "No kv_worker instances discovered" << std::endl;
+            return -1;
+        }
+        kv_host = instances[0].host();
+        kv_port = instances[0].port();
+        std::cout << "Resolved kv_worker: " << kv_host << ":" << kv_port << std::endl;
+    }
+    if (!write_to_kvworker(user_feat_key, tensor, kv_host,
+                          kv_port, FLAGS_ttl_seconds)) {
         std::cerr << "Failed to write to KVWorker" << std::endl;
         return -1;
     }
