@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <random>
-#include <sstream>
 #include <vector>
 
 #include <brpc/channel.h>
@@ -25,13 +24,11 @@
 #include "rank_sub.pb.h"
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
-DEFINE_int32(sub_worker_count, 10, "子图数量");
-DEFINE_string(sub_worker_addresses, "127.0.0.1:8006", "子图地址列表（逗号分隔）");
 DEFINE_string(discovery_addr, "",
-    "Discovery server address (empty = use --sub_worker_addresses)");
+    "Discovery server address (empty = use localhost fallback)");
 DEFINE_int32(top_k, 100, "返回前 K 个商品");
-DEFINE_bool(enable_timing_stats, true, "是否启用详细时延统计");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
+DEFINE_string(sub_worker_service_type, "rank_sub", "RankSub 在 Discovery 中注册的服务类型名");
 
 namespace rank {
 
@@ -46,62 +43,47 @@ RankMasterServiceImpl::RankMasterServiceImpl()
     : sub_worker_channels_() {
 
     LOG_INFO << "RankMasterServiceImpl initialized";
-    LOG_INFO << "Sub-worker count: " << FLAGS_sub_worker_count;
     LOG_INFO << "Top-K: " << FLAGS_top_k;
     LOG_INFO << "Discovery addr: " << FLAGS_discovery_addr;
+    LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
 
     std::vector<std::string> addresses;
 
-    // 尝试通过 Discovery 发现 RankSub 实例
+    // 通过 Discovery 发现 RankSub 实例
     if (!FLAGS_discovery_addr.empty()) {
         discovery_resolver_ = std::make_unique<DiscoveryResolver>(FLAGS_discovery_addr);
-        auto instances = discovery_resolver_->discover("rank_sub");
+        auto instances = discovery_resolver_->discover(FLAGS_sub_worker_service_type);
         for (const auto& inst : instances) {
             addresses.push_back(inst.host + ":" + std::to_string(inst.port));
         }
-        LOG_INFO << "Discovered " << instances.size() << " rank_sub instances via Discovery";
+        LOG_INFO << "Discovered " << instances.size() << " "
+                 << FLAGS_sub_worker_service_type << " instances via Discovery";
     }
 
-    // Fallback 到静态配置
-    if (addresses.empty()) {
-        LOG_INFO << "Using static sub_worker_addresses: " << FLAGS_sub_worker_addresses;
-        std::stringstream ss(FLAGS_sub_worker_addresses);
-        std::string addr;
-
-        while (std::getline(ss, addr, ',')) {
-            addr.erase(0, addr.find_first_not_of(" "));
-            addr.erase(addr.find_last_not_of(" ") + 1);
-            if (!addr.empty()) {
-                addresses.push_back(addr);
-            }
-        }
-    }
-
+    // Fallback 到 localhost（用于本地开发/测试）
     if (addresses.empty()) {
         LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-            "No sub-worker addresses provided").ToString();
-        addresses.push_back("127.0.0.1:8006");
+            "No sub-worker instances discovered for service type: "
+            + FLAGS_sub_worker_service_type).ToString();
+        addresses.push_back("127.0.0.1:8005");
     }
 
-    LOG_INFO << "Sub-worker addresses resolved: ";
-    for (const auto& addr : addresses) {
-        LOG_INFO << "  " << addr;
-    }
-
-    for (int i = 0; i < FLAGS_sub_worker_count; ++i) {
-        const std::string& worker_addr = addresses[i % addresses.size()];
+    LOG_INFO << "Sub-worker addresses resolved (" << addresses.size() << "):";
+    for (size_t i = 0; i < addresses.size(); ++i) {
+        LOG_INFO << "  [" << i << "] " << addresses[i];
 
         auto channel = std::make_unique<brpc::Channel>();
         brpc::ChannelOptions opts;
         opts.timeout_ms = FLAGS_sub_worker_timeout_ms;
         opts.connection_type = "pooled";
 
-        if (channel->Init(worker_addr.c_str(), &opts) == 0) {
+        if (channel->Init(addresses[i].c_str(), &opts) == 0) {
             sub_worker_channels_.push_back(std::move(channel));
-            LOG_INFO << "Initialized channel to sub-worker " << i << ": " << worker_addr;
+            LOG_INFO << "Initialized channel to sub-worker " << i << ": " << addresses[i];
         } else {
             LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-                "Failed to initialize channel to sub-worker " + std::to_string(i) + ": " + worker_addr).ToString();
+                "Failed to initialize channel to sub-worker " + std::to_string(i)
+                + ": " + addresses[i]).ToString();
             sub_worker_channels_.push_back(std::move(channel));
         }
     }
@@ -258,11 +240,12 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     std::map<uint64_t, double>& all_scores,
     const std::string& trace_id) {
 
-    auto distribution = distribute_skus_by_hash(all_sku_ids, FLAGS_sub_worker_count);
+    int worker_count = static_cast<int>(sub_worker_channels_.size());
+    auto distribution = distribute_skus_by_hash(all_sku_ids, worker_count);
 
     std::vector<std::future<std::pair<int, RankSubResponse>>> futures;
 
-    for (int i = 0; i < FLAGS_sub_worker_count; ++i) {
+    for (int i = 0; i < worker_count; ++i) {
         if (distribution[i].empty()) {
             continue;
         }
@@ -330,44 +313,25 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
         return status;
     }
 
-    int64_t parallel_call_start_us = butil::gettimeofday_us();
-
     std::map<uint64_t, double> all_scores;
     status = call_workers_and_aggregate(request, all_sku_ids, all_scores, request->trace_id());
     if (status.IsError()) {
         return status;
     }
 
-    int64_t parallel_call_end_us = butil::gettimeofday_us();
-    int64_t parallel_call_cost_us = parallel_call_end_us - parallel_call_start_us;
-
     LOG_INFO << "Collected scores for " << all_scores.size() << " SKUs";
-
-    int64_t select_topk_start_us = butil::gettimeofday_us();
 
     std::vector<uint64_t> candidates;
     select_top_k(all_scores, FLAGS_top_k, candidates);
-
-    int64_t select_topk_end_us = butil::gettimeofday_us();
-    int64_t select_topk_cost_us = select_topk_end_us - select_topk_start_us;
 
     for (uint64_t candidate : candidates) {
         response->add_candidates(candidate);
     }
 
-    int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
-
     LOG_INFO << "RankMaster processing completed:"
               << " input_skus=" << all_sku_ids.size()
               << " scored_skus=" << all_scores.size()
               << " output_candidates=" << response->candidates_size();
-
-    if (FLAGS_enable_timing_stats) {
-        LOG_INFO << "Server timing breakdown:"
-                  << " parallel_call_cost=" << parallel_call_cost_us / 1000.0 << " ms"
-                  << " select_topk_cost=" << select_topk_cost_us / 1000.0 << " ms"
-                  << " server_process_total=" << server_process_us / 1000.0 << " ms";
-    }
 
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;

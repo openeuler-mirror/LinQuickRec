@@ -23,12 +23,10 @@
 #include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
-DECLARE_int32(sub_worker_count);
-DECLARE_string(sub_worker_addresses);
 DECLARE_string(discovery_addr);
 DECLARE_int32(top_k);
-DECLARE_bool(enable_timing_stats);
 DECLARE_int32(sub_worker_timeout_ms);
+DECLARE_string(sub_worker_service_type);
 
 namespace rank {
 

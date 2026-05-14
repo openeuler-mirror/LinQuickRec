@@ -22,7 +22,7 @@ DEFINE_int32(feature_timeout_ms, 3000, "Feature ?????? (ms)");
 DEFINE_int32(recall_timeout_ms, 5000, "Recall ?????? (ms)");
 DEFINE_int32(precalc_timeout_ms, 5000, "Precalc ?????? (ms)");
 DEFINE_int32(rank_timeout_ms, 10000, "Rank ?????? (ms)");
-DEFINE_bool(enable_timing_stats, true, "???????????????");
+
 
 namespace {
 
@@ -295,16 +295,12 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
     const RecommendRequest* request,
     RecommendResponse* response) {
 
-    auto t0 = std::chrono::steady_clock::now();
-
     LOG_INFO << "Proxy request received: user_id=" << request->user_id()
                     << " trace_id=" << tls_trace_id;
 
     // Stage 1: ????????????
     feature::UserFeatureResponse user_feat;
     auto feat_st = call_feature_service(request, &user_feat);
-    auto t1 = std::chrono::steady_clock::now();
-
     if (!feat_st.IsOk()) {
         LOG_ERROR << "Stage 1 (Feature) failed: " << feat_st.ToString();
         return feat_st;
@@ -332,8 +328,6 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
 
     auto [recall_st, recall_rsp] = recall_future.get();
     auto [precalc_st, precalc_rsp] = precalc_future.get();
-    auto t2 = std::chrono::steady_clock::now();
-
     if (!recall_st.IsOk() || !precalc_st.IsOk()) {
         LOG_ERROR << "Stage 2 failed: recall="
                          << (recall_st.IsOk() ? "ok" : recall_st.ToString())
@@ -345,25 +339,9 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
 
     // Stage 3: ?????????
     auto rank_st = call_rank_service(recall_rsp, precalc_rsp, response);
-    auto t3 = std::chrono::steady_clock::now();
-
     if (!rank_st.IsOk()) {
         LOG_ERROR << "Stage 3 (Rank) failed: " << rank_st.ToString();
         return rank_st;
-    }
-
-    // ??????
-    if (FLAGS_enable_timing_stats) {
-        auto feat_us   = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-        auto stage2_us = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-        auto rank_us   = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-        auto total_us  = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t0).count();
-
-        LOG_INFO << "[Proxy Timing] "
-                   << " feature=" << feat_us / 1000.0 << "ms"
-                   << " recall+precalc=" << stage2_us / 1000.0 << "ms"
-                   << " rank=" << rank_us / 1000.0 << "ms"
-                   << " total=" << total_us / 1000.0 << "ms";
     }
 
     LOG_INFO << "Proxy request completed: user_id=" << request->user_id()

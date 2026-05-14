@@ -123,7 +123,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 | Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
 | RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub(8005) |
 | RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker(31502) |
-| Feature | 8001 | FeatureService | 待合入 | Redis(6379) |
+| Feature | 8001 | FeatureService | ✅ 已完成（模拟实现） | — |
 | KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
 | vLLM | — | — | 模型服务 | Qwen3-0.6B |
 
@@ -244,7 +244,7 @@ LinQuickRec-yh/
 ├── proto/                     # 所有服务的 proto 文件
 ├── services/
 │   ├── discovery/             # 服务发现中心
-│   ├── feature/               # 特征服务（待合入）
+│   ├── feature/               # 特征服务（模拟实现）
 │   ├── kv_worker/             # 元戎数据系统
 │   ├── precalc/               # 前置计算服务
 │   ├── proxy/                 # 网关服务
@@ -266,7 +266,8 @@ LinQuickRec-yh/
 - [x] Proxy 网关服务
 - [x] Discovery 服务发现中心
 - [x] API 接口文档
-- [ ] Feature 服务端和客户端
+- [x] Feature 服务端和客户端（模拟实现）
+- [ ] Feature 对接真实数据源（KuaiRand / Redis）
 - [ ] 集成 Redis 进行特征存储
 - [ ] 实现轻量级探针和数据采集
 - [ ] 构建监控可视化界面

@@ -32,7 +32,7 @@ DECLARE_int32(feature_timeout_ms);
 DECLARE_int32(recall_timeout_ms);
 DECLARE_int32(precalc_timeout_ms);
 DECLARE_int32(rank_timeout_ms);
-DECLARE_bool(enable_timing_stats);
+
 
 namespace proxy {
 

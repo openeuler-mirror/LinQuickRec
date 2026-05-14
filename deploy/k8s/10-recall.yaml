@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: recall-service
-  namespace: lingquickrec
+  namespace: linquickrec
   labels:
     app: recall-service
 spec:
@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: recall
-        image: lingquickrec/recall:latest
+        image: linquickrec/recall:latest
         ports:
         - containerPort: 8001
           name: rpc
@@ -26,7 +26,7 @@ spec:
           name: vllm
         envFrom:
         - configMapRef:
-            name: lingquickrec-config
+            name: linquickrec-config
         env:
         - name: SERVER_PORT
           value: "8001"
@@ -49,7 +49,7 @@ spec:
           periodSeconds: 15
         volumeMounts:
         - name: log
-          mountPath: /var/log/lingquickrec
+          mountPath: /var/log/linquickrec
       volumes:
       - name: log
         emptyDir: {}
@@ -58,7 +58,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: recall-service
-  namespace: lingquickrec
+  namespace: linquickrec
 spec:
   selector:
     app: recall-service

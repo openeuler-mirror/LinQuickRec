@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: feature-service
-  namespace: lingquickrec
+  namespace: linquickrec
   labels:
     app: feature-service
 spec:
@@ -18,13 +18,13 @@ spec:
     spec:
       containers:
       - name: feature
-        image: lingquickrec/feature:latest
+        image: linquickrec/feature:latest
         ports:
         - containerPort: 8003
           name: rpc
         envFrom:
         - configMapRef:
-            name: lingquickrec-config
+            name: linquickrec-config
         env:
         - name: SERVER_PORT
           value: "8003"
@@ -47,7 +47,7 @@ spec:
           periodSeconds: 15
         volumeMounts:
         - name: log
-          mountPath: /var/log/lingquickrec
+          mountPath: /var/log/linquickrec
       volumes:
       - name: log
         emptyDir: {}
@@ -56,7 +56,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: feature-service
-  namespace: lingquickrec
+  namespace: linquickrec
 spec:
   selector:
     app: feature-service
