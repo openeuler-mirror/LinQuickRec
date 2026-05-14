@@ -1,6 +1,5 @@
 #include "common/thread_pool.h"
 
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 namespace common {
@@ -59,9 +58,9 @@ void ThreadPool::worker_loop() {
         try {
             task();
         } catch (const std::exception& e) {
-            LOG(ERROR) << "ThreadPool worker caught unhandled exception: " << e.what();
+            LOG_ERROR << "ThreadPool worker caught unhandled exception: " << e.what();
         } catch (...) {
-            LOG(ERROR) << "ThreadPool worker caught unknown exception";
+            LOG_ERROR << "ThreadPool worker caught unknown exception";
         }
     }
 }

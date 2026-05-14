@@ -149,6 +149,12 @@ namespace rank_master_errors {
     constexpr uint32_t INTERNAL_ERROR             = MakeErrorCode(ModuleCode::RANK_MASTER, ErrorType::INTERNAL,      0x0006);
 }
 
+namespace feature_errors {
+    constexpr uint32_t EMPTY_USER_ID        = MakeErrorCode(ModuleCode::FEATURE, ErrorType::INVALID_INPUT,  0x0001);
+    constexpr uint32_t EMPTY_SKU_IDS        = MakeErrorCode(ModuleCode::FEATURE, ErrorType::INVALID_INPUT,  0x0002);
+    constexpr uint32_t INTERNAL_ERROR       = MakeErrorCode(ModuleCode::FEATURE, ErrorType::INTERNAL,      0x0003);
+}
+
 namespace rank_sub_errors {
     constexpr uint32_t EMPTY_USER_FEAT_KEY   = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::INVALID_INPUT,  0x0001);
     constexpr uint32_t EMPTY_SKUS_SUB        = MakeErrorCode(ModuleCode::RANK_SUB, ErrorType::INVALID_INPUT,  0x0002);

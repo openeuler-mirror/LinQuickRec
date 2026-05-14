@@ -117,17 +117,16 @@ service PrecalcService {
 **请求处理流程**：
 
 1. 提取 `trace_id` 并注入日志系统（分布式追踪）
-2. 通过全局线程池异步执行处理任务
-3. 验证 `user_feat` 非空
-4. 提取 `user_feat_key`：取 `user_feat` 的前 16 个字符
-5. 生成前置计算结果：`generate_precalc_result(FLAGS_precalc_result_size_mb)`
-6. 写入 KVWorker：
+2. 验证 `user_feat` 非空
+3. 提取 `user_feat_key`：取 `user_feat` 的前 16 个字符
+4. 生成前置计算结果：`generate_precalc_result(FLAGS_precalc_result_size_mb)`
+5. 写入 KVWorker：
    - `KVClient::Create(key, size, param, buffer)` 分配缓冲区
    - `memcpy(buffer, data, size)` 填充数据
    - `KVClient::Set(buffer)` 提交写入
-7. 生成 payload：`generate_random_string(FLAGS_payload_size_kb * 1024)`
-8. 返回 `PrecalcResponse`
-9. 若启用 `enable_timing_stats`，记录 `kvwrite_cost` 和 `server_process_total` 耗时
+6. 生成 payload：`generate_random_string(FLAGS_payload_size_kb * 1024)`
+7. 返回 `PrecalcResponse`
+8. 若启用 `enable_timing_stats`，记录 `kvwrite_cost` 和 `server_process_total` 耗时
 
 ### 6.2 KVWorker 写入流程
 
@@ -262,7 +261,6 @@ Upstream                  PrecalcService                KVWorker
 | **KVWorker Init 失败**   | 返回 `KVCLIENT_INIT_FAILED` 错误，记录 ERROR            |
 | **KVWorker Create 失败** | 返回 `KVCLIENT_CREATE_FAILED` 错误，记录 ERROR          |
 | **KVWorker Set 失败**    | 返回 `KVCLIENT_SET_FAILED` 错误，记录 ERROR             |
-| **线程池任务异常**            | 返回 `INTERNAL_ERROR` 错误，记录 ERROR                  |
 | **user\_feat 长度 < 16** | 取全部字符作为 key                                      |
 | **TTL 过期**             | 下游 RankSub 读取时返回 key not found                   |
 | **KVWorker 不可达**       | 所有请求失败，需检查网络或 KVWorker 状态                        |

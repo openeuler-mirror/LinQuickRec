@@ -19,8 +19,6 @@
 #include <datasystem/kv_client.h>
 
 #include "common/error.h"
-#include "common/global_thread_pool.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/sku_utils.h"
 
@@ -70,27 +68,10 @@ void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
         common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
     }
 
-    auto& pool = common::get_global_thread_pool();
-
-    auto future = pool.submit([this, request]() {
-        RankSubResponse local_response;
-        auto status = process_rank_request(request, &local_response);
-        return std::make_pair(status, local_response);
-    });
-
-    try {
-        auto result = future.get();
-        if (result.first.IsError()) {
-            response->set_error_code(static_cast<int32_t>(result.first.Code()));
-            response->set_error_message(result.first.ToString());
-        } else {
-            response->CopyFrom(result.second);
-        }
-    } catch (const std::exception& e) {
-        auto status = common::error::Status(rank_sub_errors::INTERNAL_ERROR,
-            "Thread pool task failed: " + std::string(e.what()));
-        LOG_ERROR << status.ToString();
-        cntl->SetFailed(status.ToString());
+    auto status = process_rank_request(request, response);
+    if (status.IsError()) {
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
     }
 }
 
@@ -161,7 +142,7 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     int64_t scoring_start_us = butil::gettimeofday_us();
 
-    for (uint64_t sku_id : sku_ids) {
+    for (uint32_t sku_id : sku_ids) {
         double score = simulate_score(sku_id, user_feat);
 
         response->add_skus_id(sku_id);

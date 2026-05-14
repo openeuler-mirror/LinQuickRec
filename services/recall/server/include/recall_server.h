@@ -16,7 +16,6 @@
 #include <rapidjson/writer.h>
 
 #include "common/error.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "recall.pb.h"
 #include "vllm_client.h"

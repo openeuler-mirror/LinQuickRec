@@ -86,7 +86,6 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 | `--sub_worker_service_type` | string | "rank_sub" | RankSub 在 Discovery 中注册的服务类型名 |
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
 | `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
-| `--global_thread_pool_size` | int32 | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
@@ -159,7 +158,6 @@ docker run -d --name rank-master \
 | `DISCOVERY_ADDR` | discovery-server:8100 | Discovery 服务地址 |
 | `SUB_WORKER_SERVICE_TYPE` | rank_sub | RankSub 在 Discovery 中注册的服务类型名 |
 | `TOP_K` | 100 | 返回前 K 个商品 |
-| `GLOBAL_THREAD_POOL_SIZE` | 0 | 全局线程池大小，0 表示自动计算 |
 
 ## 业务流程
 

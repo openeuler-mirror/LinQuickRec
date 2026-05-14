@@ -5,7 +5,6 @@
 #include <brpc/channel.h>
 #include <butil/endpoint.h>
 
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 namespace proxy {

@@ -5,7 +5,6 @@
 #include <butil/time.h>
 
 #include "common/error.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 namespace recall {
@@ -13,12 +12,8 @@ namespace recall {
 using namespace common::error;
 
 VllmClient::VllmClient(const std::string& base_url, const std::string& endpoint, int timeout_ms)
-    : base_url_(base_url), endpoint_(endpoint), timeout_ms_(timeout_ms) {}
+    : base_url_(base_url), endpoint_(endpoint), timeout_ms_(timeout_ms) {
 
-VllmResponse VllmClient::SendRequest(const std::string& json_body) {
-    VllmResponse result;
-
-    brpc::Channel channel;
     brpc::ChannelOptions channel_opts;
     channel_opts.timeout_ms = timeout_ms_;
     channel_opts.protocol = "http";
@@ -32,11 +27,16 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
     }
 
     std::string url = base_url_ + endpoint_;
-    if (channel.Init(url.c_str(), &channel_opts) != 0) {
-        result.status = common::error::Status(recall_errors::VLLM_CHANNEL_INIT_FAILED,
-            "Failed to initialize vLLM channel");
-        return result;
+    if (channel_.Init(url.c_str(), &channel_opts) != 0) {
+        LOG_ERROR << "Failed to initialize vLLM channel: " << url;
+    } else {
+        LOG_INFO << "vLLM channel initialized: " << url
+                 << " (timeout=" << timeout_ms_ << "ms)";
     }
+}
+
+VllmResponse VllmClient::SendRequest(const std::string& json_body) {
+    VllmResponse result;
 
     brpc::Controller cntl;
     cntl.http_request().uri() = endpoint_;
@@ -49,7 +49,7 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
 
     int64_t start_us = butil::gettimeofday_us();
 
-    channel.CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
+    channel_.CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
 
     int64_t end_us = butil::gettimeofday_us();
     double cost_ms = (end_us - start_us) / 1000.0;

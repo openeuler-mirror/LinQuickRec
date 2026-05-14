@@ -149,6 +149,7 @@ void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
                                   const RecommendRequest* request,
                                   RecommendResponse* response,
                                   google::protobuf::Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     (void)controller;
     tls_trace_id = generate_trace_id();
 
@@ -160,8 +161,6 @@ void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
         LOG_ERROR << "Request failed: trace_id=" << tls_trace_id
                          << " error=" << status.ToString();
     }
-
-    brpc::ClosureGuard done_guard(done);
 }
 
 common::error::Status ProxyServiceImpl::call_feature_service(
@@ -202,6 +201,7 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     recall::RecallRequest recall_req;
     recall_req.set_user_id(user_id);
     recall_req.set_other(user_feat.kr_feat_rsp().other());
+    recall_req.set_trace_id(tls_trace_id);
 
     for (const auto& log : user_feat.kr_feat_rsp().user_logs()) {
         auto* new_log = recall_req.add_user_logs();
@@ -239,6 +239,7 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     precalc_req.set_user_feat(user_feat.kr_feat_rsp().other().empty()
                               ? "user_feat_default"
                               : user_feat.kr_feat_rsp().other());
+    precalc_req.set_trace_id(tls_trace_id);
 
     brpc::Controller cntl;
     cntl.set_timeout_ms(FLAGS_precalc_timeout_ms);
@@ -267,6 +268,7 @@ common::error::Status ProxyServiceImpl::call_rank_service(
 
     rank::RankMasterRequest rank_req;
     rank_req.set_user_feat_key(precalc_rsp.user_feat_key());
+    rank_req.set_trace_id(tls_trace_id);
 
     std::ostringstream skus_oss;
     for (int i = 0; i < recall_rsp.sku_ids_size(); ++i) {

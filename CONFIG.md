@@ -113,6 +113,15 @@
 
 ## Feature
 
+### 业务参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--server_port` | int32 | 8001 | 允许调整 | 监听端口 |
+| `--user_log_count` | int32 | 10 | 允许调整 | 每次响应的用户日志数量 |
+| `--user_log_vec_size` | int32 | 30 | 允许调整 | 每条用户日志向量大小 |
+| `--sku_feat_length` | int32 | 20 | 允许调整 | SKU 特征字符串长度 |
+
 ### Server 端参数
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
@@ -123,6 +132,16 @@
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
 ## Recall
+
+### 业务参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--server_port` | int32 | 8002 | 允许调整 | 监听端口 |
+| `--vllm_base_url` | string | "http://127.0.0.1:8000" | 允许调整 | vLLM 服务基础 URL |
+| `--vllm_endpoint` | string | "/v1/chat/completions" | 允许调整 | vLLM 聊天接口端点 |
+| `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 允许调整 | 模型名称/路径 |
+| `--sku_count` | int32 | 100 | 允许调整 | 返回的 SKU ID 数量 |
 
 ### Server 端参数
 
@@ -145,6 +164,18 @@
 
 ## Precalc
 
+### 业务参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--server_port` | int32 | 8003 | 允许调整 | 监听端口 |
+| `--kvworker_host` | string | "141.61.84.245" | 必须指定 | 元戎 KVWorker 主机地址 |
+| `--kvworker_port` | int32 | 31502 | 必须指定 | 元戎 KVWorker 端口 |
+| `--etcd_address` | string | "141.61.84.245:2379" | 必须指定 | etcd 集群地址（SDK 内定义） |
+| `--precalc_result_size_mb` | double | 8.5 | 允许调整 | 前置计算结果大小 (MB) |
+| `--ttl_seconds` | int32 | 5 | 允许调整 | KV 缓存 TTL 时间（秒） |
+| `--payload_size_kb` | int32 | 100 | 允许调整 | Payload 大小 (KB) |
+
 ### Server 端参数
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
@@ -155,6 +186,16 @@
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
 ## RankMaster
+
+### 业务参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--server_port` | int32 | 8004 | 允许调整 | 监听端口 |
+| `--discovery_addr` | string | "" | 必须指定 | Discovery 地址（取自全局 `DISCOVERY_ADDR`） |
+| `--top_k` | int32 | 100 | 允许调整 | 返回前 K 个商品 |
+| `--sub_worker_service_type` | string | "rank_sub" | 允许调整 | RankSub 在 Discovery 中的注册服务类型名 |
+| `--sub_worker_parallelism` | int32 | 4 | 允许调整 | 并发分桶数 |
 
 ### Server 端参数
 
@@ -174,9 +215,18 @@
 | `--sub_worker_max_retry` | int32 | 3 | 允许调整 | 到 RankSub 的重试次数 |
 | `--sub_worker_connect_timeout_ms` | int32 | -1 | 允许调整 | TCP 建连超时(ms)，-1=禁用 |
 | `--sub_worker_backup_request_ms` | int32 | -1 | 允许调整 | Backup request 延迟阈值(ms)，-1=禁用 |
-| `--sub_worker_parallelism` | int32 | 4 | 允许调整 | 并发分桶数（每个桶单独发一次 RankSub 请求，由 BRPC LB 分发） |
 
 ## RankSub
+
+### 业务参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
+| `--kvworker_host` | string | "141.61.84.245" | 必须指定 | KVWorker 主机地址 |
+| `--kvworker_port` | int32 | 31502 | 必须指定 | KVWorker 端口 |
+| `--etcd_address` | string | "141.61.84.245:2379" | 必须指定 | etcd 集群地址（SDK 内定义） |
+| `--scoring_delay_ms` | int32 | 100 | 允许调整 | 模拟打分耗时 (ms) |
 
 ### Server 端参数
 
@@ -186,3 +236,30 @@
 | `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
+
+## KV Worker (Datasystem)
+
+KV Worker 通过 `docker run` 独立启动（不在 docker-compose.yml 中），以下参数通过环境变量传入。启动脚本 `services/kv_worker/start_datasystem.sh` 内部调用 `dscli start --worker_args` 启动 Datasystem Worker。
+
+### 环境变量
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `worker_address` | string | -- | 必须指定 | Worker 监听地址 (IP:port)，不能使用 127.0.0.1 |
+| `etcd_address` | string | -- | 必须指定 | Etcd 集群地址 (IP:port) |
+| `enable_urma` | int | -- | 必须指定 | 是否启用 URMA (0/1) |
+| `cpu_affinity` | string | "0-64" | 允许调整 | CPU 核绑定范围 |
+
+### dscli 启动参数
+
+| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
+|------|------|--------|---------|------|
+| `--shared_memory_size_mb` | int | 2048 | 不建议修改 | 共享内存大小 (MB) |
+| `--arena_per_tenant` | int | 1 | 不建议修改 | 每 tenant 的 arena 数 |
+| `--skip_authenticate` | int | 1 | 不建议修改 | 跳过认证 |
+| `--urma_mode` | string | "UB" | 不建议修改 | URMA 模式 |
+| `--minloglevel` | int | 1 | 不建议修改 | 最小日志级别 |
+| `--oc_thread_num` | int | 64 | 不建议修改 | OC 线程数 |
+| `--oc_shm_transfer_threshold_kb` | int | 0 | 不建议修改 | 共享内存传输阈值 (KB) |
+| `--zmq_server_io_context` | int | 16 | 不建议修改 | ZMQ 服务端 IO 上下文数 |
+| `--zmq_client_io_context` | int | 16 | 不建议修改 | ZMQ 客户端 IO 上下文数 |

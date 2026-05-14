@@ -15,7 +15,7 @@
 - **零静态配置**：下游服务地址通过 Discovery 动态获取，无需配置静态 IP
 - **服务名驱动**：通过服务名（如 `feature_service`）而非地址进行服务调用
 - **容错优先**：单实例失败自动重试其他实例，连续失败触发熔断保护
-- **与现有模式一致**：日志风格、错误码体系、线程池使用与项目其他服务保持一致
+- **与现有模式一致**：日志风格、错误码体系与项目其他服务保持一致
 
 ## 2. 系统架构
 
@@ -26,10 +26,10 @@
 │                           Proxy 服务进程                                   │
 │                                                                          │
 │  ┌──────────────────────┐    ┌────────────────────────────────────┐      │
-│  │   BRPC HTTP Server   │    │        全局线程池                    │      │
-│  │   (0.0.0.0:8080)     │    │  (common::get_global_thread_pool)  │      │
+│  │   BRPC HTTP Server   │    │                                    │      │
+│  │   (0.0.0.0:8080)     │    │                                    │      │
 │  │                      │    │                                    │      │
-│  │  POST /Proxy/Recommend──┼──▶ submit(process_recommend_request) │      │
+│  │  POST /Proxy/Recommend──┼──▶ process_recommend_request        │      │
 │  └──────────────────────┘    └──────────┬─────────────────────────┘      │
 │                                         │                                │
 │  ┌──────────────────────────────────────▼───────────────────────────────┐│
@@ -122,12 +122,6 @@ int main(int argc, char* argv[]) {
     // 初始化日志系统
     common::logger::AddConsoleSink();
     common::logger::SetTraceIdGetter([]() { return proxy::get_current_trace_id(); });
-
-    // 自动计算线程池大小
-    int cpu_cores = std::thread::hardware_concurrency();
-    if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
-        FLAGS_global_thread_pool_size = std::min(128, std::max(4, cpu_cores * 2));
-    }
 
     // 创建服务实例（内部初始化 ServiceDiscovery）
     proxy::ProxyServiceImpl service_impl;
@@ -383,20 +377,18 @@ Status ProxyServiceImpl::call_feature_service(
 
 ### 3.6 Stage 2: 并行召回 & 预计算
 
-**调用方式**：使用全局线程池 `pool.submit()` 发起两个并发任务，使用 `future.get()` 同步等待。
+**调用方式**：使用 `std::async(std::launch::async, ...)` 并行调用下游服务，使用 `future.get()` 同步等待。
 
 ```cpp
 // 并行发起
-auto& pool = common::get_global_thread_pool();
-
-auto recall_future = pool.submit([this, user_id, &user_feat]() {
+auto recall_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
     tls_trace_id = current_trace_id;  // 传递 trace_id 到子线程
     recall::RecallResponse rsp;
     auto st = call_recall_service(user_id, user_feat, &rsp);
     return std::make_pair(st, std::move(rsp));
 });
 
-auto precalc_future = pool.submit([this, user_id, &user_feat]() {
+auto precalc_future = std::async(std::launch::async, [this, user_id, &user_feat]() {
     tls_trace_id = current_trace_id;
     precalc::PrecalcResponse rsp;
     auto st = call_precalc_service(user_id, user_feat, &rsp);
@@ -498,34 +490,34 @@ std::string generate_trace_id() {
 **传递方式**：
 - 使用 thread-local 变量 `tls_trace_id` 存储当前请求的 trace_id
 - 通过 `cntl.set_log_id()` 传递到下游 RPC
-- 线程池任务通过 lambda 捕获传递 trace_id
+- 异步任务通过 lambda 捕获传递 trace_id
 - 日志系统通过 `SetTraceIdGetter()` 回调获取 trace_id
 
 ### 3.10 并发模型
 
 ```
-BRPC I/O 程
+BRPC I/O 线程
     │
-    │  Recommend() 被调用
+    │  Recommend() 被调用（bthread）
     │
     ▼
-common::get_global_thread_pool().submit(process_recommend_request)
+process_recommend_request()
     │
-    │  线程池线程 T1 执行 process_recommend_request()
+    │  bthread 中直接执行
     │
-    ├── call_feature_service()         ← 同步阻塞 (T1)
+    ├── call_feature_service()         ← 同步阻塞
     │   └── call_with_retry() → Discovery.GetInstance → Channel.Init → RPC
     │
-    ├── pool.submit(call_recall)       ← 新线程 T2
-    ├── pool.submit(call_precalc)      ← 新线程 T3
-    │   ├── T1 等待 T2、T3 完成
+    ├── std::async(call_recall)        ← 异步并行
+    ├── std::async(call_precalc)       ← 异步并行
+    │   ├── 等待两个 future 完成
     │
-    └── call_rank_service()            ← 同步阻塞 (T1)
+    └── call_rank_service()            ← 同步阻塞
         └── call_with_retry() → Discovery.GetInstance → Channel.Init → RPC
 ```
 
 **线程安全说明**：
-- 每个请求在独立的线程池线程中处理，请求间天然隔离
+- 每个请求在独立的 bthread 中处理，请求间天然隔离
 - `ServiceDiscovery` 使用 mutex 保护实例缓存和状态
 - `std::async` 任务通过 lambda 捕获传递 trace_id
 - Channel 每次调用动态创建，不复用
@@ -583,7 +575,6 @@ if (FLAGS_enable_timing_stats) {
 | **其他** | | | |
 | `--server_port` | int32 | 8080 | Proxy HTTP 服务监听端口 |
 | `--enable_timing_stats` | bool | true | 是否打印阶段时延统计 |
-| `--global_thread_pool_size` | int32 | 128 (auto) | 全局线程池大小，默认根据 CPU 核数自动计算 |
 
 ## 5. API 契约
 

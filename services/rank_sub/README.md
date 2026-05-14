@@ -84,7 +84,6 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 | `--kvworker_host`           | string | "141.61.84.245" | KVWorker 主机地址             |
 | `--kvworker_port`           | int32  | 31502           | KVWorker 端口               |
 | `--scoring_delay_ms`        | int32  | 100             | 模拟打分耗时（毫秒）                |
-| `--global_thread_pool_size` | int32  | 128             | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
