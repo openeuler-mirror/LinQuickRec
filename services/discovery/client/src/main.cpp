@@ -6,8 +6,6 @@
 #include <string>
 #include <thread>
 
-#include <brpc/channel.h>
-#include <brpc/controller.h>
 #include <gflags/gflags.h>
 
 #ifdef _WIN32
@@ -22,14 +20,18 @@
 #endif
 
 #include "common/logger.h"
-#include "discovery.pb.h"
+#include "registry_backend.h"
 
 DEFINE_string(service_type, "",
     "Service type in snake_case (e.g. proxy, feature_service)");
 DEFINE_int32(service_port, 0,
     "Main service listening port");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
 DEFINE_string(discovery_addr, "127.0.0.1:8100",
     "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_string(host, "auto",
     "Container IP (auto = auto-detect)");
 DEFINE_int32(heartbeat_interval, 5,
@@ -140,25 +142,21 @@ int main(int argc, char* argv[]) {
 
     std::string host = detect_host();
 
+    std::string backend_addr = (FLAGS_registry_backend == "etcd")
+        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+
     LOG_INFO << "Discovery Client starting";
+    LOG_INFO << "  backend: " << FLAGS_registry_backend;
+    LOG_INFO << "  address: " << backend_addr;
     LOG_INFO << "  service_type: " << FLAGS_service_type;
     LOG_INFO << "  service_port: " << FLAGS_service_port;
     LOG_INFO << "  host: " << host;
-    LOG_INFO << "  discovery_addr: " << FLAGS_discovery_addr;
     LOG_INFO << "  heartbeat_interval: " << FLAGS_heartbeat_interval << "s";
     LOG_INFO << "  fail_threshold: " << FLAGS_fail_threshold;
     LOG_INFO << "  startup_timeout: " << FLAGS_startup_timeout << "s";
 
-    brpc::Channel channel;
-    brpc::ChannelOptions channel_opts;
-    channel_opts.timeout_ms = 5000;
-    channel_opts.max_retry = 2;
-    if (channel.Init(FLAGS_discovery_addr.c_str(), &channel_opts) != 0) {
-        LOG_ERROR << "Failed to connect to discovery server at "
-                   << FLAGS_discovery_addr;
-        return 1;
-    }
-    discovery::DiscoveryService_Stub stub(&channel);
+    auto backend = discovery::CreateRegistryBackend(
+        FLAGS_registry_backend, backend_addr);
 
     int waited = 0;
     while (waited < FLAGS_startup_timeout) {
@@ -173,8 +171,8 @@ int main(int argc, char* argv[]) {
     }
     if (waited >= FLAGS_startup_timeout) {
         LOG_WARN << "Main service port " << FLAGS_service_port
-                     << " not ready after " << FLAGS_startup_timeout
-                     << "s, proceeding anyway";
+                      << " not ready after " << FLAGS_startup_timeout
+                      << "s, proceeding anyway";
     }
 
     int fail_count = 0;
@@ -187,39 +185,24 @@ int main(int argc, char* argv[]) {
             fail_count = 0;
 
             if (!g_registered) {
-                discovery::RegisterRequest req;
-                discovery::RegisterResponse rsp;
-                brpc::Controller cntl;
+                auto result = backend->Register(
+                    FLAGS_service_type, host, FLAGS_service_port,
+                    FLAGS_heartbeat_interval);
 
-                req.mutable_instance()->set_service_name(FLAGS_service_type);
-                req.mutable_instance()->set_host(host);
-                req.mutable_instance()->set_port(FLAGS_service_port);
-                req.set_heartbeat_interval_sec(FLAGS_heartbeat_interval);
-
-                stub.Register(&cntl, &req, &rsp, nullptr);
-                if (cntl.Failed()) {
-                    LOG_ERROR << "Register failed: " << cntl.ErrorText();
-                } else if (rsp.success()) {
-                    g_instance_id = rsp.instance_id();
+                if (result.success) {
+                    g_instance_id = result.instance_id;
                     g_registered = true;
                     LOG_INFO << "Registered as " << g_instance_id;
                 }
             } else {
-                discovery::HeartbeatRequest req;
-                discovery::HeartbeatResponse rsp;
-                brpc::Controller cntl;
+                auto result = backend->Heartbeat(
+                    FLAGS_service_type, g_instance_id);
 
-                req.set_service_name(FLAGS_service_type);
-                req.set_instance_id(g_instance_id);
-
-                stub.Heartbeat(&cntl, &req, &rsp, nullptr);
-                if (cntl.Failed()) {
-                    LOG_ERROR << "Heartbeat failed: " << cntl.ErrorText();
-                } else if (rsp.needs_reregister()) {
+                if (result.needs_reregister) {
                     LOG_WARN << "Server lost state, re-registering";
                     g_registered = false;
-                } else {
-                    LOG_DEBUG << "Heartbeat OK";
+                } else if (!result.success) {
+                    LOG_WARN << "Heartbeat had issues";
                 }
             }
         } else {
@@ -228,20 +211,9 @@ int main(int argc, char* argv[]) {
                          << "/" << FLAGS_fail_threshold << ")";
 
             if (g_registered && fail_count >= FLAGS_fail_threshold) {
-                discovery::DeregisterRequest req;
-                discovery::DeregisterResponse rsp;
-                brpc::Controller cntl;
-
-                req.set_service_name(FLAGS_service_type);
-                req.set_instance_id(g_instance_id);
-
-                stub.Deregister(&cntl, &req, &rsp, nullptr);
-                if (cntl.Failed()) {
-                    LOG_ERROR << "Deregister failed: " << cntl.ErrorText();
-                } else {
-                    LOG_INFO << "Deregistered due to health check failure";
-                    g_registered = false;
-                }
+                backend->Deregister(FLAGS_service_type, g_instance_id);
+                LOG_INFO << "Deregistered due to health check failure";
+                g_registered = false;
             }
         }
 
@@ -252,19 +224,10 @@ int main(int argc, char* argv[]) {
 
     if (g_registered) {
         LOG_INFO << "Shutting down, deregistering...";
-        discovery::DeregisterRequest req;
-        discovery::DeregisterResponse rsp;
-        brpc::Controller cntl;
-
-        req.set_service_name(FLAGS_service_type);
-        req.set_instance_id(g_instance_id);
-
-        stub.Deregister(&cntl, &req, &rsp, nullptr);
-        if (cntl.Failed()) {
-            LOG_ERROR << "Deregister on shutdown failed: "
-                       << cntl.ErrorText();
-        } else {
+        if (backend->Deregister(FLAGS_service_type, g_instance_id)) {
             LOG_INFO << "Deregistered successfully on shutdown";
+        } else {
+            LOG_ERROR << "Deregister on shutdown failed";
         }
     }
 

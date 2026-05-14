@@ -58,11 +58,15 @@ namespace proxy {
 ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO << "ProxyServiceImpl initializing...";
 
+    std::string addr = (FLAGS_registry_backend == "etcd")
+        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+
     discovery_ = std::make_unique<ServiceDiscovery>(
-        FLAGS_discovery_addr, FLAGS_discovery_refresh_interval_ms);
+        FLAGS_registry_backend, addr, FLAGS_discovery_refresh_interval_ms);
 
     LOG_INFO << "ProxyServiceImpl initialized";
-    LOG_INFO << "  Discovery server: " << FLAGS_discovery_addr;
+    LOG_INFO << "  Backend: " << FLAGS_registry_backend;
+    LOG_INFO << "  Address: " << addr;
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {

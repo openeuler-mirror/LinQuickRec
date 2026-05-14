@@ -100,6 +100,20 @@ add_custom_command(
     DEPENDS ${PROTO_DIR}/precalc.proto
 )
 
+# 生成 discovery protobuf 文件（用于动态发现 kv_worker）
+add_custom_command(
+    OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/discovery.pb.h
+    COMMAND protobuf::protoc
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto
+)
+
+# Discovery Client Library
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client
+                     ${CMAKE_BINARY_DIR}/discovery_client_lib_precalc)
+endif()
+
 # ============================================================================
 # 编译 Server
 # ============================================================================
@@ -107,6 +121,7 @@ add_executable(precalc_server
     server/src/precalc_server.cpp
     server/src/main.cpp
     ${PROTO_OUT_DIR}/precalc.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(precalc_server PRIVATE
@@ -118,9 +133,11 @@ target_include_directories(precalc_server PRIVATE
     ${YR_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 
 target_link_libraries(precalc_server PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb

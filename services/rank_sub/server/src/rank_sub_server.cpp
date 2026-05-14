@@ -27,8 +27,14 @@
 using namespace datasystem;
 
 DEFINE_int32(server_port, 8005, "服务器监听端口");
-DEFINE_string(kvworker_host, "141.61.84.245", "KVWorker 主机地址");
-DEFINE_int32(kvworker_port, 31502, "KVWorker 端口 (RankSubService)");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
+DEFINE_string(discovery_addr, "127.0.0.1:8100",
+    "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
+DEFINE_string(kv_worker_service, "kv_worker",
+    "KV Worker service name to discover");
 DEFINE_int32(scoring_delay_ms, 100, "模拟打分耗时（毫秒）");
 
 
@@ -51,9 +57,15 @@ double simulate_score(uint64_t sku_id, const std::string& user_feat) {
 }
 
 RankSubServiceImpl::RankSubServiceImpl() {
+    std::string addr = (FLAGS_registry_backend == "etcd")
+        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+    discovery_provider_ = discovery::CreateDiscoveryProvider(
+        FLAGS_registry_backend, addr);
+
     LOG_INFO << "RankSubServiceImpl initialized";
-    LOG_INFO << "KVWorker address: " << FLAGS_kvworker_host
-              << ":" << FLAGS_kvworker_port;
+    LOG_INFO << "KV Worker discovery: backend=" << FLAGS_registry_backend
+              << ", address=" << addr
+              << ", service=" << FLAGS_kv_worker_service;
     LOG_INFO << "Scoring delay: " << FLAGS_scoring_delay_ms << " ms";
 }
 
@@ -116,8 +128,27 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     }
 
     ConnectOptions connectOptions;
-    connectOptions.host = FLAGS_kvworker_host;
-    connectOptions.port = FLAGS_kvworker_port;
+
+    {
+        auto instances = discovery_provider_->Discover(FLAGS_kv_worker_service);
+        if (instances.empty()) {
+            auto status = common::error::Status(rank_sub_errors::KVCLIENT_INIT_FAILED,
+                "No kv_worker instances discovered for service: " + FLAGS_kv_worker_service);
+            LOG_ERROR << status.ToString();
+            return status;
+        }
+
+        static std::atomic<size_t> rr_idx{0};
+        size_t idx = rr_idx++ % instances.size();
+        const auto& inst = instances[idx];
+
+        connectOptions.host = inst.host();
+        connectOptions.port = inst.port();
+
+        LOG_DEBUG << "Resolved kv_worker via discovery: "
+                  << inst.host() << ":" << inst.port()
+                  << " (instance " << idx << "/" << instances.size() << ")";
+    }
 
     KVClient kv_client(connectOptions);
 

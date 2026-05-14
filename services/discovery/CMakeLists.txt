@@ -74,6 +74,8 @@ set_target_properties(discovery_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
+add_subdirectory(client)
+
 add_executable(discovery_client
     client/src/main.cpp
     ${PROTO_SRC}
@@ -82,9 +84,11 @@ add_executable(discovery_client
 target_include_directories(discovery_client PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/client/include
 )
 
 target_link_libraries(discovery_client PRIVATE
+    discovery_client_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}

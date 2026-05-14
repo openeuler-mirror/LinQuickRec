@@ -24,8 +24,12 @@
 #include "rank_sub.pb.h"
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
 DEFINE_string(discovery_addr, "",
     "Discovery server address (empty = use localhost fallback)");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_int32(top_k, 100, "返回前 K 个商品");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
 DEFINE_string(sub_worker_service_type, "rank_sub", "RankSub 在 Discovery 中注册的服务类型名");
@@ -50,8 +54,11 @@ RankMasterServiceImpl::RankMasterServiceImpl()
     std::vector<std::string> addresses;
 
     // 通过 Discovery 发现 RankSub 实例
-    if (!FLAGS_discovery_addr.empty()) {
-        discovery_resolver_ = std::make_unique<DiscoveryResolver>(FLAGS_discovery_addr);
+    if (!FLAGS_discovery_addr.empty() || FLAGS_registry_backend == "etcd") {
+        std::string addr = (FLAGS_registry_backend == "etcd")
+            ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+        discovery_resolver_ = std::make_unique<DiscoveryResolver>(
+            FLAGS_registry_backend, addr);
         auto instances = discovery_resolver_->discover(FLAGS_sub_worker_service_type);
         for (const auto& inst : instances) {
             addresses.push_back(inst.host + ":" + std::to_string(inst.port));

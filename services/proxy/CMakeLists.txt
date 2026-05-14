@@ -77,7 +77,16 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${PROTO_DIR}
     ${COMMON_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
+
+# ============================================================================
+# Discovery Client Library
+# ============================================================================
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client
+                     ${CMAKE_BINARY_DIR}/discovery_client_lib)
+endif()
 
 # ============================================================================
 # 编译 Server
@@ -94,6 +103,7 @@ target_include_directories(proxy_server PRIVATE
 )
 
 target_link_libraries(proxy_server PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}
@@ -140,6 +150,7 @@ target_include_directories(proxy_integration_test PRIVATE
 )
 
 target_link_libraries(proxy_integration_test PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     ${Protobuf_LIBRARIES}

@@ -9,13 +9,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include <brpc/channel.h>
-
 #include "discovery.pb.h"
+#include "discovery_provider.h"
 
 class ServiceDiscovery {
 public:
-    ServiceDiscovery(const std::string& discovery_addr, int refresh_interval_ms);
+    ServiceDiscovery(const std::string& backend_type,
+                     const std::string& address,
+                     int refresh_interval_ms);
     ~ServiceDiscovery();
 
     bool GetInstance(const std::string& service_name,
@@ -39,7 +40,7 @@ private:
         }
     };
 
-    std::unique_ptr<discovery::DiscoveryService_Stub> stub_;
+    std::unique_ptr<discovery::IDiscoveryProvider> provider_;
 
     mutable std::mutex mutex_;
     std::unordered_map<std::string, std::vector<discovery::ServiceInstance>> cache_;

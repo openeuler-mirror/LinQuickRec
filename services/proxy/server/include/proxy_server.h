@@ -21,7 +21,9 @@
 #include "service_discovery.h"
 
 DECLARE_int32(server_port);
+DECLARE_string(registry_backend);
 DECLARE_string(discovery_addr);
+DECLARE_string(etcd_endpoints);
 DECLARE_string(feature_service_name);
 DECLARE_string(recall_service_name);
 DECLARE_string(precalc_service_name);

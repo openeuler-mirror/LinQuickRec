@@ -15,25 +15,14 @@ DECLARE_string(rank_service_name);
 static constexpr int COOLDOWN_SECONDS = 10;
 static constexpr int MAX_CONSECUTIVE_FAILURES = 3;
 
-ServiceDiscovery::ServiceDiscovery(const std::string& discovery_addr,
+ServiceDiscovery::ServiceDiscovery(const std::string& backend_type,
+                                   const std::string& address,
                                    int refresh_interval_ms)
     : refresh_interval_ms_(refresh_interval_ms) {
 
-    brpc::Channel* ch = new brpc::Channel();
-    brpc::ChannelOptions opts;
-    opts.timeout_ms = 2000;
-    opts.connection_type = "pooled";
-    opts.max_retry = 1;
-
-    if (ch->Init(discovery_addr.c_str(), &opts) != 0) {
-        LOG_ERROR << "Failed to connect to discovery server at "
-                         << discovery_addr;
-        delete ch;
-        return;
-    }
-
-    stub_ = std::make_unique<discovery::DiscoveryService_Stub>(ch);
-    LOG_INFO << "ServiceDiscovery connected to " << discovery_addr;
+    provider_ = discovery::CreateDiscoveryProvider(backend_type, address);
+    LOG_INFO << "ServiceDiscovery connected to " << address
+              << " (backend: " << backend_type << ")";
 
     refresh_thread_ = std::thread(&ServiceDiscovery::refresh_loop, this);
 }
@@ -56,7 +45,7 @@ void ServiceDiscovery::refresh_loop() {
 }
 
 void ServiceDiscovery::refresh_all() {
-    if (!stub_) return;
+    if (!provider_) return;
 
     std::vector<std::string> known_services = {
         FLAGS_feature_service_name,
@@ -66,28 +55,14 @@ void ServiceDiscovery::refresh_all() {
     };
 
     for (const auto& svc : known_services) {
-        discovery::DiscoverRequest req;
-        req.set_service_name(svc);
-        req.set_include_down(false);
-
-        discovery::DiscoverResponse rsp;
-        brpc::Controller cntl;
-        cntl.set_timeout_ms(2000);
-
-        stub_->Discover(&cntl, &req, &rsp, nullptr);
-
-        if (cntl.Failed()) {
-            LOG_WARN << "Discover(" << svc << ") failed: "
-                            << cntl.ErrorText();
-            continue;
-        }
+        auto instances = provider_->Discover(svc);
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
             int old_count = static_cast<int>(cache_[svc].size());
-            int new_count = rsp.instances_size();
+            int new_count = static_cast<int>(instances.size());
 
-            cache_[svc] = {rsp.instances().begin(), rsp.instances().end()};
+            cache_[svc] = std::move(instances);
             if (rr_index_.find(svc) == rr_index_.end()) {
                 rr_index_[svc] = 0;
             }

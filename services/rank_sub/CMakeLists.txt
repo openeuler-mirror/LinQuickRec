@@ -100,6 +100,57 @@ add_custom_command(
     DEPENDS ${PROTO_DIR}/rank_sub.proto
 )
 
+# 生成 discovery protobuf 文件（用于动态发现 kv_worker）
+add_custom_command(
+    OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/discovery.pb.h
+    COMMAND protobuf::protoc
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto
+)
+
+# Discovery Client Library
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client
+                     ${CMAKE_BINARY_DIR}/discovery_client_lib_ranksub)
+endif()
+
+# ============================================================================
+# 编译 Server
+# ============================================================================
+add_executable(rank_sub_server
+    server/src/rank_sub_server.cpp
+    server/src/main.cpp
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
+)
+
+target_include_directories(rank_sub_server PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${PROTO_OUT_DIR}
+    ${PROTO_DIR}
+    ${PROTOBUF_INCLUDE_DIRS}
+    ${BRPC_INCLUDE_DIR}
+    ${YR_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/server/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
+)
+
+target_link_libraries(rank_sub_server PRIVATE
+    discovery_client_lib
+    common_lib
+    ${BRPC_LIBRARIES}
+    leveldb
+    ${Protobuf_LIBRARIES}
+    Threads::Threads
+    ${YR_LIBRARY}
+    
+    # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
+    -Wl,--no-as-needed
+    ${ABSL_LIBS}
+    -Wl,--as-needed
+)
+
 # ============================================================================
 # 编译 Server
 # ============================================================================
@@ -189,6 +240,7 @@ add_executable(rank_sub_test
     tests/test_rank_sub.cpp
     server/src/rank_sub_server.cpp
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(rank_sub_test PRIVATE
@@ -200,9 +252,11 @@ target_include_directories(rank_sub_test PRIVATE
     ${YR_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 
 target_link_libraries(rank_sub_test PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb

@@ -1,6 +1,7 @@
 #ifndef PRECALC_SERVER_H
 #define PRECALC_SERVER_H
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -13,12 +14,14 @@
 #include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
+#include "discovery_provider.h"
 #include "precalc.pb.h"
 
 DECLARE_int32(server_port);
-DECLARE_string(kvworker_host);
-DECLARE_int32(kvworker_port);
-DECLARE_string(etcd_address);
+DECLARE_string(registry_backend);
+DECLARE_string(discovery_addr);
+DECLARE_string(etcd_endpoints);
+DECLARE_string(kv_worker_service);
 DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
@@ -66,6 +69,8 @@ private:
 
     common::error::Status write_to_kvworker(const std::string& user_feat_key,
                                              const std::string& precalc_result);
+
+    std::unique_ptr<discovery::IDiscoveryProvider> discovery_provider_;
 };
 
 } // namespace precalc

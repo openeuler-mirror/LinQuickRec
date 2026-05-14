@@ -21,7 +21,9 @@
 #include "recall.pb.h"
 #include "service_discovery.h"
 
+DEFINE_string(registry_backend, "discovery_server", "");
 DEFINE_string(discovery_addr, "127.0.0.1:18100", "");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379", "");
 DEFINE_string(feature_service_name, "feature_service", "");
 DEFINE_string(recall_service_name, "recall_service", "");
 DEFINE_string(precalc_service_name, "precalc_service", "");
