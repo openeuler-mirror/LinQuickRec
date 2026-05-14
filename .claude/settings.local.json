@@ -15,7 +15,13 @@
       "Bash(git rm *)",
       "Bash(git stash *)",
       "Bash(git pull *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "WebSearch",
+      "WebFetch(domain:brpc.apache.org)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Bash(ls /c/Program*/Python*/python.exe)",
+      "Read(//mingw64/**)",
+      "Bash(/usr/bin/python3 --version)"
     ]
   }
 }

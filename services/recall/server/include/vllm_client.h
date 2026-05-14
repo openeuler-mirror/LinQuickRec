@@ -3,7 +3,14 @@
 
 #include <string>
 
+#include <gflags/gflags.h>
+
 #include "common/error.h"
+
+DECLARE_string(vllm_connection_type);
+DECLARE_int32(vllm_max_retry);
+DECLARE_int32(vllm_connect_timeout_ms);
+DECLARE_int32(vllm_backup_request_ms);
 
 namespace recall {
 

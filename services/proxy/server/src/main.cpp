@@ -13,7 +13,7 @@ DEFINE_string(recall_service_name, "recall_service", "Recall service name in dis
 DEFINE_string(precalc_service_name, "precalc_service", "Precalc service name in discovery");
 DEFINE_string(rank_service_name, "rank_service", "Rank service name in discovery");
 DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
-DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC");
+DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC (legacy)");
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
     LOG_INFO << "Proxy Service starting...";
     LOG_INFO << "CPU cores: " << cpu_cores
-                    << ", Thread pool size: " << FLAGS_global_thread_pool_size;
+             << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
 
@@ -41,8 +41,22 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    brpc::ServerOptions server_options;
+    if (FLAGS_server_num_threads > 0) {
+        server_options.num_threads = FLAGS_server_num_threads;
+    }
+    if (FLAGS_server_timeout_ms > 0) {
+        server_options.timeout_ms = FLAGS_server_timeout_ms;
+    }
+    if (FLAGS_server_idle_timeout_sec >= 0) {
+        server_options.idle_timeout_sec = FLAGS_server_idle_timeout_sec;
+    }
+    if (FLAGS_server_max_concurrency > 0) {
+        server_options.max_concurrency = FLAGS_server_max_concurrency;
+    }
+
     std::string server_addr = "0.0.0.0:" + std::to_string(FLAGS_server_port);
-    if (server.Start(server_addr.c_str(), nullptr) != 0) {
+    if (server.Start(server_addr.c_str(), &server_options) != 0) {
         LOG_ERROR << "Failed to start server on " << server_addr;
         return -1;
     }
@@ -53,12 +67,10 @@ int main(int argc, char* argv[]) {
     LOG_INFO << "Listening on: " << server_addr;
     LOG_INFO << "Discovery:    " << FLAGS_discovery_addr;
     LOG_INFO << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
-    LOG_INFO << "Downstream max retries: " << FLAGS_downstream_max_retries;
-    LOG_INFO << "Service names:"
-                    << " feature=" << FLAGS_feature_service_name
-                    << " recall=" << FLAGS_recall_service_name
-                    << " precalc=" << FLAGS_precalc_service_name
-                    << " rank=" << FLAGS_rank_service_name;
+    LOG_INFO << "Server num_threads: " << (FLAGS_server_num_threads > 0
+             ? std::to_string(FLAGS_server_num_threads) : "default");
+    LOG_INFO << "Server timeout_ms: " << (FLAGS_server_timeout_ms > 0
+             ? std::to_string(FLAGS_server_timeout_ms) : "disabled");
     LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();

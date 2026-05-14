@@ -19,7 +19,7 @@
 #include "proxy_server.h"
 #include "rank_master.pb.h"
 #include "recall.pb.h"
-#include "service_discovery.h"
+#include "discovery_naming_service.h"
 
 DEFINE_string(discovery_addr, "127.0.0.1:18100", "");
 DEFINE_string(feature_service_name, "feature_service", "");
