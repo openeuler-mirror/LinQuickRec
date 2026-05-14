@@ -9,6 +9,15 @@
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
+DEFINE_int32(server_num_threads, 0,
+             "Server bthread num_threads, 0 = BRPC default");
+DEFINE_int32(server_timeout_ms, 0,
+             "Server-side timeout (ms), 0 = no limit");
+DEFINE_int32(server_idle_timeout_sec, -1,
+             "Server idle connection timeout (sec), -1 = BRPC default");
+DEFINE_int32(server_max_concurrency, 0,
+             "Server max concurrency, 0 = no limit");
+
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -40,7 +49,18 @@ int main(int argc, char* argv[]) {
     }
 
     brpc::ServerOptions server_options;
-    server_options.num_threads = 128;
+    if (FLAGS_server_num_threads > 0) {
+        server_options.num_threads = FLAGS_server_num_threads;
+    }
+    if (FLAGS_server_timeout_ms > 0) {
+        server_options.timeout_ms = FLAGS_server_timeout_ms;
+    }
+    if (FLAGS_server_idle_timeout_sec >= 0) {
+        server_options.idle_timeout_sec = FLAGS_server_idle_timeout_sec;
+    }
+    if (FLAGS_server_max_concurrency > 0) {
+        server_options.max_concurrency = FLAGS_server_max_concurrency;
+    }
 
     if (server.Start(FLAGS_server_port, &server_options) != 0) {
         LOG_ERROR << "Failed to start server on port " << FLAGS_server_port;

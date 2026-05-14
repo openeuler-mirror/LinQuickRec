@@ -22,6 +22,14 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
     brpc::ChannelOptions channel_opts;
     channel_opts.timeout_ms = timeout_ms_;
     channel_opts.protocol = "http";
+    channel_opts.connection_type = FLAGS_vllm_connection_type.c_str();
+    channel_opts.max_retry = FLAGS_vllm_max_retry;
+    if (FLAGS_vllm_connect_timeout_ms >= 0) {
+        channel_opts.connect_timeout_ms = FLAGS_vllm_connect_timeout_ms;
+    }
+    if (FLAGS_vllm_backup_request_ms >= 0) {
+        channel_opts.backup_request_ms = FLAGS_vllm_backup_request_ms;
+    }
 
     std::string url = base_url_ + endpoint_;
     if (channel.Init(url.c_str(), &channel_opts) != 0) {

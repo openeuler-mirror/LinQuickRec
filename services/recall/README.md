@@ -90,6 +90,20 @@ make recall_server recall_test_client recall_test -j$(nproc)
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
 | `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
 | `--global_thread_pool_size` | int32 | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
+
+**vLLM 通道参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--vllm_timeout_ms` | int32 | 100000 | vLLM 通道超时 (ms) |
+| `--vllm_connection_type` | string | "single" | vLLM 通道连接类型 |
+| `--vllm_max_retry` | int32 | 3 | vLLM 通道 BRPC 重试次数 |
+| `--vllm_connect_timeout_ms` | int32 | -1 | vLLM 通道建连超时 (ms)，-1=禁用 |
+| `--vllm_backup_request_ms` | int32 | -1 | vLLM 通道 backup request (ms)，-1=禁用 |
 
 ### 使用测试客户端
 

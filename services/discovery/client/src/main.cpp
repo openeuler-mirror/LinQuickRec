@@ -41,6 +41,17 @@ DEFINE_int32(fail_threshold, 3,
 DEFINE_int32(startup_timeout, 30,
     "Max seconds to wait for service port to be ready");
 
+DEFINE_int32(discovery_client_timeout_ms, 5000,
+             "Discovery client channel RPC timeout (ms)");
+DEFINE_string(discovery_client_connection_type, "single",
+              "Discovery client channel connection type (single/pooled/short)");
+DEFINE_int32(discovery_client_max_retry, 2,
+             "Discovery client channel BRPC max retry");
+DEFINE_int32(discovery_client_connect_timeout_ms, -1,
+             "Discovery client channel connect timeout (ms), -1 = disabled");
+DEFINE_int32(discovery_client_backup_request_ms, -1,
+             "Discovery client channel backup request (ms), -1 = disabled");
+
 static std::atomic<bool> g_running{true};
 static std::string g_instance_id;
 static bool g_registered = false;
@@ -151,8 +162,15 @@ int main(int argc, char* argv[]) {
 
     brpc::Channel channel;
     brpc::ChannelOptions channel_opts;
-    channel_opts.timeout_ms = 5000;
-    channel_opts.max_retry = 2;
+    channel_opts.timeout_ms = FLAGS_discovery_client_timeout_ms;
+    channel_opts.connection_type = FLAGS_discovery_client_connection_type.c_str();
+    channel_opts.max_retry = FLAGS_discovery_client_max_retry;
+    if (FLAGS_discovery_client_connect_timeout_ms >= 0) {
+        channel_opts.connect_timeout_ms = FLAGS_discovery_client_connect_timeout_ms;
+    }
+    if (FLAGS_discovery_client_backup_request_ms >= 0) {
+        channel_opts.backup_request_ms = FLAGS_discovery_client_backup_request_ms;
+    }
     if (channel.Init(FLAGS_discovery_addr.c_str(), &channel_opts) != 0) {
         LOG_ERROR << "Failed to connect to discovery server at "
                    << FLAGS_discovery_addr;

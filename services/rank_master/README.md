@@ -87,6 +87,30 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
 | `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
 | `--global_thread_pool_size` | int32 | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
+
+**Sub-worker 通道参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--sub_worker_timeout_ms` | int32 | 5000 | Sub-worker 通道超时 (ms) |
+| `--sub_worker_connection_type` | string | "pooled" | Sub-worker 通道连接类型 |
+| `--sub_worker_max_retry` | int32 | 3 | Sub-worker 通道 BRPC 重试次数 |
+| `--sub_worker_connect_timeout_ms` | int32 | -1 | Sub-worker 通道建连超时 (ms)，-1=禁用 |
+| `--sub_worker_backup_request_ms` | int32 | -1 | Sub-worker 通道 backup request (ms)，-1=禁用 |
+
+**Discovery resolver 通道参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--discovery_resolver_timeout_ms` | int32 | 3000 | Discovery resolver 超时 (ms) |
+| `--discovery_resolver_connection_type` | string | "single" | Discovery resolver 连接类型 |
+| `--discovery_resolver_max_retry` | int32 | 2 | Discovery resolver 重试次数 |
+| `--discovery_resolver_connect_timeout_ms` | int32 | -1 | Discovery resolver 建连超时 (ms)，-1=禁用 |
+| `--discovery_resolver_backup_request_ms` | int32 | -1 | Discovery resolver backup request (ms)，-1=禁用 |
 
 ### 使用测试客户端
 

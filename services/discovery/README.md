@@ -131,6 +131,10 @@ make discovery_server discovery_client -j$(nproc)
 | `--heartbeat_check_interval_ms` | 1000 | 健康检查扫描间隔（ms） |
 | `--heartbeat_grace_factor` | 2.0 | 心跳超时倍数，超过 interval×factor 标记 DOWN |
 | `--cleanup_factor` | 5.0 | 清理倍数，超过 interval×factor 从注册表移除 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
 
 ### Discovery Client
 
@@ -160,6 +164,11 @@ make discovery_server discovery_client -j$(nproc)
 | `--health_check_timeout` | 2 | TCP 端口探测超时（秒） |
 | `--fail_threshold` | 3 | 连续失败次数阈值，超过则反注册 |
 | `--startup_timeout` | 30 | 等待主服务端口就绪超时（秒） |
+| `--discovery_client_timeout_ms` | int32 | 5000 | Discovery 客户端超时 (ms) |
+| `--discovery_client_connection_type` | string | "single" | Discovery 客户端连接类型 |
+| `--discovery_client_max_retry` | int32 | 2 | Discovery 客户端 BRPC 重试次数 |
+| `--discovery_client_connect_timeout_ms` | int32 | -1 | Discovery 客户端建连超时 (ms)，-1=禁用 |
+| `--discovery_client_backup_request_ms` | int32 | -1 | Discovery 客户端 backup request (ms)，-1=禁用 |
 
 ## 容器搭建
 

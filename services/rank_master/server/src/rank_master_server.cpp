@@ -17,7 +17,6 @@
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#include "common/global_thread_pool.h"
 #define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/sku_utils.h"
@@ -30,6 +29,17 @@ DEFINE_int32(top_k, 100, "返回前 K 个商品");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
 DEFINE_string(sub_worker_service_type, "rank_sub", "RankSub 在 Discovery 中注册的服务类型名");
 
+DEFINE_string(sub_worker_connection_type, "pooled",
+              "Sub-worker channel connection type (single/pooled/short)");
+DEFINE_int32(sub_worker_max_retry, 3,
+             "Sub-worker channel BRPC max retry");
+DEFINE_int32(sub_worker_connect_timeout_ms, -1,
+             "Sub-worker channel connect timeout (ms), -1 = disabled");
+DEFINE_int32(sub_worker_backup_request_ms, -1,
+             "Sub-worker channel backup request (ms), -1 = disabled");
+DEFINE_int32(sub_worker_parallelism, 4,
+             "Number of concurrent buckets when fanning out to RankSub");
+
 namespace rank {
 
 using namespace common::error;
@@ -39,53 +49,30 @@ using common::distribute_skus_by_hash;
 
 constexpr int SCORE_SCALE = 100;
 
-RankMasterServiceImpl::RankMasterServiceImpl()
-    : sub_worker_channels_() {
-
+RankMasterServiceImpl::RankMasterServiceImpl() {
     LOG_INFO << "RankMasterServiceImpl initialized";
     LOG_INFO << "Top-K: " << FLAGS_top_k;
-    LOG_INFO << "Discovery addr: " << FLAGS_discovery_addr;
     LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
+    LOG_INFO << "Sub-worker parallelism: " << FLAGS_sub_worker_parallelism;
 
-    std::vector<std::string> addresses;
-
-    // 通过 Discovery 发现 RankSub 实例
-    if (!FLAGS_discovery_addr.empty()) {
-        discovery_resolver_ = std::make_unique<DiscoveryResolver>(FLAGS_discovery_addr);
-        auto instances = discovery_resolver_->discover(FLAGS_sub_worker_service_type);
-        for (const auto& inst : instances) {
-            addresses.push_back(inst.host + ":" + std::to_string(inst.port));
-        }
-        LOG_INFO << "Discovered " << instances.size() << " "
-                 << FLAGS_sub_worker_service_type << " instances via Discovery";
+    sub_worker_channel_ = std::make_unique<brpc::Channel>();
+    brpc::ChannelOptions opts;
+    opts.timeout_ms = FLAGS_sub_worker_timeout_ms;
+    opts.connection_type = FLAGS_sub_worker_connection_type.c_str();
+    opts.max_retry = FLAGS_sub_worker_max_retry;
+    if (FLAGS_sub_worker_connect_timeout_ms >= 0) {
+        opts.connect_timeout_ms = FLAGS_sub_worker_connect_timeout_ms;
+    }
+    if (FLAGS_sub_worker_backup_request_ms >= 0) {
+        opts.backup_request_ms = FLAGS_sub_worker_backup_request_ms;
     }
 
-    // Fallback 到 localhost（用于本地开发/测试）
-    if (addresses.empty()) {
-        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-            "No sub-worker instances discovered for service type: "
-            + FLAGS_sub_worker_service_type).ToString();
-        addresses.push_back("127.0.0.1:8005");
-    }
-
-    LOG_INFO << "Sub-worker addresses resolved (" << addresses.size() << "):";
-    for (size_t i = 0; i < addresses.size(); ++i) {
-        LOG_INFO << "  [" << i << "] " << addresses[i];
-
-        auto channel = std::make_unique<brpc::Channel>();
-        brpc::ChannelOptions opts;
-        opts.timeout_ms = FLAGS_sub_worker_timeout_ms;
-        opts.connection_type = "pooled";
-
-        if (channel->Init(addresses[i].c_str(), &opts) == 0) {
-            sub_worker_channels_.push_back(std::move(channel));
-            LOG_INFO << "Initialized channel to sub-worker " << i << ": " << addresses[i];
-        } else {
-            LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-                "Failed to initialize channel to sub-worker " + std::to_string(i)
-                + ": " + addresses[i]).ToString();
-            sub_worker_channels_.push_back(std::move(channel));
-        }
+    std::string ns_url = "discovery://" + FLAGS_sub_worker_service_type;
+    if (sub_worker_channel_->Init(ns_url.c_str(), &opts) != 0) {
+        LOG_ERROR << "Failed to init sub-worker channel with " << ns_url;
+    } else {
+        LOG_INFO << "Sub-worker channel initialized: " << ns_url
+                 << " (timeout=" << FLAGS_sub_worker_timeout_ms << "ms)";
     }
 }
 
@@ -99,49 +86,24 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
                                  google::protobuf::Closure* done) {
 
     brpc::ClosureGuard done_guard(done);
-    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
     if (!request->trace_id().empty()) {
         std::string tid = request->trace_id();
         common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
     }
 
-    auto& pool = common::get_global_thread_pool();
-
-    auto future = pool.submit([this, request]() {
-        RankMasterResponse local_response;
-        auto status = process_rank_request(request, &local_response);
-        return std::make_pair(status, local_response);
-    });
-
-    try {
-        auto result = future.get();
-        if (result.first.IsError()) {
-            response->set_error_code(static_cast<int32_t>(result.first.Code()));
-            response->set_error_message(result.first.ToString());
-        } else {
-            response->CopyFrom(result.second);
-        }
-    } catch (const std::exception& e) {
-        auto status = common::error::Status(rank_master_errors::INTERNAL_ERROR,
-            "Thread pool task failed: " + std::string(e.what()));
-        LOG_ERROR << status.ToString();
-        cntl->SetFailed(status.ToString());
+    auto status = process_rank_request(request, response);
+    if (status.IsError()) {
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
     }
 }
 
-bool RankMasterServiceImpl::call_sub_worker(int worker_index,
-                                           const std::string& user_feat_key,
-                                           const std::vector<uint64_t>& sku_ids,
-                                           const std::string& trace_id,
-                                           RankSubResponse* response) {
-
-    if (worker_index >= static_cast<int>(sub_worker_channels_.size()) ||
-        !sub_worker_channels_[worker_index]) {
-        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-            "Invalid sub-worker index: " + std::to_string(worker_index)).ToString();
-        return false;
-    }
+bool RankMasterServiceImpl::call_sub_worker(
+    const std::string& user_feat_key,
+    const std::vector<uint64_t>& sku_ids,
+    const std::string& trace_id,
+    RankSubResponse* response) {
 
     RankSubRequest request;
     request.set_user_feat_key(user_feat_key);
@@ -149,8 +111,7 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
     request.set_trace_id(trace_id);
 
     brpc::Controller cntl;
-
-    rank::RankSubService_Stub stub(sub_worker_channels_[worker_index].get());
+    rank::RankSubService_Stub stub(sub_worker_channel_.get());
 
     int64_t start_us = butil::gettimeofday_us();
     stub.Rank(&cntl, &request, response, nullptr);
@@ -158,12 +119,11 @@ bool RankMasterServiceImpl::call_sub_worker(int worker_index,
 
     if (cntl.Failed()) {
         LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
-            "Sub-worker " + std::to_string(worker_index) + " call failed: " + cntl.ErrorText()).ToString();
+            "Sub-worker call failed: " + cntl.ErrorText()).ToString();
         return false;
     }
 
-    LOG_INFO << "Sub-worker " << worker_index
-              << " returned " << response->skus_score_size() << " scores"
+    LOG_INFO << "Sub-worker returned " << response->skus_score_size() << " scores"
               << ", cost=" << (end_us - start_us) / 1000.0 << " ms"
               << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms";
 
@@ -240,19 +200,22 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     std::map<uint64_t, double>& all_scores,
     const std::string& trace_id) {
 
-    int worker_count = static_cast<int>(sub_worker_channels_.size());
-    auto distribution = distribute_skus_by_hash(all_sku_ids, worker_count);
+    int bucket_count = FLAGS_sub_worker_parallelism;
+    if (bucket_count <= 0) {
+        bucket_count = 4;
+    }
+    auto distribution = distribute_skus_by_hash(all_sku_ids, bucket_count);
 
     std::vector<std::future<std::pair<int, RankSubResponse>>> futures;
 
-    for (int i = 0; i < worker_count; ++i) {
+    for (int i = 0; i < bucket_count; ++i) {
         if (distribution[i].empty()) {
             continue;
         }
 
         futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution, &trace_id]() {
             RankSubResponse sub_response;
-            bool success = call_sub_worker(i, request->user_feat_key(),
+            bool success = call_sub_worker(request->user_feat_key(),
                                           distribution[i], trace_id, &sub_response);
             return std::make_pair(success ? i : -1, sub_response);
         }));
@@ -263,11 +226,11 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     for (auto& future : futures) {
         try {
             auto result = future.get();
-            int worker_index = result.first;
+            int bucket_index = result.first;
             const RankSubResponse& sub_response = result.second;
 
-            if (worker_index < 0) {
-                LOG_WARN << "Worker " << worker_index << " failed";
+            if (bucket_index < 0) {
+                LOG_WARN << "Bucket " << bucket_index << " failed";
                 ++failed_workers;
                 continue;
             }
@@ -288,13 +251,13 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
 
     if (failed_workers > 0 && all_scores.empty()) {
         auto status = common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
-            "All " + std::to_string(failed_workers) + " sub-workers failed");
+            "All " + std::to_string(failed_workers) + " sub-worker calls failed");
         LOG_ERROR << status.ToString();
         return status;
     }
 
     if (failed_workers > 0) {
-        LOG_WARN << failed_workers << " sub-worker(s) failed, proceeding with partial results";
+        LOG_WARN << failed_workers << " sub-worker call(s) failed, proceeding with partial results";
     }
 
     return common::error::Status::OK();
