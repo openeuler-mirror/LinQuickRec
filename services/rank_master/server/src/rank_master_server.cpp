@@ -17,7 +17,6 @@
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
@@ -86,6 +85,7 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
                                  google::protobuf::Closure* done) {
 
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
 
     if (!request->trace_id().empty()) {
         std::string tid = request->trace_id();

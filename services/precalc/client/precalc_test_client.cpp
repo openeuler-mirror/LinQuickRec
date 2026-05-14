@@ -23,8 +23,6 @@ DEFINE_string(server, "127.0.0.1:8004", "服务器地址 (ip:port)");
 DEFINE_int32(user_feat_size_kb, 100, "用户特征数据大小（KB，当 --user_feat 为空时使用）");
 DEFINE_string(user_feat, "", "自定义 user_feat 内容（空值时随机生成纯数字字符串）");
 DEFINE_double(precalc_result_size_mb, 8.5, "期望的前置计算结果大小（MB）");
-DEFINE_int32(user_feat_key_size_kb, 100, "user_feat_key 大小（KB）");
-DEFINE_int32(payload_size_kb, 100, "payload 大小（KB）");
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);

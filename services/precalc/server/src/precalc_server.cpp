@@ -16,8 +16,6 @@
 #include <datasystem/kv_client.h>
 
 #include "common/error.h"
-#include "common/global_thread_pool.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/random_utils.h"
 
@@ -54,25 +52,8 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
         common::logger::Logger::Instance().SetTraceIdGetter([tid]() { return tid; });
     }
 
-    auto& pool = common::get_global_thread_pool();
-
-    auto future = pool.submit([this, request]() {
-        PrecalcResponse local_response;
-        auto status = process_precalc_request(request, &local_response);
-        return std::make_pair(status, local_response);
-    });
-
-    try {
-        auto result = future.get();
-        response->CopyFrom(result.second);
-        if (result.first.IsError()) {
-            response->set_error_code(static_cast<int32_t>(result.first.Code()));
-            response->set_error_message(result.first.ToString());
-        }
-    } catch (const std::exception& e) {
-        auto status = common::error::Status(precalc_errors::INTERNAL_ERROR,
-            "Thread pool task failed: " + std::string(e.what()));
-        LOG_ERROR << status.ToString();
+    auto status = process_precalc_request(request, response);
+    if (status.IsError()) {
         response->set_error_code(static_cast<int32_t>(status.Code()));
         response->set_error_message(status.ToString());
     }

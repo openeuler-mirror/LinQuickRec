@@ -11,7 +11,6 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
-#include "common/global_thread_pool.h"
 #include "common/logger.h"
 #include "discovery.pb.h"
 #include "feature.pb.h"
@@ -379,7 +378,6 @@ int main(int /*argc*/, char* /*argv*/[]) {
     FLAGS_rank_service_name          = "rank_service";
     FLAGS_discovery_refresh_interval_ms = 100;
     FLAGS_downstream_max_retries     = 0;
-    FLAGS_global_thread_pool_size    = 4;
     FLAGS_server_port                = PROXY_PORT;
 
     // Happy path

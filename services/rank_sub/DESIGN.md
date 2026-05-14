@@ -120,14 +120,13 @@ service RankSubService {
 **请求处理流程**：
 
 1. 提取 `trace_id` 并注入日志系统（分布式追踪）
-2. 通过全局线程池异步执行处理任务
-3. 验证 `user_feat_key` 和 `skus_sub` 非空
-4. 从 KVWorker 读取前置计算结果：`KVClient::Get(key, buffer)`
-5. 解析 SKU ID 列表
-6. 对每个 SKU 调用 `simulate_score()` 打分
-7. 可选：模拟打分耗时（`scoring_delay_ms`）
-8. 返回 `skus_id[]` 和 `skus_score[]`
-9. 若启用 `enable_timing_stats`，记录 `kv_read_cost`、`scoring_cost`、`simulated_delay`、`server_process_total` 耗时
+2. 验证 `user_feat_key` 和 `skus_sub` 非空
+3. 从 KVWorker 读取前置计算结果：`KVClient::Get(key, buffer)`
+4. 解析 SKU ID 列表
+5. 对每个 SKU 调用 `simulate_score()` 打分
+6. 可选：模拟打分耗时（`scoring_delay_ms`）
+7. 返回 `skus_id[]` 和 `skus_score[]`
+8. 若启用 `enable_timing_stats`，记录 `kv_read_cost`、`scoring_cost`、`simulated_delay`、`server_process_total` 耗时
 
 ### 6.2 KVWorker 读取流程
 
@@ -301,7 +300,6 @@ RankMaster              RankSub (:8006)               KVWorker
 | **KVWorker 不可达** | 所有请求失败，需检查网络 |
 | **实例被 kill** | Docker 自动重启（restart: unless-stopped） |
 | **打分延迟过大** | Master 侧 `sub_worker_timeout_ms` 超时兜底 |
-| **线程池任务异常** | 返回 `INTERNAL_ERROR` 错误，记录 ERROR |
 
 ## 11. 演进规划
 

@@ -17,7 +17,6 @@ LingQuickRec 是一个 C++ 微服务系统，用于模拟搜索推荐系统的�
 | 序列化 | Protocol Buffers |
 | 服务发现 | 自研 Discovery Service |
 | 日志 | common::logger（统一日志系统） |
-| 线程池 | common::ThreadPool |
 | 错误码 | common::error::Status（0xMMTTCCCC） |
 | 模型推理 | vLLM (Qwen3-0.6B) |
 | KVCache | 元戎 (openYuanrong) |
@@ -143,12 +142,6 @@ LingQuickRec 是一个 C++ 微服务系统，用于模拟搜索推荐系统的�
 - 与 brpc `LOG(INFO)` 宏兼容
 - 支持 15 个占位符自定义输出格式
 
-### 4.3 线程池
-
-- 固定线程数，基于 `std::packaged_task` 的 Future 模式
-- 全局单例 `get_global_thread_pool()`，通过 gflag 配置线程数
-- Proxy 和 RankMaster 使用全局线程池并行调用下游
-
 ## 5. 服务发现
 
 所有服务通过 Discovery Server (:8100) 进行服务注册与发现，详见 [services/discovery/DESIGN.md](services/discovery/DESIGN.md)。
@@ -213,7 +206,7 @@ LingQuickRec/
 ├── README.md                      # 项目说明
 ├── DESIGN.md                      # 本文档
 ├── build.sh                       # 全量编译脚本
-├── common/                        # 公共基础库（错误码/日志/线程池）
+├── common/                        # 公共基础库（错误码/日志）
 ├── proto/                         # 所有服务的 proto 文件
 ├── services/
 │   ├── discovery/                 # 服务发现中心（server + client）
@@ -288,7 +281,6 @@ wait
 
 公共库测试位于 `common/tests/`：
 - `test_error.cpp` — 错误码编码/解码
-- `test_thread_pool.cpp` — 线程池 submit/get
 
 ## 11. 演进规划
 

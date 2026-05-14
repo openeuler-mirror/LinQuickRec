@@ -14,7 +14,6 @@
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "common/sku_utils.h"
 #include "rank_master.pb.h"

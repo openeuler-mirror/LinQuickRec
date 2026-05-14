@@ -1,11 +1,7 @@
 #include "proxy_server.h"
 
-#include <thread>
-
 #include <brpc/server.h>
 #include <gflags/gflags.h>
-
-#include "common/global_thread_pool.h"
 
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");
@@ -21,15 +17,7 @@ int main(int argc, char* argv[]) {
     common::logger::AddConsoleSink();
     common::logger::SetTraceIdGetter([]() { return proxy::get_current_trace_id(); });
 
-    int cpu_cores = std::thread::hardware_concurrency();
-    if (cpu_cores > 0 && FLAGS_global_thread_pool_size == 128) {
-        int calculated_size = std::max(4, cpu_cores * 2);
-        FLAGS_global_thread_pool_size = std::min(128, calculated_size);
-    }
-
     LOG_INFO << "Proxy Service starting...";
-    LOG_INFO << "CPU cores: " << cpu_cores
-             << ", Thread pool size: " << FLAGS_global_thread_pool_size;
 
     proxy::ProxyServiceImpl service_impl;
 

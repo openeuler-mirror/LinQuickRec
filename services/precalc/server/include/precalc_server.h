@@ -10,8 +10,6 @@
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#include "common/global_thread_pool.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "precalc.pb.h"
 

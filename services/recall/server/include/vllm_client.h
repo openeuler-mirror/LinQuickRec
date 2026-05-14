@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include <brpc/channel.h>
 #include <gflags/gflags.h>
 
 #include "common/error.h"
@@ -30,6 +31,7 @@ private:
     std::string base_url_;
     std::string endpoint_;
     int timeout_ms_;
+    brpc::Channel channel_;
 };
 
 } // namespace recall

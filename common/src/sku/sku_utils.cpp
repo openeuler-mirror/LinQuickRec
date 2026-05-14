@@ -3,7 +3,6 @@
 #include <functional>
 #include <sstream>
 
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 
 namespace common {
@@ -12,7 +11,7 @@ std::vector<uint64_t> parse_skus_from_string(const std::string& skus) {
     std::vector<uint64_t> sku_ids;
 
     if (skus.empty()) {
-        LOG(WARNING) << "Empty skus string";
+        LOG_WARN << "Empty skus string";
         return sku_ids;
     }
 
@@ -25,14 +24,14 @@ std::vector<uint64_t> parse_skus_from_string(const std::string& skus) {
             uint64_t sku_id = std::stoull(sku_str);
             sku_ids.push_back(sku_id);
         } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to parse SKU ID: " << sku_str
+            LOG_WARN << "Failed to parse SKU ID: " << sku_str
                         << ", error: " << e.what();
         }
 
         pos += SKU_ID_LENGTH;
     }
 
-    LOG(INFO) << "Parsed " << sku_ids.size() << " SKU IDs from string";
+    LOG_INFO << "Parsed " << sku_ids.size() << " SKU IDs from string";
     return sku_ids;
 }
 
@@ -63,7 +62,7 @@ std::map<int, std::vector<uint64_t>> distribute_skus_by_hash(
     }
 
     for (int i = 0; i < n_workers; ++i) {
-        LOG(INFO) << "Worker " << i << " assigned " << distribution[i].size() << " SKUs";
+        LOG_INFO << "Worker " << i << " assigned " << distribution[i].size() << " SKUs";
     }
 
     return distribution;
