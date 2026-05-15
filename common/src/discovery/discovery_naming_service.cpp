@@ -1,11 +1,11 @@
-#include "discovery_naming_service.h"
+#include "common/discovery_naming_service.h"
 
 #include <bthread/bthread.h>
 #include <butil/endpoint.h>
 
 #include "common/logger.h"
 
-namespace proxy {
+namespace common {
 
 // ---- gflags ----
 
@@ -50,7 +50,7 @@ DiscoveryCache::DiscoveryCache() {
 }
 
 int DiscoveryCache::QueryDiscovery(const std::string& service_name,
-                                    std::vector<brpc::ServerNode>* servers) {
+                                   std::vector<brpc::ServerNode>* servers) {
     if (!stub_) {
         LOG_ERROR << "DiscoveryNamingService: stub not initialized";
         return -1;
@@ -128,4 +128,4 @@ struct DiscoveryNSRegistrar {
 static DiscoveryNSRegistrar s_discovery_ns_registrar;
 } // anonymous namespace
 
-} // namespace proxy
+} // namespace common

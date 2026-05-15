@@ -16,14 +16,14 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
+#include "common/discovery_naming_service.h"
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
-DEFINE_string(discovery_addr, "",
-    "Discovery server address (empty = use localhost fallback)");
+DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
 DEFINE_int32(top_k, 100, "返回前 K 个商品");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
 DEFINE_string(sub_worker_service_type, "rank_sub", "RankSub 在 Discovery 中注册的服务类型名");

@@ -14,7 +14,7 @@
 #include <brpc/controller.h>
 #include <brpc/server.h>
 
-#include "discovery_naming_service.h"
+#include "common/discovery_naming_service.h"
 
 #include "common/logger.h"
 

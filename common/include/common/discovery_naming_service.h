@@ -1,5 +1,5 @@
-#ifndef DISCOVERY_NAMING_SERVICE_H
-#define DISCOVERY_NAMING_SERVICE_H
+#ifndef COMMON_DISCOVERY_NAMING_SERVICE_H
+#define COMMON_DISCOVERY_NAMING_SERVICE_H
 
 #include <memory>
 #include <string>
@@ -20,7 +20,7 @@ DECLARE_int32(discovery_naming_max_retry);
 DECLARE_int32(discovery_naming_connect_timeout_ms);
 DECLARE_int32(discovery_naming_backup_request_ms);
 
-namespace proxy {
+namespace common {
 
 class DiscoveryCache {
 public:
@@ -46,6 +46,6 @@ protected:
     ~DiscoveryNamingService() override = default;
 };
 
-} // namespace proxy
+} // namespace common
 
-#endif // DISCOVERY_NAMING_SERVICE_H
+#endif // COMMON_DISCOVERY_NAMING_SERVICE_H

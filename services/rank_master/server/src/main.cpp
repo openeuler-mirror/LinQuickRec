@@ -5,6 +5,7 @@
 
 #include "common/logger.h"
 
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_int32(server_num_threads, 0,
              "Server bthread num_threads, 0 = BRPC default");
 DEFINE_int32(server_idle_timeout_sec, -1,

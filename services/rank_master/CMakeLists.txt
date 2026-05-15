@@ -105,14 +105,24 @@ add_custom_command(
     DEPENDS ${PROTO_DIR}/rank_sub.proto
 )
 
+# 生成 discovery protobuf 文件（服务发现需要）
+add_custom_command(
+    OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/discovery.pb.h
+    COMMAND protobuf::protoc
+    ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto
+)
+
 # ============================================================================
 # 编译 Server
 # ============================================================================
 add_executable(rank_master_server
     server/src/rank_master_server.cpp
     server/src/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/discovery_naming_service.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(rank_master_server PRIVATE
@@ -194,8 +204,10 @@ message(STATUS "===========================================")
 add_executable(rank_master_test
     tests/test_rank_master.cpp
     server/src/rank_master_server.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/discovery_naming_service.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(rank_master_test PRIVATE

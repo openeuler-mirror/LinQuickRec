@@ -19,7 +19,7 @@ FeatureServiceImpl::FeatureServiceImpl() {
 FeatureServiceImpl::~FeatureServiceImpl() = default;
 
 void FeatureServiceImpl::GetUserFeatures(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /*controller*/,
     const UserFeatureRequest* request,
     UserFeatureResponse* response,
     google::protobuf::Closure* done) {
@@ -33,20 +33,20 @@ void FeatureServiceImpl::GetUserFeatures(
 
     LOG_INFO << "GetUserFeatures (mock): user_id=" << user_id;
 
-    auto result = process_user_features_request(request);
-    if (result.success) {
-        response->CopyFrom(result.response);
+    auto status = process_user_features_request(request, response);
+    if (status.IsOk()) {
         LOG_INFO << "GetUserFeatures (mock) response: user_logs="
-                  << result.response.kr_feat_rsp().user_logs_size()
-                  << " other=" << result.response.kr_feat_rsp().other();
+                  << response->kr_feat_rsp().user_logs_size()
+                  << " other=" << response->kr_feat_rsp().other();
     } else {
-        LOG_ERROR << "GetUserFeatures failed: " << result.error_message;
-        static_cast<brpc::Controller*>(controller)->SetFailed(result.error_message);
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
+        LOG_ERROR << "GetUserFeatures failed: " << status.ToString();
     }
 }
 
 void FeatureServiceImpl::GetSKUFeatures(
-    google::protobuf::RpcController* controller,
+    google::protobuf::RpcController* /*controller*/,
     const SKUFeatureRequest* request,
     SKUFeatureResponse* response,
     google::protobuf::Closure* done) {
@@ -56,24 +56,30 @@ void FeatureServiceImpl::GetSKUFeatures(
     LOG_INFO << "GetSKUFeatures (mock): sku_count="
               << request->sku_ids_size();
 
-    auto result = process_sku_features_request(request);
-    if (result.success) {
-        response->CopyFrom(result.response);
+    auto status = process_sku_features_request(request, response);
+    if (status.IsOk()) {
         LOG_INFO << "GetSKUFeatures (mock) response: sku_feats="
-                  << result.response.kr_sku_feats_size();
+                  << response->kr_sku_feats_size();
     } else {
-        LOG_ERROR << "GetSKUFeatures failed: " << result.error_message;
-        static_cast<brpc::Controller*>(controller)->SetFailed(result.error_message);
+        response->set_error_code(static_cast<int32_t>(status.Code()));
+        response->set_error_message(status.ToString());
+        LOG_ERROR << "GetSKUFeatures failed: " << status.ToString();
     }
 }
 
-FeatureServiceImpl::UserFeatureResult
-FeatureServiceImpl::process_user_features_request(const UserFeatureRequest* request) {
-    UserFeatureResult result;
+common::error::Status FeatureServiceImpl::process_user_features_request(
+    const UserFeatureRequest* request,
+    UserFeatureResponse* response) {
 
     uint64_t user_id = 0;
     if (request->has_kr_feat_req()) {
         user_id = request->kr_feat_req().user_id();
+    }
+
+    if (user_id == 0) {
+        return common::error::Status::Error(
+            common::error::feature_errors::EMPTY_USER_ID,
+            "Empty user_id in request");
     }
 
     thread_local std::mt19937 rng(std::random_device{}());
@@ -81,7 +87,7 @@ FeatureServiceImpl::process_user_features_request(const UserFeatureRequest* requ
     std::uniform_int_distribution<uint32_t> val_dist(0, 10000);
 
     int log_count = FLAGS_user_log_count;
-    auto* kr_rsp = result.response.mutable_kr_feat_rsp();
+    auto* kr_rsp = response->mutable_kr_feat_rsp();
 
     for (int i = 0; i < log_count; ++i) {
         auto* log = kr_rsp->add_user_logs();
@@ -91,24 +97,29 @@ FeatureServiceImpl::process_user_features_request(const UserFeatureRequest* requ
     }
 
     kr_rsp->set_other("mock_feat_" + std::to_string(user_id));
-    result.response.set_feature_type(KuaiRand);
+    response->set_feature_type(KuaiRand);
 
-    result.success = true;
-    return result;
+    return common::error::Status::OK();
 }
 
-FeatureServiceImpl::SKUFeatureResult
-FeatureServiceImpl::process_sku_features_request(const SKUFeatureRequest* request) {
-    SKUFeatureResult result;
+common::error::Status FeatureServiceImpl::process_sku_features_request(
+    const SKUFeatureRequest* request,
+    SKUFeatureResponse* response) {
+
+    if (request->sku_ids_size() == 0) {
+        return common::error::Status::Error(
+            common::error::feature_errors::EMPTY_SKU_IDS,
+            "Empty sku_ids in request");
+    }
 
     thread_local std::mt19937 rng(std::random_device{}());
 
     std::uniform_int_distribution<char> char_dist('a', 'z');
 
-    result.response.set_feature_type(KuaiRand);
+    response->set_feature_type(KuaiRand);
 
     for (int i = 0; i < request->sku_ids_size(); ++i) {
-        auto* sku_feat = result.response.add_kr_sku_feats();
+        auto* sku_feat = response->add_kr_sku_feats();
         sku_feat->set_sku_id(request->sku_ids(i));
 
         std::string feat;
@@ -119,8 +130,7 @@ FeatureServiceImpl::process_sku_features_request(const SKUFeatureRequest* reques
         sku_feat->set_feat(feat);
     }
 
-    result.success = true;
-    return result;
+    return common::error::Status::OK();
 }
 
 } // namespace feature
