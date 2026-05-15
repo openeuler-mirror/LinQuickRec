@@ -31,7 +31,28 @@
 
 services:
   # ========================
-  # 服务发现
+  # 服务注册中心（etcd）
+  # ========================
+  etcd:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/etcd/Dockerfile
+    image: linquickrec/etcd:latest
+    container_name: etcd
+    ports:
+      - "${ETCD_PORT:-2379}:2379"
+      - "${ETCD_PEER_PORT:-2380}:2380"
+    networks:
+      - linquickrec-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "etcdctl endpoint health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ========================
+  # 服务发现（BRPC 模式使用）
   # ========================
   discovery-server:
     build:
@@ -41,6 +62,15 @@ services:
     container_name: discovery-server
     ports:
       - "${DISCOVERY_PORT:-8100}:8100"
+    environment:
+      SERVER_PORT: "${DISCOVERY_PORT:-8100}"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      HEARTBEAT_CHECK_INTERVAL_MS: "${HEARTBEAT_CHECK_INTERVAL_MS:-1000}"
+      HEARTBEAT_GRACE_FACTOR: "${HEARTBEAT_GRACE_FACTOR:-2.0}"
+      CLEANUP_FACTOR: "${CLEANUP_FACTOR:-5.0}"
+      DEFAULT_HEARTBEAT_INTERVAL_SEC: "${DEFAULT_HEARTBEAT_INTERVAL_SEC:-5}"
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -49,6 +79,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ========================
+  # KV Worker（元戎 Datasystem）
+  # ========================
+  kv-worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/kv_worker/Dockerfile
+    image: linquickrec/kv-worker:latest
+    container_name: kv-worker
+    depends_on:
+      etcd:
+        condition: service_healthy
+    environment:
+      worker_address: "${KV_WORKER_ADDRESS:-kv-worker:31501}"
+      etcd_address: "etcd:2379"
+      enable_urma: "${ENABLE_URMA:-0}"
+      cpu_affinity: "${CPU_AFFINITY:-0-64}"
+    privileged: true
+    ipc: host
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - linquickrec-net
+    restart: unless-stopped
 
   # ========================
   # 特征服务 (mock)
@@ -60,11 +115,25 @@ services:
     image: linquickrec/feature:latest
     container_name: feature-service
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
     environment:
       SERVER_PORT: "8001"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      USER_LOG_COUNT: "${USER_LOG_COUNT:-10}"
+      USER_LOG_VEC_SIZE: "${USER_LOG_VEC_SIZE:-30}"
+      SKU_FEAT_LENGTH: "${SKU_FEAT_LENGTH:-20}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -82,18 +151,33 @@ services:
       - /usr/local/cuda-12.9:/usr/local/cuda
     container_name: recall-service
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
     environment:
       SERVER_PORT: "8002"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
       VLLM_PORT: "${VLLM_PORT:-8000}"
       VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
       VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
       MODEL_NAME: "${MODEL_NAME:-/app/models/Qwen3-0.6B/}"
       VLLM_TIMEOUT_MS: "${VLLM_TIMEOUT_MS:-100000}"
-      SKU_COUNT: "${SKU_COUNT:-100}"
       VLLM_STARTUP_TIMEOUT: "${VLLM_STARTUP_TIMEOUT:-120}"
+      VLLM_CONNECTION_TYPE: "${VLLM_CONNECTION_TYPE:-pooled}"
+      VLLM_MAX_RETRY: "${VLLM_MAX_RETRY:-3}"
+      VLLM_CONNECT_TIMEOUT_MS: "${VLLM_CONNECT_TIMEOUT_MS:--1}"
+      VLLM_BACKUP_REQUEST_MS: "${VLLM_BACKUP_REQUEST_MS:--1}"
+      SKU_COUNT: "${SKU_COUNT:-100}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     ports:
       - "8002:8002"
       - "${VLLM_PORT:-8000}:8000"
@@ -118,17 +202,27 @@ services:
     image: linquickrec/precalc:latest
     container_name: precalc-service
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
+      kv-worker:
+        condition: service_started
     environment:
       SERVER_PORT: "8003"
-      KVWORKER_HOST: "${PRECALC_KVWORKER_HOST:-141.61.84.245}"
-      KVWORKER_PORT: "${PRECALC_KVWORKER_PORT:-31502}"
-      ETCD_ADDRESS: "${PRECALC_ETCD_ADDRESS:-141.61.84.245:2379}"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
       TTL_SECONDS: "${TTL_SECONDS:-5}"
       PRECALC_RESULT_SIZE_MB: "${PRECALC_RESULT_SIZE_MB:-8.5}"
       PAYLOAD_SIZE_KB: "${PAYLOAD_SIZE_KB:-100}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -143,15 +237,25 @@ services:
       dockerfile: deploy/docker/rank-sub/Dockerfile
     image: linquickrec/rank-sub:latest
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
+      kv-worker:
+        condition: service_started
     environment:
       SERVER_PORT: "8005"
-      KVWORKER_HOST: "${RANKSUB_KVWORKER_HOST:-141.61.84.245}"
-      KVWORKER_PORT: "${RANKSUB_KVWORKER_PORT:-31502}"
-      ETCD_ADDRESS: "${RANKSUB_ETCD_ADDRESS:-141.61.84.245:2379}"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
       SCORING_DELAY_MS: "${SCORING_DELAY_MS:-100}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -168,20 +272,38 @@ services:
     image: linquickrec/rank-master:latest
     container_name: rank-master-service
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
       rank-sub-service:
         condition: service_started
     environment:
       SERVER_PORT: "8004"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      TOP_K: "${TOP_K:-100}"
+      SUB_WORKER_SERVICE_TYPE: "${SUB_WORKER_SERVICE_TYPE:-rank_sub}"
+      SUB_WORKER_PARALLELISM: "${SUB_WORKER_PARALLELISM:-4}"
+      SUB_WORKER_CONNECTION_TYPE: "${SUB_WORKER_CONNECTION_TYPE:-pooled}"
+      SUB_WORKER_MAX_RETRY: "${SUB_WORKER_MAX_RETRY:-3}"
+      SUB_WORKER_CONNECT_TIMEOUT_MS: "${SUB_WORKER_CONNECT_TIMEOUT_MS:--1}"
+      SUB_WORKER_BACKUP_REQUEST_MS: "${SUB_WORKER_BACKUP_REQUEST_MS:--1}"
+      SUB_WORKER_TIMEOUT_MS: "${SUB_WORKER_TIMEOUT_MS:-5000}"
+      SUB_WORKER_LB_POLICY: "${SUB_WORKER_LB_POLICY:-}"
       SUB_WORKER_COUNT: "${SUB_WORKER_COUNT:-3}"
       SUB_WORKER_ADDRESSES: "${SUB_WORKER_ADDRESSES:-rank-sub-service:8005}"
-      TOP_K: "${TOP_K:-100}"
-      SUB_WORKER_TIMEOUT_MS: "${SUB_WORKER_TIMEOUT_MS:-5000}"
       RANK_SUB_HOST: "rank-sub-service"
       RANK_SUB_PORT: "8005"
       RANK_SUB_STARTUP_TIMEOUT: "${RANK_SUB_STARTUP_TIMEOUT:-120}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEART_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -196,6 +318,8 @@ services:
     image: linquickrec/proxy:latest
     container_name: proxy-service
     depends_on:
+      etcd:
+        condition: service_healthy
       discovery-server:
         condition: service_healthy
       feature-service:
@@ -208,7 +332,33 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: "8080"
+      SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
+      SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
+      SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      DISCOVERY_REFRESH_INTERVAL_MS: "${DISCOVERY_REFRESH_INTERVAL_MS:-5000}"
+      FEATURE_SERVICE_NAME: "${FEATURE_SERVICE_NAME:-feature_service}"
+      RECALL_SERVICE_NAME: "${RECALL_SERVICE_NAME:-recall_service}"
+      PRECALC_SERVICE_NAME: "${PRECALC_SERVICE_NAME:-precalc_service}"
+      RANK_SERVICE_NAME: "${RANK_SERVICE_NAME:-rank_service}"
+      DOWNSTREAM_CONNECTION_TYPE: "${DOWNSTREAM_CONNECTION_TYPE:-pooled}"
+      DOWNSTREAM_MAX_RETRY: "${DOWNSTREAM_MAX_RETRY:-3}"
+      DOWNSTREAM_CONNECT_TIMEOUT_MS: "${DOWNSTREAM_CONNECT_TIMEOUT_MS:--1}"
+      DOWNSTREAM_LB_POLICY: "${DOWNSTREAM_LB_POLICY:-}"
+      FEATURE_TIMEOUT_MS: "${FEATURE_TIMEOUT_MS:-3000}"
+      RECALL_TIMEOUT_MS: "${RECALL_TIMEOUT_MS:-5000}"
+      PRECALC_TIMEOUT_MS: "${PRECALC_TIMEOUT_MS:-5000}"
+      RANK_TIMEOUT_MS: "${RANK_TIMEOUT_MS:-10000}"
+      FEATURE_BACKUP_REQUEST_MS: "${FEATURE_BACKUP_REQUEST_MS:--1}"
+      RECALL_BACKUP_REQUEST_MS: "${RECALL_BACKUP_REQUEST_MS:--1}"
+      PRECALC_BACKUP_REQUEST_MS: "${PRECALC_BACKUP_REQUEST_MS:--1}"
+      RANK_BACKUP_REQUEST_MS: "${RANK_BACKUP_REQUEST_MS:--1}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     ports:
       - "${PROXY_PORT:-8080}:8080"
     networks:
