@@ -6,8 +6,6 @@ WORKDIR /workerspace
 
 COPY services/kv_worker/ /workerspace/
 
-RUN pip install openyuanrong_datasystem*.whl
-
 COPY ${ENTRYPOINT_FILE} /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
