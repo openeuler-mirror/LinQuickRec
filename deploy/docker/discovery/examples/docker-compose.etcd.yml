@@ -1,0 +1,162 @@
+# Prerequisite: Build binaries on host first:
+#   mkdir build && cd build && cmake .. && make discovery_client -j$(nproc)
+#   cd services/discovery/examples && mkdir build && cd build && cmake .. && make -j$(nproc)
+
+services:
+  etcd:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/etcd/Dockerfile
+    image: discovery-examples-etcd
+    ports:
+      - "2379:2379"
+    container_name: discovery-examples-etcd
+    networks:
+      - discovery_examples_network
+
+  pseudo-proxy:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: proxy
+      SERVICE_PORT: 8001
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-proxy
+    networks:
+      - discovery_examples_network
+
+  pseudo-feature:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: feature_service
+      SERVICE_PORT: 8002
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-feature
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-1:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-recall-1
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-2:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-recall-2
+    networks:
+      - discovery_examples_network
+
+  pseudo-recall-3:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: recall_service
+      SERVICE_PORT: 8003
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-recall-3
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-1:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-rank-1
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-2:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-rank-2
+    networks:
+      - discovery_examples_network
+
+  pseudo-rank-3:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      SERVICE_TYPE: rank_service
+      SERVICE_PORT: 8004
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-rank-3
+    networks:
+      - discovery_examples_network
+
+  test-client:
+    build:
+      context: ../../../..
+      dockerfile: deploy/docker/discovery/examples/Dockerfile
+    image: discovery-examples-pseudo
+    depends_on:
+      - etcd
+    environment:
+      REGISTRY_BACKEND: etcd
+      ETCD_ENDPOINTS: etcd:2379
+    container_name: discovery-examples-etcd-client
+    entrypoint: ["tail", "-f", "/dev/null"]
+    networks:
+      - discovery_examples_network
+
+networks:
+  discovery_examples_network:
+    name: discovery_examples_network
