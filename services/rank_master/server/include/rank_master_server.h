@@ -13,6 +13,7 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
+#include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
@@ -99,7 +100,7 @@ private:
                      int top_k,
                      std::vector<uint64_t>& candidates);
 
-    std::unique_ptr<brpc::Channel> sub_worker_channel_;
+    std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
 
 } // namespace rank

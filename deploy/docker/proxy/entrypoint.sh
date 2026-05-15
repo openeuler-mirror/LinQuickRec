@@ -8,21 +8,29 @@ fi
 
 SERVICE_TYPE="${SERVICE_TYPE:-proxy}"
 SERVICE_PORT="${SERVICE_PORT:-8080}"
-
-# 从命令行参数中提取 discovery_addr（若存在），否则使用环境变量默认值
+REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
+ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
+
 for arg in "$@"; do
     case "$arg" in
         --discovery_addr=*) DISCOVERY_ADDR="${arg#*=}";;
     esac
 done
 
+# Build discovery flags for proxy_server
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+else
+    DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
+fi
+
 /app/build/bin/proxy_server \
     --server_port="$SERVICE_PORT" \
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
-    --discovery_addr="$DISCOVERY_ADDR" \
+    $DISCOVERY_FLAGS \
     --discovery_refresh_interval_ms=${DISCOVERY_REFRESH_INTERVAL_MS:-5000} \
     --downstream_max_retries=${DOWNSTREAM_MAX_RETRIES:-2} \
     --feature_service_name=${FEATURE_SERVICE_NAME:-feature_service} \
@@ -40,27 +48,24 @@ done
     --recall_backup_request_ms=${RECALL_BACKUP_REQUEST_MS:--1} \
     --precalc_backup_request_ms=${PRECALC_BACKUP_REQUEST_MS:--1} \
     --rank_backup_request_ms=${RANK_BACKUP_REQUEST_MS:--1} \
-    --discovery_naming_timeout_ms=${DISCOVERY_NAMING_TIMEOUT_MS:-3000} \
-    --discovery_naming_connection_type=${DISCOVERY_NAMING_CONNECTION_TYPE:-single} \
-    --discovery_naming_max_retry=${DISCOVERY_NAMING_MAX_RETRY:-2} \
-    --discovery_naming_connect_timeout_ms=${DISCOVERY_NAMING_CONNECT_TIMEOUT_MS:--1} \
-    --discovery_naming_backup_request_ms=${DISCOVERY_NAMING_BACKUP_REQUEST_MS:--1} \
     "$@" &
 PID_PROXY=$!
+
+# Build discovery_client flags
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    CLIENT_DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+else
+    CLIENT_DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
+fi
 
 /app/build/discovery/bin/discovery_client \
     --service_type="$SERVICE_TYPE" \
     --service_port="$SERVICE_PORT" \
-    --discovery_addr="$DISCOVERY_ADDR" \
+    $CLIENT_DISCOVERY_FLAGS \
     --heartbeat_interval=${HEARTBEAT_INTERVAL:-5} \
     --health_check_timeout=${HEALTH_CHECK_TIMEOUT:-2} \
     --fail_threshold=${FAIL_THRESHOLD:-3} \
-    --startup_timeout=${STARTUP_TIMEOUT:-30} \
-    --discovery_client_timeout_ms=${DISCOVERY_CLIENT_TIMEOUT_MS:-5000} \
-    --discovery_client_connection_type=${DISCOVERY_CLIENT_CONNECTION_TYPE:-single} \
-    --discovery_client_max_retry=${DISCOVERY_CLIENT_MAX_RETRY:-2} \
-    --discovery_client_connect_timeout_ms=${DISCOVERY_CLIENT_CONNECT_TIMEOUT_MS:--1} \
-    --discovery_client_backup_request_ms=${DISCOVERY_CLIENT_BACKUP_REQUEST_MS:--1}
+    --startup_timeout=${STARTUP_TIMEOUT:-30}
 EXIT_CODE=$?
 
 kill "$PID_PROXY" 2>/dev/null || true

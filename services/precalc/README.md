@@ -145,6 +145,15 @@ docker run -d --name precalc-service \
                                  └──────────────────┘
 ```
 
+### Key 生成规则
+
+user_feat_key 用于标识前置计算结果在 KVWorker 中的存储位置，生成规则：
+
+1. **优先使用 trace_id**：若 trace_id 有效（长度 ≥ 16），取其后 16 字符（随机部分）
+2. **回退哈希方案**：若 trace_id 不可用，对 user_feat 做 `std::hash` 并转为 16 字符 hex
+
+key 始终为 16 字节，每个请求唯一，避免碰撞。
+
 ## 端口对照表
 
 | 端口    | 服务                | 协议     | 说明       |
