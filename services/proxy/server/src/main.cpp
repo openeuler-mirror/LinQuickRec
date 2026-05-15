@@ -3,6 +3,8 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
+#include "common/logger.h"
+
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(feature_service_name, "feature_service", "Feature service name in discovery");
 DEFINE_string(recall_service_name, "recall_service", "Recall service name in discovery");

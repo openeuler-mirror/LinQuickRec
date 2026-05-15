@@ -1,12 +1,11 @@
 #ifndef DISCOVERY_NAMING_SERVICE_H
 #define DISCOVERY_NAMING_SERVICE_H
 
-#include <map>
-#include <mutex>
+#include <memory>
 #include <string>
-#include <thread>
 #include <vector>
 
+#include <brpc/channel.h>
 #include <brpc/naming_service.h>
 #include <gflags/gflags.h>
 
@@ -27,32 +26,23 @@ class DiscoveryCache {
 public:
     static DiscoveryCache* instance();
 
-    int GetServers(const std::string& service_name,
-                   std::vector<brpc::ServerNode>* servers);
-
-private:
-    DiscoveryCache();
-    ~DiscoveryCache();
-
-    void RefreshLoop();
     int QueryDiscovery(const std::string& service_name,
                        std::vector<brpc::ServerNode>* servers);
 
+private:
+    DiscoveryCache();
     brpc::Channel discovery_channel_;
     std::unique_ptr<discovery::DiscoveryService_Stub> stub_;
-
-    std::mutex mutex_;
-    std::map<std::string, std::vector<brpc::ServerNode>> cache_;
-
-    bool running_{true};
-    std::thread refresh_thread_;
 };
 
 class DiscoveryNamingService : public brpc::NamingService {
 public:
-    int GetServers(const char* service_name,
-                   std::vector<brpc::ServerNode>* servers) override;
-    void Describe(std::ostream& os, const brpc::ServerId& id) const override;
+    int RunNamingService(const char* service_name,
+                         brpc::NamingServiceActions* actions) override;
+    NamingService* New() const override;
+
+protected:
+    ~DiscoveryNamingService() override = default;
 };
 
 } // namespace proxy

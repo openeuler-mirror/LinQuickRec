@@ -1,8 +1,6 @@
 #include "discovery_naming_service.h"
 
-#include <chrono>
-
-#include <brpc/channel.h>
+#include <bthread/bthread.h>
 #include <butil/endpoint.h>
 
 #include "common/logger.h"
@@ -49,46 +47,10 @@ DiscoveryCache::DiscoveryCache() {
 
     stub_ = std::make_unique<discovery::DiscoveryService_Stub>(&discovery_channel_);
     LOG_INFO << "DiscoveryNamingService connected to " << FLAGS_discovery_addr;
-
-    refresh_thread_ = std::thread(&DiscoveryCache::RefreshLoop, this);
-}
-
-DiscoveryCache::~DiscoveryCache() {
-    running_ = false;
-    if (refresh_thread_.joinable()) {
-        refresh_thread_.join();
-    }
-}
-
-int DiscoveryCache::GetServers(const std::string& service_name,
-                               std::vector<brpc::ServerNode>* servers) {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = cache_.find(service_name);
-        if (it != cache_.end()) {
-            *servers = it->second;
-            return servers->empty() ? -1 : 0;
-        }
-    }
-
-    // Cache miss — synchronously query Discovery
-    std::vector<brpc::ServerNode> nodes;
-    int ret = QueryDiscovery(service_name, &nodes);
-    if (ret < 0) {
-        return -1;
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        cache_[service_name] = nodes;
-    }
-
-    *servers = std::move(nodes);
-    return servers->empty() ? -1 : 0;
 }
 
 int DiscoveryCache::QueryDiscovery(const std::string& service_name,
-                                   std::vector<brpc::ServerNode>* servers) {
+                                    std::vector<brpc::ServerNode>* servers) {
     if (!stub_) {
         LOG_ERROR << "DiscoveryNamingService: stub not initialized";
         return -1;
@@ -108,11 +70,12 @@ int DiscoveryCache::QueryDiscovery(const std::string& service_name,
         return -1;
     }
 
+    servers->clear();
     for (const auto& inst : rsp.instances()) {
         if (inst.status() == discovery::InstanceStatus::UP) {
             butil::EndPoint ep;
             std::string addr = inst.host() + ":" + std::to_string(inst.port());
-            if (butil::str2endpoint(addr.c_str(), &ep) == 0) {
+            if (butil::str2_endpoint(addr.c_str(), &ep) == 0) {
                 servers->push_back(brpc::ServerNode(ep));
             }
         }
@@ -123,60 +86,46 @@ int DiscoveryCache::QueryDiscovery(const std::string& service_name,
     return 0;
 }
 
-void DiscoveryCache::RefreshLoop() {
-    while (running_) {
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(FLAGS_discovery_refresh_interval_ms));
-
-        if (!running_) break;
-
-        // Copy service names under lock, then refresh without holding the lock
-        std::vector<std::string> services;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            for (const auto& kv : cache_) {
-                services.push_back(kv.first);
-            }
-        }
-
-        for (const auto& svc : services) {
-            if (!running_) break;
-
-            std::vector<brpc::ServerNode> nodes;
-            if (QueryDiscovery(svc, &nodes) < 0) continue;
-
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                int old_size = static_cast<int>(cache_[svc].size());
-                cache_[svc] = nodes;
-                if (static_cast<int>(nodes.size()) != old_size) {
-                    LOG_INFO << "DiscoveryNamingService: " << svc
-                             << " instances: " << old_size
-                             << " -> " << nodes.size();
-                }
-            }
-        }
-    }
-}
-
 // ---- DiscoveryNamingService ----
 
-int DiscoveryNamingService::GetServers(const char* service_name,
-                                       std::vector<brpc::ServerNode>* servers) {
-    return DiscoveryCache::instance()->GetServers(service_name, servers);
+int DiscoveryNamingService::RunNamingService(
+    const char* service_name,
+    brpc::NamingServiceActions* actions) {
+
+    while (true) {
+        std::vector<brpc::ServerNode> servers;
+        int ret = DiscoveryCache::instance()->QueryDiscovery(service_name, &servers);
+        if (ret == 0) {
+            actions->ResetServers(servers);
+        }
+
+        int rc = bthread_usleep(
+            static_cast<int64_t>(FLAGS_discovery_refresh_interval_ms) * 1000);
+        if (rc != 0) {
+            break;
+        }
+    }
+    return 0;
 }
 
-void DiscoveryNamingService::Describe(std::ostream& os,
-                                      const brpc::ServerId& id) const {
-    os << "discovery://" << id.tag;
+NamingService* DiscoveryNamingService::New() const {
+    return new DiscoveryNamingService();
 }
 
 // ---- Register with BRPC ----
 
-static brpc::NamingServiceRegisterer s_discovery_ns_reg(
-    "discovery",
-    []() -> brpc::NamingService* {
-        return new proxy::DiscoveryNamingService();
-    });
+static const brpc::NamingService* CreateDiscoveryNamingService() {
+    return new proxy::DiscoveryNamingService();
+}
+
+namespace {
+struct DiscoveryNSRegistrar {
+    DiscoveryNSRegistrar() {
+        brpc::NamingServiceExtension()->Register("discovery",
+                                                  CreateDiscoveryNamingService);
+    }
+};
+static DiscoveryNSRegistrar s_discovery_ns_registrar;
+} // anonymous namespace
 
 } // namespace proxy
