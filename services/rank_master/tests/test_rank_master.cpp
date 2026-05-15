@@ -9,9 +9,17 @@
 #include <string>
 #include <vector>
 
-using namespace rank;
+#include <gflags/gflags.h>
 
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
+DEFINE_int32(discovery_refresh_interval_ms, 5000,
+    "Discovery cache refresh interval (ms)");
+
+using namespace rank;
 
 // ============================================================================
 // parse_skus_from_string 测试

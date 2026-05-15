@@ -23,13 +23,10 @@
 #include "rank_sub.pb.h"
 
 DEFINE_int32(server_port, 8004, "服务器监听端口");
-DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
-DEFINE_string(registry_backend, "discovery_server",
-    "Registry backend: discovery_server or etcd");
-DEFINE_string(discovery_addr, "",
-    "Discovery server address (empty = use localhost fallback)");
-DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
-    "etcd endpoints, comma-separated (for etcd backend)");
+DECLARE_int32(discovery_refresh_interval_ms);
+DECLARE_string(registry_backend);
+DECLARE_string(discovery_addr);
+DECLARE_string(etcd_endpoints);
 DEFINE_int32(top_k, 100, "返回前 K 个商品");
 DEFINE_int32(sub_worker_timeout_ms, 5000, "子图调用超时时间（毫秒）");
 DEFINE_string(sub_worker_service_type, "rank_sub", "RankSub 在 Discovery 中注册的服务类型名");
