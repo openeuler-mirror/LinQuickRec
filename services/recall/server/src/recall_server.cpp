@@ -33,8 +33,8 @@ DEFINE_int32(server_port, 8002, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
 DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
 
-DEFINE_string(vllm_connection_type, "single",
-              "vLLM channel connection type (single/pooled/short)");
+DEFINE_string(vllm_connection_type, "pooled",
+              "vLLM channel connection type (pooled/short)");
 DEFINE_int32(vllm_max_retry, 3,
              "vLLM channel BRPC max retry");
 DEFINE_int32(vllm_connect_timeout_ms, -1,

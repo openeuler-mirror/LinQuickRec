@@ -39,6 +39,9 @@ DiscoveryCache::DiscoveryCache() {
         opts.backup_request_ms = FLAGS_discovery_naming_backup_request_ms;
     }
 
+    LOG_INFO << "DiscoveryCache: connecting to " << FLAGS_discovery_addr
+             << " (timeout=" << FLAGS_discovery_naming_timeout_ms
+             << "ms, connection_type=" << FLAGS_discovery_naming_connection_type << ")";
     if (discovery_channel_.Init(FLAGS_discovery_addr.c_str(), &opts) != 0) {
         LOG_ERROR << "DiscoveryNamingService: failed to init channel to "
                   << FLAGS_discovery_addr;
