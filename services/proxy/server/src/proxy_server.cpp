@@ -83,17 +83,6 @@ namespace proxy {
 ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO << "ProxyServiceImpl initializing...";
 
-<<<<<<< HEAD
-    std::string addr = (FLAGS_registry_backend == "etcd")
-        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
-
-    discovery_ = std::make_unique<ServiceDiscovery>(
-        FLAGS_registry_backend, addr, FLAGS_discovery_refresh_interval_ms);
-
-    LOG_INFO << "ProxyServiceImpl initialized";
-    LOG_INFO << "  Backend: " << FLAGS_registry_backend;
-    LOG_INFO << "  Address: " << addr;
-=======
     feature_channel_ = std::make_unique<brpc::Channel>();
     recall_channel_ = std::make_unique<brpc::Channel>();
     precalc_channel_ = std::make_unique<brpc::Channel>();
@@ -156,7 +145,6 @@ ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO << "  Downstream: connection_type=" << FLAGS_downstream_connection_type
              << " max_retry=" << FLAGS_downstream_max_retry
              << " connect_timeout_ms=" << FLAGS_downstream_connect_timeout_ms;
->>>>>>> 100ba84d254c4af17901d6680df43936e8f6f4e6
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {
