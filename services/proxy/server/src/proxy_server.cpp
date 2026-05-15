@@ -40,8 +40,6 @@ DEFINE_int32(rank_backup_request_ms, -1,
 
 DEFINE_int32(server_num_threads, 0,
              "Server bthread num_threads, 0 = BRPC default");
-DEFINE_int32(server_timeout_ms, 0,
-             "Server-side timeout (ms), 0 = no limit");
 DEFINE_int32(server_idle_timeout_sec, -1,
              "Server idle connection timeout (sec), -1 = BRPC default");
 DEFINE_int32(server_max_concurrency, 0,

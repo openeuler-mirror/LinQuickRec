@@ -38,7 +38,6 @@ DECLARE_string(precalc_service_name);
 DECLARE_string(rank_service_name);
 
 DECLARE_int32(server_num_threads);
-DECLARE_int32(server_timeout_ms);
 DECLARE_int32(server_idle_timeout_sec);
 DECLARE_int32(server_max_concurrency);
 

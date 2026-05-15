@@ -20,7 +20,6 @@ done
 /app/build/bin/proxy_server \
     --server_port="$SERVICE_PORT" \
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
-    --server_timeout_ms=${SERVER_TIMEOUT_MS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     --discovery_addr="$DISCOVERY_ADDR" \

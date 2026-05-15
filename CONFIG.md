@@ -30,7 +30,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -51,7 +50,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -127,7 +125,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -148,7 +145,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -181,7 +177,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -202,7 +197,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
@@ -233,7 +227,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_num_threads` | int32 | 0 | 允许调整 | bthread 工作线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 允许调整 | 服务端处理超时上限(ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
