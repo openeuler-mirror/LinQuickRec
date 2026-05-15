@@ -40,6 +40,7 @@ public:
     int RunNamingService(const char* service_name,
                          brpc::NamingServiceActions* actions) override;
     NamingService* New() const override;
+    void Destroy() override;
 
 protected:
     ~DiscoveryNamingService() override = default;
