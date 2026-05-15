@@ -30,6 +30,8 @@ DEFINE_int32(downstream_max_retry, 3,
              "Downstream channel BRPC max retry");
 DEFINE_int32(downstream_connect_timeout_ms, -1,
              "Downstream channel connect timeout (ms), -1 = disabled");
+DEFINE_string(downstream_lb_policy, "",
+              "Downstream channel load balancer (rr/wrr/random/la), empty = brpc default");
 
 DEFINE_int32(feature_backup_request_ms, -1,
              "Feature channel backup request (ms), -1 = disabled");
@@ -97,7 +99,8 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Feature channel
     opts.timeout_ms = FLAGS_feature_timeout_ms;
     opts.backup_request_ms = FLAGS_feature_backup_request_ms;
-    if (feature_channel_->Init(("discovery://" + FLAGS_feature_service_name).c_str(), &opts) != 0) {
+    if (feature_channel_->Init(("discovery://" + FLAGS_feature_service_name).c_str(),
+                                FLAGS_downstream_lb_policy.c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init feature channel";
     } else {
         LOG_INFO << "Feature channel initialized (timeout="
@@ -107,7 +110,8 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Recall channel
     opts.timeout_ms = FLAGS_recall_timeout_ms;
     opts.backup_request_ms = FLAGS_recall_backup_request_ms;
-    if (recall_channel_->Init(("discovery://" + FLAGS_recall_service_name).c_str(), &opts) != 0) {
+    if (recall_channel_->Init(("discovery://" + FLAGS_recall_service_name).c_str(),
+                               FLAGS_downstream_lb_policy.c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init recall channel";
     } else {
         LOG_INFO << "Recall channel initialized (timeout="
@@ -117,7 +121,8 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Precalc channel
     opts.timeout_ms = FLAGS_precalc_timeout_ms;
     opts.backup_request_ms = FLAGS_precalc_backup_request_ms;
-    if (precalc_channel_->Init(("discovery://" + FLAGS_precalc_service_name).c_str(), &opts) != 0) {
+    if (precalc_channel_->Init(("discovery://" + FLAGS_precalc_service_name).c_str(),
+                                FLAGS_downstream_lb_policy.c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init precalc channel";
     } else {
         LOG_INFO << "Precalc channel initialized (timeout="
@@ -127,7 +132,8 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Rank channel
     opts.timeout_ms = FLAGS_rank_timeout_ms;
     opts.backup_request_ms = FLAGS_rank_backup_request_ms;
-    if (rank_channel_->Init(("discovery://" + FLAGS_rank_service_name).c_str(), &opts) != 0) {
+    if (rank_channel_->Init(("discovery://" + FLAGS_rank_service_name).c_str(),
+                             FLAGS_downstream_lb_policy.c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init rank channel";
     } else {
         LOG_INFO << "Rank channel initialized (timeout="

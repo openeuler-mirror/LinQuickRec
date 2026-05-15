@@ -60,6 +60,7 @@
 | `--downstream_connection_type` | string | "pooled" | 允许调整 | 下游通道连接类型 (single/pooled/short) |
 | `--downstream_max_retry` | int32 | 3 | 允许调整 | 下游通道 BRPC 重试次数 |
 | `--downstream_connect_timeout_ms` | int32 | -1 | 允许调整 | 下游通道 TCP 建连超时(ms)，-1=禁用 |
+| `--downstream_lb_policy` | string | "" | 允许调整 | 下游通道负载均衡策略 (rr/wrr/random/la)，空=BRPC 默认(rr) |
 
 ### Client 端参数 — 下游通道按服务（Proxy）
 
@@ -209,6 +210,7 @@
 | `--sub_worker_max_retry` | int32 | 3 | 允许调整 | 到 RankSub 的重试次数 |
 | `--sub_worker_connect_timeout_ms` | int32 | -1 | 允许调整 | TCP 建连超时(ms)，-1=禁用 |
 | `--sub_worker_backup_request_ms` | int32 | -1 | 允许调整 | Backup request 延迟阈值(ms)，-1=禁用 |
+| `--sub_worker_lb_policy` | string | "" | 允许调整 | Sub-worker 通道负载均衡策略 (rr/wrr/random/la)，空=BRPC 默认(rr) |
 
 ## RankSub
 
