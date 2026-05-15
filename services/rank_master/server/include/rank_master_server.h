@@ -90,6 +90,8 @@ private:
                         const std::string& trace_id,
                         RankSubResponse* response);
 
+    static void* sub_worker_bthread_fn(void* arg);
+
     void select_top_k(const std::map<uint64_t, double>& all_scores,
                      int top_k,
                      std::vector<uint64_t>& candidates);

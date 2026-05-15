@@ -4,7 +4,7 @@
 #include <chrono>
 #include <cstring>
 #include <functional>
-#include <future>
+#include <bthread/bthread.h>
 #include <map>
 #include <memory>
 #include <random>
@@ -38,6 +38,20 @@ DEFINE_int32(sub_worker_backup_request_ms, -1,
              "Sub-worker channel backup request (ms), -1 = disabled");
 DEFINE_int32(sub_worker_parallelism, 4,
              "Number of concurrent buckets when fanning out to RankSub");
+
+namespace {
+
+struct SubWorkerTask {
+    rank::RankMasterServiceImpl* self;
+    int bucket_index;
+    const std::string* user_feat_key;
+    const std::vector<uint64_t>* sku_ids;
+    const std::string* trace_id;
+    bool success = false;
+    rank::RankSubResponse response;
+};
+
+} // namespace
 
 namespace rank {
 
@@ -130,6 +144,13 @@ bool RankMasterServiceImpl::call_sub_worker(
     return true;
 }
 
+void* RankMasterServiceImpl::sub_worker_bthread_fn(void* arg) {
+    auto* task = static_cast<SubWorkerTask*>(arg);
+    task->success = task->self->call_sub_worker(
+        *task->user_feat_key, *task->sku_ids, *task->trace_id, &task->response);
+    return nullptr;
+}
+
 void RankMasterServiceImpl::select_top_k(const std::map<uint64_t, double>& all_scores,
                                         int top_k,
                                         std::vector<uint64_t>& candidates) {
@@ -206,46 +227,46 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     }
     auto distribution = distribute_skus_by_hash(all_sku_ids, bucket_count);
 
-    std::vector<std::future<std::pair<int, RankSubResponse>>> futures;
+    std::vector<SubWorkerTask> tasks;
+    std::vector<bthread_t> tids;
+    tasks.reserve(bucket_count);
+    tids.reserve(bucket_count);
 
     for (int i = 0; i < bucket_count; ++i) {
         if (distribution[i].empty()) {
             continue;
         }
 
-        futures.push_back(std::async(std::launch::async, [this, i, &request, &distribution, &trace_id]() {
-            RankSubResponse sub_response;
-            bool success = call_sub_worker(request->user_feat_key(),
-                                          distribution[i], trace_id, &sub_response);
-            return std::make_pair(success ? i : -1, sub_response);
-        }));
+        tasks.push_back({this, i, &request->user_feat_key(), &distribution[i], &trace_id});
+
+        bthread_t tid;
+        if (bthread_start_background(&tid, nullptr, sub_worker_bthread_fn, &tasks.back()) == 0) {
+            tids.push_back(tid);
+        } else {
+            LOG_ERROR << "Failed to start bthread for bucket " << i;
+            tasks.back().success = false;
+        }
+    }
+
+    for (bthread_t tid : tids) {
+        bthread_join(tid);
     }
 
     int failed_workers = 0;
 
-    for (auto& future : futures) {
-        try {
-            auto result = future.get();
-            int bucket_index = result.first;
-            const RankSubResponse& sub_response = result.second;
-
-            if (bucket_index < 0) {
-                LOG_WARN << "Bucket " << bucket_index << " failed";
-                ++failed_workers;
-                continue;
-            }
-
-            for (int i = 0; i < sub_response.skus_id_size(); ++i) {
-                uint64_t sku_id = sub_response.skus_id(i);
-                uint64_t score_int = sub_response.skus_score(i);
-                double score = static_cast<double>(score_int) / SCORE_SCALE;
-
-                all_scores[sku_id] = score;
-            }
-        } catch (const std::exception& e) {
+    for (const auto& task : tasks) {
+        if (!task.success) {
+            LOG_WARN << "Bucket " << task.bucket_index << " failed";
             ++failed_workers;
-            LOG_ERROR << common::error::Status(rank_master_errors::INTERNAL_ERROR,
-                "Exception caught while collecting sub-worker result: " + std::string(e.what())).ToString();
+            continue;
+        }
+
+        for (int i = 0; i < task.response.skus_id_size(); ++i) {
+            uint64_t sku_id = task.response.skus_id(i);
+            uint64_t score_int = task.response.skus_score(i);
+            double score = static_cast<double>(score_int) / SCORE_SCALE;
+
+            all_scores[sku_id] = score;
         }
     }
 
