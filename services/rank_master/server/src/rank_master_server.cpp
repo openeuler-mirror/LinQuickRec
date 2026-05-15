@@ -16,7 +16,7 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-#include "common/discovery_naming_service.h"
+#include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
@@ -59,6 +59,26 @@ struct SubWorkerTask {
     rank::RankSubResponse response;
 };
 
+std::unique_ptr<brpc::Channel> make_sub_worker_channel(
+    const std::string& addr, int timeout_ms, int backup_request_ms) {
+    auto ch = std::make_unique<brpc::Channel>();
+    brpc::ChannelOptions opts;
+    opts.timeout_ms = timeout_ms;
+    opts.connection_type = FLAGS_sub_worker_connection_type.c_str();
+    opts.max_retry = FLAGS_sub_worker_max_retry;
+    if (FLAGS_sub_worker_connect_timeout_ms >= 0) {
+        opts.connect_timeout_ms = FLAGS_sub_worker_connect_timeout_ms;
+    }
+    if (backup_request_ms >= 0) {
+        opts.backup_request_ms = backup_request_ms;
+    }
+    if (ch->Init(addr.c_str(), &opts) != 0) {
+        LOG_ERROR << "Failed to init sub-worker channel to " << addr;
+        return nullptr;
+    }
+    return ch;
+}
+
 } // namespace
 
 namespace rank {
@@ -76,61 +96,14 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
     LOG_INFO << "Sub-worker parallelism: " << FLAGS_sub_worker_parallelism;
 
-    LOG_INFO << "Creating sub-worker channel...";
-    sub_worker_channel_ = std::make_unique<brpc::Channel>();
-    LOG_INFO << "Sub-worker channel created, setting options...";
+    std::string backend_addr = (FLAGS_registry_backend == "etcd")
+        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
+    service_discovery_ = std::make_unique<common::ServiceDiscovery>(
+        FLAGS_registry_backend, backend_addr,
+        FLAGS_discovery_refresh_interval_ms);
 
-    brpc::ChannelOptions opts;
-    opts.timeout_ms = FLAGS_sub_worker_timeout_ms;
-    opts.connection_type = FLAGS_sub_worker_connection_type.c_str();
-    opts.max_retry = FLAGS_sub_worker_max_retry;
-    if (FLAGS_sub_worker_connect_timeout_ms >= 0) {
-        opts.connect_timeout_ms = FLAGS_sub_worker_connect_timeout_ms;
-
-    std::vector<std::string> addresses;
-
-    // 通过 Discovery 发现 RankSub 实例
-    if (!FLAGS_discovery_addr.empty() || FLAGS_registry_backend == "etcd") {
-        std::string addr = (FLAGS_registry_backend == "etcd")
-            ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
-        discovery_resolver_ = std::make_unique<DiscoveryResolver>(
-            FLAGS_registry_backend, addr);
-        auto instances = discovery_resolver_->discover(FLAGS_sub_worker_service_type);
-        for (const auto& inst : instances) {
-            addresses.push_back(inst.host + ":" + std::to_string(inst.port));
-        }
-        LOG_INFO << "Discovered " << instances.size() << " "
-                 << FLAGS_sub_worker_service_type << " instances via Discovery";
-    }
-
-    // Fallback 到 localhost（用于本地开发/测试）
-    if (addresses.empty()) {
-        LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CHANNEL_INVALID,
-            "No sub-worker instances discovered for service type: "
-            + FLAGS_sub_worker_service_type).ToString();
-        addresses.push_back("127.0.0.1:8005");
-    }
-    if (FLAGS_sub_worker_backup_request_ms >= 0) {
-        opts.backup_request_ms = FLAGS_sub_worker_backup_request_ms;
-    }
-
-    std::string ns_url = "discovery://" + FLAGS_sub_worker_service_type;
-    LOG_INFO << "Initializing sub-worker channel with " << ns_url
-             << " (lb_policy=" << FLAGS_sub_worker_lb_policy << ")";
-
-    try {
-        if (sub_worker_channel_->Init(ns_url.c_str(),
-                                       FLAGS_sub_worker_lb_policy.c_str(), &opts) != 0) {
-            LOG_ERROR << "Failed to init sub-worker channel with " << ns_url;
-        } else {
-            LOG_INFO << "Sub-worker channel initialized: " << ns_url
-                     << " (timeout=" << FLAGS_sub_worker_timeout_ms << "ms)";
-        }
-    } catch (const std::exception& e) {
-        LOG_ERROR << "Exception during sub-worker channel init: " << e.what();
-    } catch (...) {
-        LOG_ERROR << "Unknown exception during sub-worker channel init";
-    }
+    LOG_INFO << "ServiceDiscovery initialized: backend=" << FLAGS_registry_backend
+             << " address=" << backend_addr;
 }
 
 RankMasterServiceImpl::~RankMasterServiceImpl() {
@@ -163,27 +136,48 @@ bool RankMasterServiceImpl::call_sub_worker(
     const std::string& trace_id,
     RankSubResponse* response) {
 
+    std::string host;
+    int port;
+    std::string instance_id;
+    if (!service_discovery_->GetInstance(
+            FLAGS_sub_worker_service_type, host, port, instance_id)) {
+        LOG_ERROR << "No available sub-worker instance for "
+                  << FLAGS_sub_worker_service_type;
+        return false;
+    }
+
+    std::string addr = host + ":" + std::to_string(port);
+    auto channel = make_sub_worker_channel(
+        addr, FLAGS_sub_worker_timeout_ms, FLAGS_sub_worker_backup_request_ms);
+    if (!channel) {
+        service_discovery_->ReportFailure(instance_id);
+        return false;
+    }
+
     RankSubRequest request;
     request.set_user_feat_key(user_feat_key);
     request.set_skus_sub(skus_to_string(sku_ids));
     request.set_trace_id(trace_id);
 
     brpc::Controller cntl;
-    rank::RankSubService_Stub stub(sub_worker_channel_.get());
+    rank::RankSubService_Stub stub(channel.get());
 
     int64_t start_us = butil::gettimeofday_us();
     stub.Rank(&cntl, &request, response, nullptr);
     int64_t end_us = butil::gettimeofday_us();
 
     if (cntl.Failed()) {
+        service_discovery_->ReportFailure(instance_id);
         LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
             "Sub-worker call failed: " + cntl.ErrorText()).ToString();
         return false;
     }
 
+    service_discovery_->ReportSuccess(instance_id);
     LOG_INFO << "Sub-worker returned " << response->skus_score_size() << " scores"
               << ", cost=" << (end_us - start_us) / 1000.0 << " ms"
-              << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms";
+              << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms"
+              << ", instance=" << instance_id;
 
     return true;
 }

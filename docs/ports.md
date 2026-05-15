@@ -11,7 +11,8 @@
 | RankMaster | 8004 | 精排主图服务 | ✅ 已完成 |
 | RankSub | 8005 | 精排子图服务 | ✅ 已完成 |
 | Proxy | 8080 | 网关服务 | ✅ 已完成 |
-| Discovery | 8100 | 服务发现中心 | ✅ 已完成 |
+| Discovery | 8100 | 服务发现中心（discovery_server 后端） | ✅ 已完成 |
+| etcd | 2379 | etcd 集群（etcd 后端） | ✅ 已完成 |
 | KVWorker (Recall) | 31501 | 元戎数据系统 Worker（远程） | 由元戎提供服务 |
 | KVWorker (Rank) | 31502 | 元戎数据系统 Worker（远程） | 由元戎提供服务 |
 | Redis | 6379 | 缓存服务 | 基础设施 |
@@ -36,8 +37,11 @@
 4. **8080**: 网关服务端口
    - 8080: Proxy
 
-5. **8100**: 服务发现端口
+5. **8100**: 服务发现端口（discovery_server 后端）
    - 8100: Discovery
+
+6. **2379**: etcd 端口（etcd 后端）
+   - 2379: etcd 集群
 
 ## 服务调用关系
 

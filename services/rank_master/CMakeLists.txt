@@ -119,7 +119,7 @@ add_custom_command(
 add_executable(rank_master_server
     server/src/rank_master_server.cpp
     server/src/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/discovery_naming_service.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
     ${PROTO_OUT_DIR}/discovery.pb.cc
@@ -215,7 +215,7 @@ message(STATUS "===========================================")
 add_executable(rank_master_test
     tests/test_rank_master.cpp
     server/src/rank_master_server.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/discovery_naming_service.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
     ${PROTO_OUT_DIR}/discovery.pb.cc

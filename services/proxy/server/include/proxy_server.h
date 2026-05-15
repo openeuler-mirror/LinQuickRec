@@ -7,6 +7,7 @@
 #include <brpc/channel.h>
 #include <gflags/gflags.h>
 
+#include "common/service_discovery.h"
 #include "common/error.h"
 #include "feature.pb.h"
 #include "precalc.pb.h"
@@ -84,10 +85,7 @@ private:
         const precalc::PrecalcResponse& precalc_rsp,
         RecommendResponse* response);
 
-    std::unique_ptr<brpc::Channel> feature_channel_;
-    std::unique_ptr<brpc::Channel> recall_channel_;
-    std::unique_ptr<brpc::Channel> precalc_channel_;
-    std::unique_ptr<brpc::Channel> rank_channel_;
+    std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
 
 const std::string& get_current_trace_id();

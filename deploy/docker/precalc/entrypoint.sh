@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
+ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
+DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
+
 echo "==========================================="
 echo "Starting Precalc Service"
 echo "==========================================="
@@ -20,20 +24,20 @@ cd /app/build
 SERVICE_PID=$!
 
 echo "Starting Discovery Client..."
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+else
+    DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
+fi
 /app/discovery_client \
     --service_type=precalc_service \
     --service_port=${SERVER_PORT:-8003} \
-    --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} \
+    $DISCOVERY_FLAGS \
     --host=${HOST:-auto} \
     --heartbeat_interval=${HEARTBEAT_INTERVAL:-5} \
     --health_check_timeout=${HEALTH_CHECK_TIMEOUT:-2} \
     --fail_threshold=${FAIL_THRESHOLD:-3} \
-    --startup_timeout=${STARTUP_TIMEOUT:-30} \
-    --discovery_client_timeout_ms=${DISCOVERY_CLIENT_TIMEOUT_MS:-5000} \
-    --discovery_client_connection_type=${DISCOVERY_CLIENT_CONNECTION_TYPE:-single} \
-    --discovery_client_max_retry=${DISCOVERY_CLIENT_MAX_RETRY:-2} \
-    --discovery_client_connect_timeout_ms=${DISCOVERY_CLIENT_CONNECT_TIMEOUT_MS:--1} \
-    --discovery_client_backup_request_ms=${DISCOVERY_CLIENT_BACKUP_REQUEST_MS:--1} &
+    --startup_timeout=${STARTUP_TIMEOUT:-30} &
 DISCOVERY_PID=$!
 
 echo "All services started, waiting for any process to exit..."
