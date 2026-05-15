@@ -75,7 +75,7 @@ int DiscoveryCache::QueryDiscovery(const std::string& service_name,
         if (inst.status() == discovery::InstanceStatus::UP) {
             butil::EndPoint ep;
             std::string addr = inst.host() + ":" + std::to_string(inst.port());
-            if (butil::str2_endpoint(addr.c_str(), &ep) == 0) {
+            if (butil::str2endpoint(addr.c_str(), &ep) == 0) {
                 servers->push_back(brpc::ServerNode(ep));
             }
         }
@@ -108,21 +108,21 @@ int DiscoveryNamingService::RunNamingService(
     return 0;
 }
 
-NamingService* DiscoveryNamingService::New() const {
+brpc::NamingService* DiscoveryNamingService::New() const {
     return new DiscoveryNamingService();
 }
 
-// ---- Register with BRPC ----
-
-static const brpc::NamingService* CreateDiscoveryNamingService() {
-    return new proxy::DiscoveryNamingService();
+void DiscoveryNamingService::Destroy() {
+    delete this;
 }
+
+// ---- Register with BRPC ----
 
 namespace {
 struct DiscoveryNSRegistrar {
     DiscoveryNSRegistrar() {
         brpc::NamingServiceExtension()->Register("discovery",
-                                                  CreateDiscoveryNamingService);
+                                                  new DiscoveryNamingService());
     }
 };
 static DiscoveryNSRegistrar s_discovery_ns_registrar;
