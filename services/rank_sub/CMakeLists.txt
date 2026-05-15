@@ -192,6 +192,8 @@ set_target_properties(rank_sub_server PROPERTIES
 # ============================================================================
 # 编译 Client
 # ============================================================================
+# 编译 Client
+# ============================================================================
 add_executable(rank_sub_client 
     client/rank_sub_client.cpp
     ${PROTO_OUT_DIR}/rank_sub.pb.cc

@@ -74,7 +74,9 @@ set_target_properties(discovery_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-add_subdirectory(client)
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(client)
+endif()
 
 add_executable(discovery_client
     client/src/main.cpp
