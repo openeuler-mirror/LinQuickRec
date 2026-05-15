@@ -190,6 +190,7 @@ Content-Type: application/json
 ### 脚本构建
 
 ```bash
+chmod +x build.sh
 ./build.sh              # 默认为 Release 构建
 ./build.sh release      # Release 构建
 ./build.sh debug        # Debug 构建
