@@ -33,9 +33,6 @@ int main(int argc, char* argv[]) {
     if (FLAGS_server_num_threads > 0) {
         server_options.num_threads = FLAGS_server_num_threads;
     }
-    if (FLAGS_server_timeout_ms > 0) {
-        server_options.timeout_ms = FLAGS_server_timeout_ms;
-    }
     if (FLAGS_server_idle_timeout_sec >= 0) {
         server_options.idle_timeout_sec = FLAGS_server_idle_timeout_sec;
     }
@@ -57,8 +54,6 @@ int main(int argc, char* argv[]) {
     LOG_INFO << "Discovery refresh interval: " << FLAGS_discovery_refresh_interval_ms << "ms";
     LOG_INFO << "Server num_threads: " << (FLAGS_server_num_threads > 0
              ? std::to_string(FLAGS_server_num_threads) : "default");
-    LOG_INFO << "Server timeout_ms: " << (FLAGS_server_timeout_ms > 0
-             ? std::to_string(FLAGS_server_timeout_ms) : "disabled");
     LOG_INFO << "===========================================";
 
     server.RunUntilAskedToQuit();

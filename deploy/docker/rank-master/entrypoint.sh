@@ -9,7 +9,6 @@ cd /app/build
 ./bin/rank_master_server \
     --server_port=${SERVER_PORT:-8004} \
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
-    --server_timeout_ms=${SERVER_TIMEOUT_MS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     --top_k=${TOP_K:-100} \

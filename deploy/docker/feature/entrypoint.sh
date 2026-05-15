@@ -9,7 +9,6 @@ cd /app/build
 ./bin/feature_server \
     --server_port=${SERVER_PORT:-8001} \
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
-    --server_timeout_ms=${SERVER_TIMEOUT_MS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     "$@" &

@@ -87,7 +87,6 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 | `--top_k` | int32 | 100 | 返回前 K 个商品 |
 | `--sub_worker_timeout_ms` | int32 | 5000 | 子图调用超时时间（毫秒） |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
-| `--server_timeout_ms` | int32 | 0 | 服务端处理超时上限 (ms)，0=不限制 |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
 
