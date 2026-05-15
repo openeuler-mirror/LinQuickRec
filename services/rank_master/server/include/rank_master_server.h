@@ -28,6 +28,7 @@ DECLARE_string(sub_worker_connection_type);
 DECLARE_int32(sub_worker_max_retry);
 DECLARE_int32(sub_worker_connect_timeout_ms);
 DECLARE_int32(sub_worker_backup_request_ms);
+DECLARE_string(sub_worker_lb_policy);
 DECLARE_int32(sub_worker_parallelism);
 
 namespace rank {

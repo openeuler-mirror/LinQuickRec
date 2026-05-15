@@ -220,6 +220,7 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 | `--downstream_connection_type` | string | "pooled" | 下游通道连接类型 |
 | `--downstream_max_retry` | int32 | 3 | 下游通道 BRPC 重试次数 |
 | `--downstream_connect_timeout_ms` | int32 | -1 | 下游通道建连超时 (ms)，-1=禁用 |
+| `--downstream_lb_policy` | string | "" | 下游通道负载均衡策略 (rr/wrr/random/la)，空=默认(rr) |
 
 **下游 BRPC 通道参数（按服务）：**
 

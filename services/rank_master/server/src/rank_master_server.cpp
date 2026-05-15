@@ -36,6 +36,8 @@ DEFINE_int32(sub_worker_connect_timeout_ms, -1,
              "Sub-worker channel connect timeout (ms), -1 = disabled");
 DEFINE_int32(sub_worker_backup_request_ms, -1,
              "Sub-worker channel backup request (ms), -1 = disabled");
+DEFINE_string(sub_worker_lb_policy, "",
+              "Sub-worker channel load balancer (rr/wrr/random/la), empty = brpc default");
 DEFINE_int32(sub_worker_parallelism, 4,
              "Number of concurrent buckets when fanning out to RankSub");
 
@@ -81,7 +83,8 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     }
 
     std::string ns_url = "discovery://" + FLAGS_sub_worker_service_type;
-    if (sub_worker_channel_->Init(ns_url.c_str(), &opts) != 0) {
+    if (sub_worker_channel_->Init(ns_url.c_str(),
+                                   FLAGS_sub_worker_lb_policy.c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init sub-worker channel with " << ns_url;
     } else {
         LOG_INFO << "Sub-worker channel initialized: " << ns_url

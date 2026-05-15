@@ -26,6 +26,7 @@ DECLARE_int32(rank_timeout_ms);
 DECLARE_string(downstream_connection_type);
 DECLARE_int32(downstream_max_retry);
 DECLARE_int32(downstream_connect_timeout_ms);
+DECLARE_string(downstream_lb_policy);
 
 DECLARE_int32(feature_backup_request_ms);
 DECLARE_int32(recall_backup_request_ms);
