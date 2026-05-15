@@ -16,6 +16,8 @@
 
 #include "discovery_naming_service.h"
 
+#include "common/logger.h"
+
 DEFINE_int32(server_port, 8080, "Proxy HTTP service port");
 DEFINE_int32(feature_timeout_ms, 3000, "Feature service timeout (ms)");
 DEFINE_int32(recall_timeout_ms, 5000, "Recall service timeout (ms)");
@@ -95,7 +97,7 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Feature channel
     opts.timeout_ms = FLAGS_feature_timeout_ms;
     opts.backup_request_ms = FLAGS_feature_backup_request_ms;
-    if (feature_channel_->Init("discovery://" + FLAGS_feature_service_name, &opts) != 0) {
+    if (feature_channel_->Init(("discovery://" + FLAGS_feature_service_name).c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init feature channel";
     } else {
         LOG_INFO << "Feature channel initialized (timeout="
@@ -105,7 +107,7 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Recall channel
     opts.timeout_ms = FLAGS_recall_timeout_ms;
     opts.backup_request_ms = FLAGS_recall_backup_request_ms;
-    if (recall_channel_->Init("discovery://" + FLAGS_recall_service_name, &opts) != 0) {
+    if (recall_channel_->Init(("discovery://" + FLAGS_recall_service_name).c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init recall channel";
     } else {
         LOG_INFO << "Recall channel initialized (timeout="
@@ -115,7 +117,7 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Precalc channel
     opts.timeout_ms = FLAGS_precalc_timeout_ms;
     opts.backup_request_ms = FLAGS_precalc_backup_request_ms;
-    if (precalc_channel_->Init("discovery://" + FLAGS_precalc_service_name, &opts) != 0) {
+    if (precalc_channel_->Init(("discovery://" + FLAGS_precalc_service_name).c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init precalc channel";
     } else {
         LOG_INFO << "Precalc channel initialized (timeout="
@@ -125,7 +127,7 @@ ProxyServiceImpl::ProxyServiceImpl() {
     // Rank channel
     opts.timeout_ms = FLAGS_rank_timeout_ms;
     opts.backup_request_ms = FLAGS_rank_backup_request_ms;
-    if (rank_channel_->Init("discovery://" + FLAGS_rank_service_name, &opts) != 0) {
+    if (rank_channel_->Init(("discovery://" + FLAGS_rank_service_name).c_str(), &opts) != 0) {
         LOG_ERROR << "Failed to init rank channel";
     } else {
         LOG_INFO << "Rank channel initialized (timeout="

@@ -249,7 +249,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     }
 
     for (bthread_t tid : tids) {
-        bthread_join(tid);
+        bthread_join(tid, nullptr);
     }
 
     int failed_workers = 0;
