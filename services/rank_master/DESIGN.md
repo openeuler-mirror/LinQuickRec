@@ -348,7 +348,6 @@ Client              RankMaster (:8005)           RankSub #0..N (:8006)
 | **Channel 初始化失败**     | 返回 `SUB_WORKER_CHANNEL_INVALID` 错误，保留空 Channel |
 | **动态扩缩容**             | 需重启 RankMaster 以更新 Channel 池 |
 | **Discovery 不可用**     | 回退到静态地址配置                    |
-| **线程池任务异常**          | 返回 `INTERNAL_ERROR` 错误，记录 ERROR |
 
 ## 11. 演进规划
 

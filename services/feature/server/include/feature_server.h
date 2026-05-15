@@ -6,7 +6,6 @@
 
 #include <brpc/server.h>
 
-#include "common/global_thread_pool.h"
 #include "feature.pb.h"
 
 DECLARE_int32(server_port);
@@ -43,8 +42,6 @@ private:
 
     UserFeatureResult process_user_features_request(const UserFeatureRequest* request);
     SKUFeatureResult process_sku_features_request(const SKUFeatureRequest* request);
-
-    common::ThreadPool& thread_pool_;
 };
 
 } // namespace feature

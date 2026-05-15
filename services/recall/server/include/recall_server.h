@@ -16,8 +16,6 @@
 #include <rapidjson/writer.h>
 
 #include "common/error.h"
-#include "common/global_thread_pool.h"
-#define COMMON_LOGGER_COMPAT_MODE
 #include "common/logger.h"
 #include "recall.pb.h"
 #include "vllm_client.h"
@@ -28,6 +26,11 @@ DECLARE_string(model_name);
 DECLARE_int32(server_port);
 DECLARE_int32(vllm_timeout_ms);
 DECLARE_int32(sku_count);
+
+DECLARE_string(vllm_connection_type);
+DECLARE_int32(vllm_max_retry);
+DECLARE_int32(vllm_connect_timeout_ms);
+DECLARE_int32(vllm_backup_request_ms);
 
 namespace recall {
 
@@ -101,9 +104,6 @@ private:
      * @return RecallResult 处理结果
      */
     RecallResult process_recall_request(const RecallRequest* request);
-
-    // 使用全局线程池
-    common::ThreadPool& thread_pool_;
 
     // vLLM HTTP 客户端
     VllmClient vllm_client_;

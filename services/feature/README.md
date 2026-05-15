@@ -46,6 +46,9 @@ make -j$(nproc)
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `--server_port` | int32 | 8001 | 服务监听端口 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
 
 ### RPC 接口
 

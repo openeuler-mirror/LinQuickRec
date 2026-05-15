@@ -47,7 +47,7 @@ services/proxy/
          │
          ▼
    ┌───────────────────────────────────────────────────────────────────┐
-   │  Stage 2: Recall & Precalc (parallel, global thread pool)         │
+   │  Stage 2: Recall & Precalc (parallel)                            │
    │  ┌─────────────────────────────┐  ┌───────────────────────────┐   │
    │  │  POST -> RecallService      │  │  POST -> PrecalcService   │   │
    │  │  -> Recall(sku_ids)         │  │  -> Precalculate(key)     │   │
@@ -73,8 +73,8 @@ services/proxy/
 | 阶段 | 调用方式 | 依赖服务 | 说明 |
 |------|---------|---------|------|
 | Stage 1: 特征获取 | **同步阻塞** | FeatureService | 必须拿到用户特征后才能进行后续操作 |
-| Stage 2a: 召回 | **异步并行**（全局线程池） | RecallService | 与 Stage 2b 同时发起，互不依赖 |
-| Stage 2b: 预计算 | **异步并行**（全局线程池） | PrecalcService | 与 Stage 2a 同时发起，互不依赖 |
+| Stage 2a: 召回 | **异步并行**（std::async） | RecallService | 与 Stage 2b 同时发起，互不依赖 |
+| Stage 2b: 预计算 | **异步并行**（std::async） | PrecalcService | 与 Stage 2a 同时发起，互不依赖 |
 | Stage 3: 精排 | **同步阻塞** | RankServiceMaster | 必须等 Stage 2a/2b 都完成后才能执行 |
 
 ### HTTP API 接口
@@ -209,7 +209,30 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 | `--rank_timeout_ms` | 10000 | Rank 调用超时 (ms) |
 | **其他** | | |
 | `--server_port` | 8080 | Proxy HTTP 服务监听端口 |
-| `--global_thread_pool_size` | 128 | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
+
+**下游 BRPC 通道参数（共享）：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--downstream_connection_type` | string | "pooled" | 下游通道连接类型 |
+| `--downstream_max_retry` | int32 | 3 | 下游通道 BRPC 重试次数 |
+| `--downstream_connect_timeout_ms` | int32 | -1 | 下游通道建连超时 (ms)，-1=禁用 |
+
+**下游 BRPC 通道参数（按服务）：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--feature_timeout_ms` | int32 | 3000 | Feature 通道超时 (ms) |
+| `--feature_backup_request_ms` | int32 | -1 | Feature 通道 backup request (ms)，-1=禁用 |
+| `--recall_timeout_ms` | int32 | 5000 | Recall 通道超时 (ms) |
+| `--recall_backup_request_ms` | int32 | -1 | Recall 通道 backup request (ms)，-1=禁用 |
+| `--precalc_timeout_ms` | int32 | 5000 | Precalc 通道超时 (ms) |
+| `--precalc_backup_request_ms` | int32 | -1 | Precalc 通道 backup request (ms)，-1=禁用 |
+| `--rank_timeout_ms` | int32 | 10000 | Rank 通道超时 (ms) |
+| `--rank_backup_request_ms` | int32 | -1 | Rank 通道 backup request (ms)，-1=禁用 |
 
 ### 直接启动
 

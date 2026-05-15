@@ -1,40 +1,54 @@
 #ifndef PROXY_SERVER_H
 #define PROXY_SERVER_H
 
-#include <cstdint>
-#include <functional>
 #include <memory>
 #include <string>
 
 #include <brpc/channel.h>
-#include <brpc/controller.h>
-#include <brpc/server.h>
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#include "common/logger.h"
 #include "feature.pb.h"
 #include "precalc.pb.h"
 #include "proxy.pb.h"
 #include "rank_master.pb.h"
 #include "recall.pb.h"
-#include "service_discovery.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(registry_backend);
 DECLARE_string(discovery_addr);
+<<<<<<< HEAD
 DECLARE_string(etcd_endpoints);
 DECLARE_string(feature_service_name);
 DECLARE_string(recall_service_name);
 DECLARE_string(precalc_service_name);
 DECLARE_string(rank_service_name);
+=======
+>>>>>>> 100ba84d254c4af17901d6680df43936e8f6f4e6
 DECLARE_int32(discovery_refresh_interval_ms);
-DECLARE_int32(downstream_max_retries);
+
 DECLARE_int32(feature_timeout_ms);
 DECLARE_int32(recall_timeout_ms);
 DECLARE_int32(precalc_timeout_ms);
 DECLARE_int32(rank_timeout_ms);
 
+DECLARE_string(downstream_connection_type);
+DECLARE_int32(downstream_max_retry);
+DECLARE_int32(downstream_connect_timeout_ms);
+
+DECLARE_int32(feature_backup_request_ms);
+DECLARE_int32(recall_backup_request_ms);
+DECLARE_int32(precalc_backup_request_ms);
+DECLARE_int32(rank_backup_request_ms);
+
+DECLARE_string(feature_service_name);
+DECLARE_string(recall_service_name);
+DECLARE_string(precalc_service_name);
+DECLARE_string(rank_service_name);
+
+DECLARE_int32(server_num_threads);
+DECLARE_int32(server_idle_timeout_sec);
+DECLARE_int32(server_max_concurrency);
 
 namespace proxy {
 
@@ -72,14 +86,10 @@ private:
         const precalc::PrecalcResponse& precalc_rsp,
         RecommendResponse* response);
 
-    common::error::Status call_with_retry(
-        const std::string& service_name,
-        int timeout_ms,
-        uint32_t error_specific_code,
-        const std::function<common::error::Status(
-            brpc::Channel&, brpc::Controller&)>& rpc_impl);
-
-    std::unique_ptr<ServiceDiscovery> discovery_;
+    std::unique_ptr<brpc::Channel> feature_channel_;
+    std::unique_ptr<brpc::Channel> recall_channel_;
+    std::unique_ptr<brpc::Channel> precalc_channel_;
+    std::unique_ptr<brpc::Channel> rank_channel_;
 };
 
 const std::string& get_current_trace_id();

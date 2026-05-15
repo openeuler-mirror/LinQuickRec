@@ -94,7 +94,7 @@ endif()
 add_executable(proxy_server
     server/src/proxy_server.cpp
     server/src/main.cpp
-    server/src/service_discovery.cpp
+    server/src/discovery_naming_service.cpp
     ${PROTO_SRCS}
 )
 
@@ -141,7 +141,7 @@ set_target_properties(proxy_test_client PROPERTIES
 add_executable(proxy_integration_test
     tests/integration_test.cpp
     server/src/proxy_server.cpp
-    server/src/service_discovery.cpp
+    server/src/discovery_naming_service.cpp
     ${PROTO_SRCS}
 )
 
