@@ -70,7 +70,10 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
     LOG_INFO << "Sub-worker parallelism: " << FLAGS_sub_worker_parallelism;
 
+    LOG_INFO << "Creating sub-worker channel...";
     sub_worker_channel_ = std::make_unique<brpc::Channel>();
+    LOG_INFO << "Sub-worker channel created, setting options...";
+
     brpc::ChannelOptions opts;
     opts.timeout_ms = FLAGS_sub_worker_timeout_ms;
     opts.connection_type = FLAGS_sub_worker_connection_type.c_str();
@@ -83,12 +86,21 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     }
 
     std::string ns_url = "discovery://" + FLAGS_sub_worker_service_type;
-    if (sub_worker_channel_->Init(ns_url.c_str(),
-                                   FLAGS_sub_worker_lb_policy.c_str(), &opts) != 0) {
-        LOG_ERROR << "Failed to init sub-worker channel with " << ns_url;
-    } else {
-        LOG_INFO << "Sub-worker channel initialized: " << ns_url
-                 << " (timeout=" << FLAGS_sub_worker_timeout_ms << "ms)";
+    LOG_INFO << "Initializing sub-worker channel with " << ns_url
+             << " (lb_policy=" << FLAGS_sub_worker_lb_policy << ")";
+
+    try {
+        if (sub_worker_channel_->Init(ns_url.c_str(),
+                                       FLAGS_sub_worker_lb_policy.c_str(), &opts) != 0) {
+            LOG_ERROR << "Failed to init sub-worker channel with " << ns_url;
+        } else {
+            LOG_INFO << "Sub-worker channel initialized: " << ns_url
+                     << " (timeout=" << FLAGS_sub_worker_timeout_ms << "ms)";
+        }
+    } catch (const std::exception& e) {
+        LOG_ERROR << "Exception during sub-worker channel init: " << e.what();
+    } catch (...) {
+        LOG_ERROR << "Unknown exception during sub-worker channel init";
     }
 }
 

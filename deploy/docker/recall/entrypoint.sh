@@ -33,7 +33,7 @@ cd /app/build
     --vllm_endpoint=${VLLM_ENDPOINT:-/v1/chat/completions} \
     --model_name=${MODEL_NAME:-/app/models/Qwen3-0.6B/} \
     --vllm_timeout_ms=${VLLM_TIMEOUT_MS:-100000} \
-    --vllm_connection_type=${VLLM_CONNECTION_TYPE:-single} \
+    --vllm_connection_type=${VLLM_CONNECTION_TYPE:-pooled} \
     --vllm_max_retry=${VLLM_MAX_RETRY:-3} \
     --vllm_connect_timeout_ms=${VLLM_CONNECT_TIMEOUT_MS:--1} \
     --vllm_backup_request_ms=${VLLM_BACKUP_REQUEST_MS:--1} \
