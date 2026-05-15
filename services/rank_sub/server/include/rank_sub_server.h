@@ -1,7 +1,9 @@
 #ifndef RANK_SUB_SERVER_H
 #define RANK_SUB_SERVER_H
 
+#include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,11 +15,15 @@
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
+#include "discovery_provider.h"
 #include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
-DECLARE_string(kvworker_host);
-DECLARE_int32(kvworker_port);
+DECLARE_string(registry_backend);
+DECLARE_string(discovery_addr);
+DECLARE_string(etcd_endpoints);
+DECLARE_string(kv_worker_service);
+
 
 namespace rank {
 
@@ -65,6 +71,8 @@ private:
      */
     common::error::Status process_rank_request(const RankSubRequest* request,
                                               RankSubResponse* response);
+
+    std::unique_ptr<discovery::IDiscoveryProvider> discovery_provider_;
 };
 
 } // namespace rank

@@ -15,7 +15,16 @@
 #include "recall.pb.h"
 
 DECLARE_int32(server_port);
+DECLARE_string(registry_backend);
 DECLARE_string(discovery_addr);
+<<<<<<< HEAD
+DECLARE_string(etcd_endpoints);
+DECLARE_string(feature_service_name);
+DECLARE_string(recall_service_name);
+DECLARE_string(precalc_service_name);
+DECLARE_string(rank_service_name);
+=======
+>>>>>>> 100ba84d254c4af17901d6680df43936e8f6f4e6
 DECLARE_int32(discovery_refresh_interval_ms);
 
 DECLARE_int32(feature_timeout_ms);

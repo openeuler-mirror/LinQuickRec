@@ -133,16 +133,24 @@ target_include_directories(rank_master_server PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 
+# Discovery Client Library
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client
+                     ${CMAKE_BINARY_DIR}/discovery_client_lib_rm)
+endif()
+
 target_link_libraries(rank_master_server PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
     
-    # Abseil �?- 使用 --no-as-needed 避免 DSO missing 问题
+    # Abseil - 使用 --no-as-needed 避免 DSO missing 问题
     -Wl,--no-as-needed
     ${ABSL_LIBS}
     -Wl,--as-needed
@@ -158,6 +166,7 @@ set_target_properties(rank_master_server PROPERTIES
 add_executable(rank_master_test_client 
     client/rank_master_test_client.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 target_include_directories(rank_master_test_client PRIVATE
@@ -168,9 +177,11 @@ target_include_directories(rank_master_test_client PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${YR_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 
 target_link_libraries(rank_master_test_client PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
@@ -218,9 +229,11 @@ target_include_directories(rank_master_test PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 
 target_link_libraries(rank_master_test PRIVATE
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb

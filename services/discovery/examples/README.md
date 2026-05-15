@@ -2,12 +2,16 @@
 
 ## 模块简介
 
-本示例提供了一套 docker-compose 编排，演示 discovery 系统的完整工作流程：启动一个 `discovery-server` 实例，同时部署多个伪业务服务（pseudo_service）作为不同服务类型的多副本实例，通过测试工具验证服务注册、发现、心跳及生命周期管理等核心功能。
+本示例提供了一套 docker-compose 编排，演示 discovery 系统的完整工作流程：启动一个 `discovery-server`（或 etcd）作为注册中心，同时部署多个伪业务服务（pseudo_service）作为不同服务类型的多副本实例，通过测试工具验证服务注册、发现、心跳及生命周期管理等核心功能。
+
+编排文件位于 `deploy/docker/discovery/examples/`，支持双后端：
+- `docker-compose.yml` — 使用自建 discovery_server 后端
+- `docker-compose.etcd.yml` — 使用 etcd 后端
 
 架构要点：
 - 伪服务（pseudo_service）为轻量 TCP server，无业务逻辑，仅用于模拟服务注册与健康检查
 - 每个伪服务容器内同时运行 `pseudo_service` + `discovery_client`，形成完整的注册/心跳链路
-- 测试工具通过 BRPC 协议与 `discovery-server` 交互，无需外部依赖
+- 测试工具通过 BRPC 协议与 `discovery-server`、或通过 REST API 与 etcd 交互
 - 零侵入设计：业务服务无需修改代码即可通过 discovery_client 接入服务发现
 
 ### 可观测性
@@ -22,18 +26,23 @@
 services/discovery/examples/
 ├── CMakeLists.txt
 ├── README.md
-├── docker-compose.yml
 ├── pseudo_service/
 │   └── main.cpp
 └── tests/
     ├── test_discover.cpp
     ├── test_heartbeat_cycle.cpp
     └── test_register.cpp
+
+deploy/docker/discovery/examples/
+├── Dockerfile
+├── entrypoint.sh
+├── docker-compose.yml
+└── docker-compose.etcd.yml
 ```
 
 ## 业务流程
 
-下面展示一次完整 demo 部署的调用链路与状态流转：
+下面展示 discovery_server 后端的一次完整 demo 部署的调用链路与状态流转（etcd 后端流程见下方「阶段时序」表格）：
 
 ```
                     docker compose up
@@ -73,6 +82,8 @@ services/discovery/examples/
 
 ### 阶段时序
 
+**discovery_server 后端：**
+
 | 阶段 | 操作 | 参与组件 | 说明 |
 |---|---|---|---|
 | Stage 1 | 启动 discovery-server | discovery-server | 监听 8100 端口，等待 RPC |
@@ -82,7 +93,19 @@ services/discovery/examples/
 | Stage 3 | 注册/反注册验证 | test_register -> discovery-server | 验证 Register + Deregister RPC 正确性 |
 | Stage 3 | 生命周期验证 | test_heartbeat_cycle -> discovery-server | 验证 UP -> DOWN -> REMOVED 完整链路 |
 
+**etcd 后端：**
+
+| 阶段 | 操作 | 参与组件 | 说明 |
+|---|---|---|---|
+| Stage 1 | 启动 etcd | etcd | 监听 2379 端口，等待 REST API 请求 |
+| Stage 2 | 伪服务注册 | pseudo_service, discovery_client | discovery_client 通过 LeaseGrant + Put 写入 etcd |
+| Stage 2 (持续) | 心跳维持 | discovery_client -> etcd | 后台线程自动 LeaseKeepAlive，无显式 Heartbeat RPC |
+| Stage 3 | 实例验证 | etcdctl / docker logs | 查询 etcd key 或查看客户端日志确认注册成功 |
+| Stage 3 | lease 过期验证 | 停容器 -> 等待 TTL | etcd 自动删除过期 key，无需额外清理服务 |
+
 ### 错误处理
+
+**discovery_server 后端：**
 
 | 场景 | 表现 |
 |---|---|
@@ -91,6 +114,16 @@ services/discovery/examples/
 | DOWN 状态持续超过清理时间 | discovery-server 从注册表移除该实例 |
 | 伪服务端口未就绪 | discovery_client 等待端口探测成功（--startup_timeout） |
 | 连续健康检查失败 | discovery_client 主动反注册（--fail_threshold） |
+
+**etcd 后端：**
+
+| 场景 | 表现 |
+|---|---|
+| etcd 未启动时注册 | discovery_client 连接超时失败 |
+| 心跳丢失超过 TTL | etcd lease 过期自动删除 key |
+| discovery_client 崩溃 | etcd lease 过期自动清理，无需服务端额外处理 |
+| 伪服务端口未就绪 | discovery_client 等待端口探测成功（--startup_timeout） |
+| 连续健康检查失败 | discovery_client 停止 lease keep-alive，key 自动过期 |
 
 ### trace_id
 
@@ -143,7 +176,16 @@ make -j$(nproc)
 |---|---|---|
 | `SERVICE_TYPE` | (必填) | 服务类型名，snake_case 格式 |
 | `SERVICE_PORT` | (必填) | 本容器主服务的监听端口 |
-| `DISCOVERY_ADDR` | "discovery-server:8100" | Discovery Server 地址 |
+| `REGISTRY_BACKEND` | "discovery_server" | 注册后端：discovery_server 或 etcd |
+| `DISCOVERY_ADDR` | "discovery-server:8100" | Discovery Server 地址（discovery_server 后端） |
+| `ETCD_ENDPOINTS` | "etcd:2379" | etcd 地址（etcd 后端） |
+
+### etcd 后端启动
+
+```bash
+cd deploy/docker/discovery/examples
+docker compose -f docker-compose.etcd.yml up --build
+```
 
 ### 直接启动（本地调试）
 
@@ -163,18 +205,28 @@ make -j$(nproc)
 ### 镜像构建
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml build
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml build
 ```
 
 ### 启动全部容器
 
+**discovery_server 后端：**
+
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml up -d
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml up -d
+```
+
+**etcd 后端：**
+
+```bash
+docker compose -f deploy/docker/discovery/examples/docker-compose.etcd.yml up -d
 ```
 
 ### 容器一览
 
-启动 9 个容器：
+启动 9 个容器（discovery_server 后端）或 9 个容器（etcd 后端）：
+
+**discovery_server 后端：**
 
 | 容器名 | 镜像名 | 服务类型 | 端口 | 副本数 |
 |---|---|---|---|---|
@@ -185,6 +237,17 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 | discovery-examples-rank-{1,2,3} | discovery-examples-pseudo | rank_service | 8003 | 3 |
 | discovery-examples-client | discovery-examples-pseudo | — | — | 1 |
 
+**etcd 后端：**
+
+| 容器名 | 镜像名 | 服务类型 | 端口 | 副本数 |
+|---|---|---|---|---|
+| discovery-examples-etcd | discovery-examples-etcd | — | 2379 | 1 |
+| discovery-examples-etcd-proxy | discovery-examples-pseudo | proxy | 8002 | 1 |
+| discovery-examples-etcd-feature | discovery-examples-pseudo | feature_service | 8002 | 1 |
+| discovery-examples-etcd-recall-{1,2,3} | discovery-examples-pseudo | recall_service | 8001 | 3 |
+| discovery-examples-etcd-rank-{1,2,3} | discovery-examples-pseudo | rank_service | 8003 | 3 |
+| discovery-examples-etcd-client | discovery-examples-pseudo | — | — | 1 |
+
 各伪服务容器自动运行 `pseudo_service + discovery_client`，向发现中心注册。同类型容器使用相同端口（各自容器内独立，互不冲突）。
 
 ### 查看容器日志确认注册成功
@@ -192,7 +255,7 @@ docker compose -f services/discovery/examples/docker-compose.yml up -d
 **Discovery Server：**
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs discovery-server
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml logs discovery-server
 ```
 
 预期输出：
@@ -210,7 +273,7 @@ docker compose -f services/discovery/examples/docker-compose.yml logs discovery-
 **任一伪服务容器（如 pseudo-recall-1）：**
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-recall-1
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml logs pseudo-recall-1
 ```
 
 预期输出：
@@ -220,6 +283,7 @@ docker compose -f services/discovery/examples/docker-compose.yml logs pseudo-rec
 Pseudo service starting
   service_type: recall_service
   service_port: 8001
+  registry_backend: discovery_server
   discovery_addr: discovery-server:8100
 ========================================
 [2026-04-29 11:14:17.410] [INFO] [main.cpp:48] Pseudo service listening on port 8001
@@ -236,11 +300,14 @@ Pseudo service starting
 ### 清除资源
 
 ```bash
-# 停止并移除所有容器
-docker compose -f services/discovery/examples/docker-compose.yml down
+# 停止并移除所有容器（discovery_server 后端）
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml down
+
+# 停止并移除所有容器（etcd 后端）
+docker compose -f deploy/docker/discovery/examples/docker-compose.etcd.yml down
 
 # 删除构建的镜像
-docker rmi discovery-examples-server discovery-examples-pseudo
+docker rmi discovery-examples-server discovery-examples-pseudo discovery-examples-etcd
 ```
 
 ## 测试方法
@@ -249,27 +316,66 @@ docker rmi discovery-examples-server discovery-examples-pseudo
 
 在宿主机上，通过 `docker compose exec` 在容器内执行测试工具。建议使用 `test-client` 容器（无业务进程干扰）。
 
+**discovery_server 后端测试：**
+
+使用 `docker-compose.yml`，测试工具通过 BRPC 连接 discovery-server:
+
+```bash
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
+  test_discover --server=discovery-server:8100 proxy
+```
+
+**etcd 后端测试：**
+
+当前测试工具使用 BRPC 协议与 registry 通信。etcd 后端模式下，可通过以下方式验证：
+
+```bash
+# 查看 discovery_client 注册日志
+docker compose -f deploy/docker/discovery/examples/docker-compose.etcd.yml logs pseudo-recall-1
+
+# 直接查询 etcd 确认 key 存在（安装 etcdctl 或使用 curl）
+docker exec discovery-examples-etcd etcdctl get /linquickrec/services/proxy/ --prefix
+
+# 查看 etcd lease 状态
+docker exec discovery-examples-etcd etcdctl lease list
+```
+
+预期日志输出（`pseudo-recall-1`）：
+
+```
+========================================
+Pseudo service starting
+  service_type: recall_service
+  service_port: 8003
+  registry_backend: etcd
+  etcd_endpoints: etcd:2379
+========================================
+[2026-04-29 11:14:17.412] [INFO] [main.cpp:--] Discovery Client starting
+[2026-04-29 11:14:17.415] [INFO] [main.cpp:--] Registered as recall_service_xxx
+[2026-04-29 11:14:22.418] [INFO] [main.cpp:--] Etcd registered: ...
+```
+
 #### 测试 1：查询各服务类型实例
 
 ```bash
 # proxy
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 proxy
 
 # feature_service
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 feature_service
 
 # recall_service
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 recall_service
 
 # rank_service
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 rank_service
 
 # 未部署类型
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_discover --server=discovery-server:8100 no_this_service
 ```
 
@@ -295,10 +401,10 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 [PASS] Found 0 instance(s) of [no_this_service]:
 ```
 
-#### 测试 2：注册与反注册
+#### 测试 2：注册与反注册（discovery_server 后端）
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_register \
   --server=discovery-server:8100 \
   --service_type=_test_ \
@@ -315,10 +421,10 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 [PASS] test_register passed
 ```
 
-#### 测试 3：全生命周期健康检查
+#### 测试 3：全生命周期健康检查（discovery_server 后端）
 
 ```bash
-docker compose -f services/discovery/examples/docker-compose.yml exec test-client \
+docker compose -f deploy/docker/discovery/examples/docker-compose.yml exec test-client \
   test_heartbeat_cycle \
     --server=discovery-server:8100 \
     --service_type=_test_ \
@@ -341,6 +447,8 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 
 ### 测试要点对照
 
+**discovery_server 后端：**
+
 | 测试 | 验证点 | 预期结果 |
 |---|---|---|
 | `test_discover proxy` | 单实例查询 | 1 个 UP 实例 |
@@ -350,3 +458,12 @@ docker compose -f services/discovery/examples/docker-compose.yml exec test-clien
 | `test_discover rank_master` | 未部署服务 | 0 个实例 |
 | `test_register` | Register + Deregister RPC | 注册成功 -> 反注册成功 -> 确认已删除 |
 | `test_heartbeat_cycle` | 心跳保持 UP -> 停心跳变 DOWN -> 超时清理 | 5 步全部 PASS |
+
+**etcd 后端（通过日志和 etcdctl 验证）：**
+
+| 验证点 | 验证方式 | 预期结果 |
+|---|---|---|
+| 伪服务注册 | `docker logs` 观察 discovery_client 日志 | 每条日志含 "Etcd registered: ..." |
+| 多副本实例 | `etcdctl get /linquickrec/services/... --prefix` | recall_service 3 个 key，rank_service 3 个 key |
+| 心跳维持 | 等待后确认 lease 仍存活 | `etcdctl lease list` 显示对应 lease |
+| lease 过期清理 | 停掉一个伪服务容器，等待 TTL 过期 | `etcdctl get --prefix` 确认 key 自动消失 |
