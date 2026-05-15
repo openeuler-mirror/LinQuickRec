@@ -5,7 +5,7 @@
 services:
   discovery-server:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/Dockerfile
     image: discovery-examples-server
     ports:
@@ -16,7 +16,7 @@ services:
 
   pseudo-proxy:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -30,7 +30,7 @@ services:
 
   pseudo-feature:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -44,7 +44,7 @@ services:
 
   pseudo-recall-1:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -58,7 +58,7 @@ services:
 
   pseudo-recall-2:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -72,7 +72,7 @@ services:
 
   pseudo-recall-3:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -86,7 +86,7 @@ services:
 
   pseudo-rank-1:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -100,7 +100,7 @@ services:
 
   pseudo-rank-2:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -114,7 +114,7 @@ services:
 
   pseudo-rank-3:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
@@ -128,7 +128,7 @@ services:
 
   test-client:
     build:
-      context: ../../..
+      context: ../../../..
       dockerfile: deploy/docker/discovery/examples/Dockerfile
     image: discovery-examples-pseudo
     depends_on:
