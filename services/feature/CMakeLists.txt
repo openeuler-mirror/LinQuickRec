@@ -67,7 +67,36 @@ set_target_properties(feature_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
+# ============================================================================
+# 编译 Test Client
+# ============================================================================
+add_executable(feature_test_client
+    client/feature_test_client.cpp
+    ${PROTO_SRC}
+)
+
+target_include_directories(feature_test_client PRIVATE
+    ${BRPC_INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include
+)
+
+target_link_libraries(feature_test_client PRIVATE
+    common_lib
+    ${BRPC_LIBRARIES}
+    leveldb
+    ${Protobuf_LIBRARIES}
+    ${ABSL_LIBS}
+    Threads::Threads
+)
+
+set_target_properties(feature_test_client PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
 message(STATUS "=== Feature Service Configuration ===")
 message(STATUS "Build targets:")
 message(STATUS "  - feature_server")
+message(STATUS "  - feature_test_client")
 message(STATUS "=====================================")

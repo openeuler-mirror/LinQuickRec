@@ -86,7 +86,9 @@ make precalc_server precalc_test_client precalc_test -j$(nproc)
 | `--precalc_result_size_mb`  | double | 8.5             | 前置计算结果大小（MB）              |
 | `--ttl_seconds`             | int32  | 5               | TTL 时间（秒）                 |
 | `--payload_size_kb`         | int32  | 100             | payload 大小（KB）            |
-| `--global_thread_pool_size` | int32  | 128             | 全局线程池大小，0 表示自动根据 CPU 核数计算 |
+| `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
+| `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
+| `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
 
 ### 使用测试客户端
 
