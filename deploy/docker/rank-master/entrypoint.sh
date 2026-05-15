@@ -28,6 +28,11 @@ echo "Starting Discovery Client..."
     --service_type=rank_master \
     --service_port=${SERVER_PORT:-8004} \
     --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} \
+    --host=${HOST:-auto} \
+    --heartbeat_interval=${HEARTBEAT_INTERVAL:-5} \
+    --health_check_timeout=${HEALTH_CHECK_TIMEOUT:-2} \
+    --fail_threshold=${FAIL_THRESHOLD:-3} \
+    --startup_timeout=${STARTUP_TIMEOUT:-30} \
     --discovery_client_timeout_ms=${DISCOVERY_CLIENT_TIMEOUT_MS:-5000} \
     --discovery_client_connection_type=${DISCOVERY_CLIENT_CONNECTION_TYPE:-single} \
     --discovery_client_max_retry=${DISCOVERY_CLIENT_MAX_RETRY:-2} \

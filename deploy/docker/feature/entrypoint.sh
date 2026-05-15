@@ -11,14 +11,22 @@ cd /app/build
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
+    --user_log_count=${USER_LOG_COUNT:-10} \
+    --user_log_vec_size=${USER_LOG_VEC_SIZE:-30} \
+    --sku_feat_length=${SKU_FEAT_LENGTH:-20} \
     "$@" &
 SERVICE_PID=$!
 
 echo "Starting Discovery Client..."
 /app/discovery_client \
     --service_type=feature_service \
-    --service_port=${SERVER_PORT:-8003} \
+    --service_port=${SERVER_PORT:-8001} \
     --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} \
+    --host=${HOST:-auto} \
+    --heartbeat_interval=${HEARTBEAT_INTERVAL:-5} \
+    --health_check_timeout=${HEALTH_CHECK_TIMEOUT:-2} \
+    --fail_threshold=${FAIL_THRESHOLD:-3} \
+    --startup_timeout=${STARTUP_TIMEOUT:-30} \
     --discovery_client_timeout_ms=${DISCOVERY_CLIENT_TIMEOUT_MS:-5000} \
     --discovery_client_connection_type=${DISCOVERY_CLIENT_CONNECTION_TYPE:-single} \
     --discovery_client_max_retry=${DISCOVERY_CLIENT_MAX_RETRY:-2} \

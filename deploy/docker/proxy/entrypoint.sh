@@ -40,6 +40,11 @@ done
     --recall_backup_request_ms=${RECALL_BACKUP_REQUEST_MS:--1} \
     --precalc_backup_request_ms=${PRECALC_BACKUP_REQUEST_MS:--1} \
     --rank_backup_request_ms=${RANK_BACKUP_REQUEST_MS:--1} \
+    --discovery_naming_timeout_ms=${DISCOVERY_NAMING_TIMEOUT_MS:-3000} \
+    --discovery_naming_connection_type=${DISCOVERY_NAMING_CONNECTION_TYPE:-single} \
+    --discovery_naming_max_retry=${DISCOVERY_NAMING_MAX_RETRY:-2} \
+    --discovery_naming_connect_timeout_ms=${DISCOVERY_NAMING_CONNECT_TIMEOUT_MS:--1} \
+    --discovery_naming_backup_request_ms=${DISCOVERY_NAMING_BACKUP_REQUEST_MS:--1} \
     "$@" &
 PID_PROXY=$!
 

@@ -16,7 +16,6 @@
 DECLARE_int32(server_port);
 DECLARE_string(kvworker_host);
 DECLARE_int32(kvworker_port);
-DECLARE_string(etcd_address);
 DECLARE_double(precalc_result_size_mb);
 DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
