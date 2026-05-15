@@ -14,6 +14,16 @@ set(ABSL_LIBS
     absl_spinlock_wait
 )
 
+# 生成 discovery protobuf 文件
+set(_proto_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../../proto")
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --cpp_out=${CMAKE_CURRENT_BINARY_DIR} --proto_path=${_proto_dir} ${_proto_dir}/discovery.proto
+    DEPENDS ${_proto_dir}/discovery.proto
+)
+add_custom_target(discovery_client_proto DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h)
+
 add_library(discovery_client_lib STATIC
     src/brpc_registry_backend.cpp
     src/brpc_discovery_provider.cpp
@@ -41,6 +51,8 @@ target_link_libraries(discovery_client_lib PUBLIC
     Threads::Threads
     common_lib
 )
+
+add_dependencies(discovery_client_lib discovery_client_proto)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(discovery_client_lib PRIVATE -Wall -Wextra -O2)

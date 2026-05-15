@@ -9,14 +9,21 @@ echo "==========================================="
 echo "Starting Precalc Service"
 echo "==========================================="
 
+# Build discovery flags for precalc_server
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+else
+    DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
+fi
+
 cd /app/build
 ./bin/precalc_server \
     --server_port=${SERVER_PORT:-8003} \
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
-    --kvworker_host=${KVWORKER_HOST:-141.61.84.245} \
-    --kvworker_port=${KVWORKER_PORT:-31502} \
+    $DISCOVERY_FLAGS \
+    --kv_worker_service=${KV_WORKER_SERVICE:-kv_worker} \
     --ttl_seconds=${TTL_SECONDS:-5} \
     --precalc_result_size_mb=${PRECALC_RESULT_SIZE_MB:-8.5} \
     --payload_size_kb=${PAYLOAD_SIZE_KB:-100} \
