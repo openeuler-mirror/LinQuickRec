@@ -1,13 +1,10 @@
-FROM quay.io/coreos/etcd:v3.5.18
+FROM linquickrec/base:latest
+
+ARG ENTRYPOINT_FILE=deploy/docker/etcd/entrypoint.sh
+
+COPY ${ENTRYPOINT_FILE} /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 2379 2380
 
-ENV ETCD_NAME=etcd-node1
-ENV ETCD_DATA_DIR=/var/lib/etcd
-ENV ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-ENV ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
-ENV ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
-ENV ETCD_INITIAL_ADVERTISE_PEER_URLS=http://0.0.0.0:2380
-ENV ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster-1
-ENV ETCD_INITIAL_CLUSTER=etcd-node1=http://0.0.0.0:2380
-ENV ETCD_INITIAL_CLUSTER_STATE=new
+ENTRYPOINT ["/entrypoint.sh"]
