@@ -16,6 +16,8 @@ else
     WORKER_PORT="31501"
 fi
 
+# 覆盖 worker_address 使 datasystem 监听所有接口，确保 127.0.0.1 健康检查可达
+export worker_address="0.0.0.0:${WORKER_PORT}"
 /workerspace/start_datasystem.sh &
 WORKER_PID=$!
 
