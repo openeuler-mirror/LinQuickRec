@@ -124,12 +124,27 @@ std::string EtcdClient::prefixEnd(const std::string& prefix) {
     return "";
 }
 
+bool EtcdClient::hasError(const std::string& json_resp) {
+    if (json_resp.empty()) return true;
+    try {
+        simple_json::Value resp = simple_json::Value::parse(json_resp);
+        if (resp.contains("error")) {
+            LOG_ERROR << "etcd error: " << resp.get("error").str();
+            return true;
+        }
+    } catch (const std::exception& e) {
+        LOG_ERROR << "etcd response parse error: " << e.what();
+        return true;
+    }
+    return false;
+}
+
 int64_t EtcdClient::leaseGrant(int64_t ttl_seconds) {
     simple_json::Value req_body = simple_json::Value::object();
     req_body["TTL"] = simple_json::Value(std::to_string(ttl_seconds));
 
     std::string resp = post("/v3/lease/grant", req_body.dump());
-    if (resp.empty()) return 0;
+    if (resp.empty() || hasError(resp)) return 0;
 
     try {
         simple_json::Value resp_json = simple_json::Value::parse(resp);
@@ -147,7 +162,8 @@ bool EtcdClient::leaseRevoke(int64_t lease_id) {
     req_body["ID"] = simple_json::Value(std::to_string(lease_id));
 
     std::string resp = post("/v3/kv/lease/revoke", req_body.dump());
-    return !resp.empty();
+    if (resp.empty() || hasError(resp)) return false;
+    return true;
 }
 
 bool EtcdClient::put(const std::string& key, const std::string& value,
@@ -160,7 +176,8 @@ bool EtcdClient::put(const std::string& key, const std::string& value,
     }
 
     std::string resp = post("/v3/kv/put", req_body.dump());
-    return !resp.empty();
+    if (resp.empty() || hasError(resp)) return false;
+    return true;
 }
 
 bool EtcdClient::deleteKey(const std::string& key) {
@@ -168,7 +185,8 @@ bool EtcdClient::deleteKey(const std::string& key) {
     req_body["key"] = simple_json::Value(base64Encode(key));
 
     std::string resp = post("/v3/kv/deleterange", req_body.dump());
-    return !resp.empty();
+    if (resp.empty() || hasError(resp)) return false;
+    return true;
 }
 
 std::vector<std::pair<std::string, std::string>> EtcdClient::range(
@@ -183,7 +201,7 @@ std::vector<std::pair<std::string, std::string>> EtcdClient::range(
     }
 
     std::string resp = post("/v3/kv/range", req_body.dump());
-    if (resp.empty()) return {};
+    if (resp.empty() || hasError(resp)) return {};
 
     std::vector<std::pair<std::string, std::string>> result;
     try {
