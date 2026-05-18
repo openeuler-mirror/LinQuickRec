@@ -92,11 +92,20 @@ services:
     depends_on:
       etcd:
         condition: service_healthy
+      discovery-server:
+        condition: service_healthy
     environment:
       worker_address: "${KV_WORKER_ADDRESS:-kv-worker:31501}"
       etcd_address: "etcd:2379"
       enable_urma: "${ENABLE_URMA:-0}"
       cpu_affinity: "${CPU_AFFINITY:-0-64}"
+      REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
+      ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
+      DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
+      HEARTBEAT_INTERVAL: "${HEARTBEAT_INTERVAL:-5}"
+      HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
+      FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
+      STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
     privileged: true
     ipc: host
     volumes:
