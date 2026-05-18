@@ -81,7 +81,25 @@ bool ServiceDiscovery::GetInstance(const std::string& service_name,
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = cache_.find(service_name);
-    if (it == cache_.end() || it->second.empty()) return false;
+
+    // Cache miss: 同步查询一次，填充 cache，后续 refresh_all 可正常刷新
+    if (it == cache_.end()) {
+        if (!provider_) return false;
+
+        auto instances = provider_->Discover(service_name);
+        int count = static_cast<int>(instances.size());
+        cache_[service_name] = std::move(instances);
+        rr_index_[service_name] = 0;
+        first_refresh_[service_name] = true;
+
+        LOG_INFO << "Discover(" << service_name << "): "
+                 << count << " instance(s) (lazy init)";
+
+        it = cache_.find(service_name);
+        if (it == cache_.end() || it->second.empty()) return false;
+    }
+
+    if (it->second.empty()) return false;
 
     auto& instances = it->second;
     auto& idx = rr_index_[service_name];
