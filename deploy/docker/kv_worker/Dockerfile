@@ -20,6 +20,7 @@ RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
 RUN chmod +x /app/discovery_client
 
 COPY ${SERVICE_DIR} /workerspace/
+RUN chmod +x /workerspace/start_datasystem.sh
 COPY ${ENTRYPOINT_FILE} /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
