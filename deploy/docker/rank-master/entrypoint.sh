@@ -36,7 +36,7 @@ SERVICE_PID=$!
 
 echo "Starting Discovery Client..."
 /app/discovery_client \
-    --service_type=rank_master \
+    --service_type=rank_service \
     --service_port=${SERVER_PORT:-8004} \
     $DISCOVERY_FLAGS \
     --host=${HOST:-auto} \

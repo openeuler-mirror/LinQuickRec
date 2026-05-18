@@ -96,7 +96,11 @@ bool ServiceDiscovery::GetInstance(const std::string& service_name,
                  << count << " instance(s) (lazy init)";
 
         it = cache_.find(service_name);
-        if (it == cache_.end() || it->second.empty()) return false;
+        if (it == cache_.end() || it->second.empty()) {
+            LOG_WARN << "Discover(" << service_name
+                     << "): provider returned 0 instances (lazy init)";
+            return false;
+        }
     }
 
     if (it->second.empty()) return false;
