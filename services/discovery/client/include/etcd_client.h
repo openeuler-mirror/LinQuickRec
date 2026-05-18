@@ -29,6 +29,8 @@ public:
     std::string post(const std::string& path, const std::string& json_body);
 
 private:
+    bool hasError(const std::string& json_resp);
+
     std::string base64Encode(const std::string& input);
     std::string base64Decode(const std::string& input);
     std::string prefixEnd(const std::string& prefix);

@@ -126,6 +126,16 @@ void EtcdRegistryBackend::keepAliveLoop(int64_t lease_id,
         std::string resp = client_->post("/v3/lease/keepalive", req_body.dump());
         if (resp.empty()) {
             LOG_WARN << "Etcd keep-alive failed for lease " << lease_id;
+        } else {
+            try {
+                simple_json::Value resp_json = simple_json::Value::parse(resp);
+                if (resp_json.contains("error")) {
+                    LOG_ERROR << "Etcd keep-alive error for lease " << lease_id
+                              << ": " << resp_json.get("error").str();
+                }
+            } catch (const std::exception& e) {
+                LOG_WARN << "Etcd keep-alive parse error: " << e.what();
+            }
         }
     }
 }
