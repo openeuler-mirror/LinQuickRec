@@ -1,5 +1,6 @@
 FROM linquickrec/base:latest
 
+ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
 ARG SERVICE_DIR=services/kv_worker/
 ARG DISCOVERY_DIR=services/discovery/
@@ -7,6 +8,7 @@ ARG ENTRYPOINT_FILE=deploy/docker/kv_worker/entrypoint.sh
 
 WORKDIR /app
 
+COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
 COPY ${DISCOVERY_DIR} /app/services/discovery/
 
