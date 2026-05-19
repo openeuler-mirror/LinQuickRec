@@ -123,14 +123,6 @@ std::string build_vllm_request(const std::string& request_json) {
     d.AddMember("top_p", VLLM_TOP_P, allocator);
     d.AddMember("stream", false, allocator);
 
-    if (FLAGS_sku_count > 0) {
-        std::ostringstream regex_oss;
-        regex_oss << "\\d{6}(,\\d{6}){" << (FLAGS_sku_count - 1) << "}";
-        std::string regex_pattern = regex_oss.str();
-        d.AddMember("guided_regex", Value(regex_pattern.c_str(), allocator).Move(), allocator);
-        d.AddMember("guided_decoding_backend", "xgrammar", allocator);
-    }
-
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
     d.Accept(writer);
