@@ -28,14 +28,6 @@ spec:
         env:
         - name: SERVER_PORT
           value: "8080"
-        - name: FEATURE_SERVICE_ADDR
-          value: "feature-service:8003"
-        - name: RECALL_SERVICE_ADDR
-          value: "recall-service:8001"
-        - name: PRECALC_SERVICE_ADDR
-          value: "precalc-service:8004"
-        - name: RANK_SERVICE_ADDR
-          value: "rank-master-service:8005"
         resources:
           requests:
             cpu: "1"

@@ -4,48 +4,111 @@ metadata:
   name: linquickrec-config
   namespace: linquickrec
 data:
+  # ========================
+  # 服务发现
+  # ========================
+  REGISTRY_BACKEND: "etcd"
+  ETCD_ENDPOINTS: "etcd:2379"
+  DISCOVERY_ADDR: "discovery-server:8100"
+  DISCOVERY_REFRESH_INTERVAL_MS: "5000"
+
+  # ========================
+  # 各服务在 etcd 中的注册名
+  # ========================
+  FEATURE_SERVICE_NAME: "feature_service"
+  RECALL_SERVICE_NAME: "recall_service"
+  PRECALC_SERVICE_NAME: "precalc_service"
+  RANK_SERVICE_NAME: "rank_service"
+  SUB_WORKER_SERVICE_TYPE: "rank_sub"
+  KV_WORKER_SERVICE: "kv_worker"
+
+  # ========================
+  # Discovery Client (sidecar) 心跳与健康检查
+  # ========================
+  HEARTBEAT_INTERVAL: "5"
+  HEALTH_CHECK_TIMEOUT: "2"
+  FAIL_THRESHOLD: "3"
+  STARTUP_TIMEOUT: "30"
+
+  # ========================
+  # KV Worker
+  # ========================
   KVWORKER_HOST: "141.61.84.245"
   KVWORKER_PORT: "31502"
-  ETCD_ADDRESS: "141.61.84.245:2379"
-  TTL_SECONDS: "5"
-  PRECALC_RESULT_SIZE_MB: "8.5"
-  PAYLOAD_SIZE_KB: "100"
-  SCORING_DELAY_MS: "100"
-  SUB_WORKER_COUNT: "10"
-  TOP_K: "100"
-  SUB_WORKER_TIMEOUT_MS: "5000"
-  VLLM_PORT: "8000"
-  VLLM_BASE_URL: "http://127.0.0.1:8000"
-  VLLM_ENDPOINT: "/v1/chat/completions"
-  MODEL_NAME: "/app/models/Qwen3-0.6B/"
-  VLLM_TIMEOUT_MS: "100000"
-  SKU_COUNT: "100"
-  DISCOVERY_ADDR: "discovery-server:8100"
-  FEATURE_SERVICE_ADDR: "feature-service:8003"
-  RECALL_SERVICE_ADDR: "recall-service:8001"
-  PRECALC_SERVICE_ADDR: "precalc-service:8004"
-  RANK_SERVICE_ADDR: "rank-master-service:8005"
+
+  # ========================
+  # BRPC Server 参数（所有服务）
+  # ========================
   SERVER_NUM_THREADS: "0"
   SERVER_IDLE_TIMEOUT_SEC: "-1"
   SERVER_MAX_CONCURRENCY: "0"
+
+  # ========================
+  # 下游通道共享参数
+  # ========================
+  DOWNSTREAM_CONNECTION_TYPE: "pooled"
+  DOWNSTREAM_MAX_RETRY: "3"
+  DOWNSTREAM_CONNECT_TIMEOUT_MS: "-1"
+
+  # ========================
+  # 下游 RPC 超时
+  # ========================
+  FEATURE_TIMEOUT_MS: "3000"
+  RECALL_TIMEOUT_MS: "120000"
+  PRECALC_TIMEOUT_MS: "5000"
+  RANK_TIMEOUT_MS: "10000"
+
+  # ========================
+  # Backup Request
+  # ========================
+  FEATURE_BACKUP_REQUEST_MS: "-1"
+  RECALL_BACKUP_REQUEST_MS: "-1"
+  PRECALC_BACKUP_REQUEST_MS: "-1"
+  RANK_BACKUP_REQUEST_MS: "-1"
+
+  # ========================
+  # Discovery Client 连接参数
+  # ========================
   DISCOVERY_CLIENT_TIMEOUT_MS: "5000"
   DISCOVERY_CLIENT_CONNECTION_TYPE: "single"
   DISCOVERY_CLIENT_MAX_RETRY: "2"
   DISCOVERY_CLIENT_CONNECT_TIMEOUT_MS: "-1"
   DISCOVERY_CLIENT_BACKUP_REQUEST_MS: "-1"
-  DOWNSTREAM_CONNECTION_TYPE: "pooled"
-  DOWNSTREAM_MAX_RETRY: "3"
-  DOWNSTREAM_CONNECT_TIMEOUT_MS: "-1"
-  FEATURE_BACKUP_REQUEST_MS: "-1"
-  RECALL_BACKUP_REQUEST_MS: "-1"
-  PRECALC_BACKUP_REQUEST_MS: "-1"
-  RANK_BACKUP_REQUEST_MS: "-1"
+
+  # ========================
+  # Recall / vLLM
+  # ========================
+  VLLM_PORT: "8000"
+  VLLM_BASE_URL: "http://127.0.0.1:8000"
+  VLLM_ENDPOINT: "/v1/chat/completions"
+  MODEL_NAME: "/app/models/Qwen3-0.6B/"
+  VLLM_TIMEOUT_MS: "100000"
+  VLLM_STARTUP_TIMEOUT: "120"
   VLLM_CONNECTION_TYPE: "single"
   VLLM_MAX_RETRY: "3"
   VLLM_CONNECT_TIMEOUT_MS: "-1"
   VLLM_BACKUP_REQUEST_MS: "-1"
+  SKU_COUNT: "100"
+
+  # ========================
+  # Precalc
+  # ========================
+  TTL_SECONDS: "100"
+  PRECALC_RESULT_SIZE_MB: "8.5"
+  PAYLOAD_SIZE_KB: "100"
+
+  # ========================
+  # RankMaster
+  # ========================
+  TOP_K: "100"
+  SUB_WORKER_PARALLELISM: "4"
+  SUB_WORKER_TIMEOUT_MS: "5000"
   SUB_WORKER_CONNECTION_TYPE: "pooled"
   SUB_WORKER_MAX_RETRY: "3"
   SUB_WORKER_CONNECT_TIMEOUT_MS: "-1"
   SUB_WORKER_BACKUP_REQUEST_MS: "-1"
-  SUB_WORKER_PARALLELISM: "4"
+
+  # ========================
+  # RankSub
+  # ========================
+  SCORING_DELAY_MS: "100"
