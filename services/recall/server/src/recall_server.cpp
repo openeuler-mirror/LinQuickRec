@@ -13,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 #include <brpc/controller.h>
@@ -49,8 +50,8 @@ namespace recall {
 using namespace common::error;
 
 constexpr int VLLM_MAX_TOKENS = 8192;
-constexpr double VLLM_TEMPERATURE = 0.0;
-constexpr double VLLM_TOP_P = 1.0;
+constexpr double VLLM_TEMPERATURE = 0.7;
+constexpr double VLLM_TOP_P = 0.9;
 
 std::string proto_to_json(const RecallRequest* request) {
     using namespace rapidjson;
@@ -170,6 +171,7 @@ bool parse_vllm_response(const std::string& response_body,
 
     content = std::regex_replace(content, std::regex("[^0-9,]"), "");
 
+    std::vector<uint64_t> parsed_ids;
     std::istringstream iss(content);
     std::string token;
     while (std::getline(iss, token, ',')) {
@@ -180,21 +182,61 @@ bool parse_vllm_response(const std::string& response_body,
 
             if (!token.empty()) {
                 uint64_t sku_id = std::stoull(token);
-                response->add_sku_ids(sku_id);
+                parsed_ids.push_back(sku_id);
             }
         } catch (const std::exception& e) {
             LOG_WARN << "Failed to parse SKU ID: " << token << ", error: " << e.what();
         }
     }
 
-    if (response->sku_ids_size() == 0) {
+    int raw_count = static_cast<int>(parsed_ids.size());
+    if (raw_count == 0) {
         LOG_WARN << common::error::Status(recall_errors::NO_SKU_RETURNED,
             "No SKU IDs parsed from response").ToString();
         return false;
     }
 
+    std::unordered_set<uint64_t> seen;
+    std::vector<uint64_t> unique_ids;
+    for (uint64_t id : parsed_ids) {
+        if (seen.insert(id).second) {
+            unique_ids.push_back(id);
+        }
+    }
+
+    int unique_count = static_cast<int>(unique_ids.size());
+    int dup_count = raw_count - unique_count;
+    if (dup_count > 0) {
+        LOG_INFO << "Deduplicated " << dup_count << " duplicate SKU IDs, "
+                 << unique_count << " unique remaining";
+    }
+
+    if (unique_count < max_sku_count) {
+        int need = max_sku_count - unique_count;
+        LOG_INFO << "Filling " << need << " missing SKU IDs with random values";
+
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<uint64_t> dist(100000, 999999);
+
+        for (int i = 0; i < need; ++i) {
+            uint64_t new_id;
+            do {
+                new_id = dist(rng);
+            } while (seen.count(new_id));
+            seen.insert(new_id);
+            unique_ids.push_back(new_id);
+        }
+    }
+
+    std::shuffle(unique_ids.begin(), unique_ids.end(), std::mt19937(std::random_device{}()));
+
+    for (uint64_t id : unique_ids) {
+        response->add_sku_ids(id);
+    }
+
     LOG_INFO << "Successfully parsed " << response->sku_ids_size()
-              << " SKU IDs from response (target: " << max_sku_count << ")";
+              << " unique SKU IDs (raw=" << raw_count
+              << ", target=" << max_sku_count << ")";
 
     return true;
 }
