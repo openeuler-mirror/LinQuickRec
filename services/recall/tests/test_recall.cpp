@@ -107,7 +107,7 @@ void test_build_vllm_request_structure() {
     assert(std::string(d["messages"][1]["content"].GetString()).find(input_json) != std::string::npos);
 
     assert(d.HasMember("max_tokens"));
-    assert(d["max_tokens"].GetInt() == 102400);
+    assert(d["max_tokens"].GetInt() == 8192);
 
     assert(d.HasMember("temperature"));
     assert(d.HasMember("top_p"));

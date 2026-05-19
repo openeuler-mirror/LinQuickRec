@@ -9,6 +9,7 @@
 #include <mutex>
 #include <queue>
 #include <random>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -47,9 +48,9 @@ namespace recall {
 
 using namespace common::error;
 
-constexpr int VLLM_MAX_TOKENS = 10240;
-constexpr double VLLM_TEMPERATURE = 0.7;
-constexpr double VLLM_TOP_P = 0.9;
+constexpr int VLLM_MAX_TOKENS = 8192;
+constexpr double VLLM_TEMPERATURE = 0.0;
+constexpr double VLLM_TOP_P = 1.0;
 
 std::string proto_to_json(const RecallRequest* request) {
     using namespace rapidjson;
@@ -98,10 +99,11 @@ std::string build_vllm_request(const std::string& request_json) {
     Value system_msg(kObjectType);
     system_msg.AddMember("role", "system", allocator);
     std::ostringstream system_prompt_ss;
-    system_prompt_ss << "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。\n"
-                     << "请恰好生成 " << FLAGS_sku_count << " 个 SKU ID，不要多也不要少。\n"
-                     << "每个SKU ID 都是一个 64 位无符号整数，范围在 100000 到 999999 之间。\n"
-                     << "返回格式：用逗号分隔的数字，例如：123456,567890,111111,...";
+    system_prompt_ss << "You are a search/recommendation assistant. Based on user features and logs, "
+                     << "return exactly " << FLAGS_sku_count << " recommended SKU IDs.\n"
+                     << "Each SKU ID is a 64-bit unsigned integer in range [100000, 999999].\n"
+                     << "CRITICAL: Output ONLY the comma-separated numbers. No explanation, no markdown, "
+                     << "no extra text before or after. Format example: 123456,567890,111111,222222,...";
     system_msg.AddMember("content", Value(system_prompt_ss.str().c_str(), allocator).Move(), allocator);
     messages.PushBack(system_msg, allocator);
 
@@ -109,7 +111,7 @@ std::string build_vllm_request(const std::string& request_json) {
     user_msg.AddMember("role", "user", allocator);
 
     std::ostringstream prompt_ss;
-    prompt_ss << "用户请求数据：" << request_json;
+    prompt_ss << "User request data: " << request_json;
     user_msg.AddMember("content", Value(prompt_ss.str().c_str(), allocator).Move(), allocator);
 
     messages.PushBack(user_msg, allocator);
@@ -119,6 +121,14 @@ std::string build_vllm_request(const std::string& request_json) {
     d.AddMember("temperature", VLLM_TEMPERATURE, allocator);
     d.AddMember("top_p", VLLM_TOP_P, allocator);
     d.AddMember("stream", false, allocator);
+
+    if (FLAGS_sku_count > 0) {
+        std::ostringstream regex_oss;
+        regex_oss << "\\d{6}(,\\d{6}){" << (FLAGS_sku_count - 1) << "}";
+        std::string regex_pattern = regex_oss.str();
+        d.AddMember("guided_regex", Value(regex_pattern.c_str(), allocator).Move(), allocator);
+        d.AddMember("guided_decoding_backend", "xgrammar", allocator);
+    }
 
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
@@ -156,7 +166,9 @@ bool parse_vllm_response(const std::string& response_body,
         return false;
     }
 
-    const std::string content = first_choice["message"]["content"].GetString();
+    std::string content = first_choice["message"]["content"].GetString();
+
+    content = std::regex_replace(content, std::regex("[^0-9,]"), "");
 
     std::istringstream iss(content);
     std::string token;

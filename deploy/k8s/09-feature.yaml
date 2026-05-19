@@ -20,14 +20,14 @@ spec:
       - name: feature
         image: linquickrec/feature:latest
         ports:
-        - containerPort: 8003
+        - containerPort: 8001
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8003"
+          value: "8001"
         resources:
           requests:
             cpu: "0.5"
@@ -37,12 +37,12 @@ spec:
             memory: "1Gi"
         readinessProbe:
           tcpSocket:
-            port: 8003
+            port: 8001
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8003
+            port: 8001
           initialDelaySeconds: 10
           periodSeconds: 15
         volumeMounts:
@@ -62,6 +62,6 @@ spec:
     app: feature-service
   ports:
   - name: rpc
-    port: 8003
-    targetPort: 8003
+    port: 8001
+    targetPort: 8001
   type: ClusterIP
