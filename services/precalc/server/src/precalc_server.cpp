@@ -73,6 +73,21 @@ void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controlle
     }
 }
 
+std::string generate_user_feat_key(const std::string& trace_id, const std::string& user_feat) {
+    // 优先使用 trace_id 后 16 字符（随机部分）
+    if (trace_id.size() >= 16) {
+        return trace_id.substr(trace_id.size() - 16, 16);
+    }
+
+    // 回退: 哈希 user_feat 并转为 16 字符 hex
+    std::hash<std::string> hasher;
+    size_t hash_value = hasher(user_feat);
+
+    char buffer[17];
+    std::snprintf(buffer, sizeof(buffer), "%016zx", hash_value);
+    return std::string(buffer, 16);
+}
+
 common::error::Status PrecalcServiceImpl::validate_and_extract_key(
     const PrecalcRequest* request, std::string& user_feat_key) {
 
@@ -82,15 +97,11 @@ common::error::Status PrecalcServiceImpl::validate_and_extract_key(
         return status;
     }
 
-    if (request->user_feat().size() >= 16) {
-        user_feat_key = request->user_feat().substr(0, 16);
-    } else {
-        user_feat_key = request->user_feat();
-    }
+    user_feat_key = generate_user_feat_key(request->trace_id(), request->user_feat());
 
     LOG_DEBUG << "Generated user_feat_key: " << user_feat_key
               << ", size: " << user_feat_key.size() << " bytes"
-              << ", user_feat_size: " << request->user_feat().size() << " bytes";
+              << ", trace_id: " << request->trace_id();
 
     return common::error::Status::OK();
 }

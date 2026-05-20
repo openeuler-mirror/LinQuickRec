@@ -12,8 +12,10 @@
 
 | 参数 | 默认值 | 配置级别 | 说明 |
 |------|--------|---------|------|
-| `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | Discovery 服务地址（容器网络下使用容器名） |
-| `DISCOVERY_PORT` | 8100 | 允许调整 | 服务发现中心端口 |
+| `REGISTRY_BACKEND` | etcd | 允许调整 | 服务发现后端：`etcd`（默认，生产推荐）或 `discovery_server`（测试用） |
+| `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | Discovery 服务地址（discovery_server 后端，容器网络下使用容器名） |
+| `ETCD_ENDPOINTS` | etcd:2379 | 允许调整 | etcd 集群地址（etcd 后端，逗号分隔多节点） |
+| `DISCOVERY_PORT` | 8100 | 允许调整 | 服务发现中心端口（discovery_server 后端） |
 | `PROXY_PORT` | 8080 | 允许调整 | 网关对外 HTTP 端口 |
 
 ## Discovery
@@ -38,7 +40,9 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8080 | 允许调整 | HTTP 监听端口 |
-| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（取自全局 `DISCOVERY_ADDR`） |
+| `--registry_backend` | string | "etcd" | 允许调整 | 服务发现后端：`etcd`（默认）或 `discovery_server` |
+| `--discovery_addr` | string | — | 必须指定 | Discovery 地址（discovery_server 后端，取自全局 `DISCOVERY_ADDR`） |
+| `--etcd_endpoints` | string | "127.0.0.1:2379" | 允许调整 | etcd 节点地址，逗号分隔（etcd 后端，取自全局 `ETCD_ENDPOINTS`） |
 | `--discovery_refresh_interval_ms` | int32 | 5000 | 不建议修改 | Discovery 命名服务缓存刷新间隔 (ms) |
 | `--feature_service_name` | string | "feature_service" | 允许调整 | Feature 服务在 Discovery 中的注册名 |
 | `--recall_service_name` | string | "recall_service" | 允许调整 | Recall 服务在 Discovery 中的注册名 |
@@ -60,6 +64,7 @@
 | `--downstream_connection_type` | string | "pooled" | 允许调整 | 下游通道连接类型 (single/pooled/short) |
 | `--downstream_max_retry` | int32 | 3 | 允许调整 | 下游通道 BRPC 重试次数 |
 | `--downstream_connect_timeout_ms` | int32 | -1 | 允许调整 | 下游通道 TCP 建连超时(ms)，-1=禁用 |
+| `--downstream_lb_policy` | string | "" | 允许调整 | 下游通道负载均衡策略 (rr/wrr/random/la)，空=BRPC 默认(rr) |
 
 ### Client 端参数 — 下游通道按服务（Proxy）
 
@@ -74,40 +79,22 @@
 | `--rank_timeout_ms` | int32 | 10000 | 允许调整 | Rank 服务 RPC 超时(ms) |
 | `--rank_backup_request_ms` | int32 | -1 | 允许调整 | Rank backup request 延迟阈值(ms)，-1=禁用 |
 
-### Client 端参数 — Discovery 命名服务通道（Proxy）
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--discovery_naming_timeout_ms` | int32 | 3000 | 允许调整 | 命名服务调 Discovery 超时(ms) |
-| `--discovery_naming_connection_type` | string | "single" | 不建议修改 | 命名服务到 Discovery 的连接类型 |
-| `--discovery_naming_max_retry` | int32 | 2 | 不建议修改 | 命名服务通道重试次数 |
-| `--discovery_naming_connect_timeout_ms` | int32 | -1 | 允许调整 | 命名服务通道 TCP 建连超时(ms)，-1=禁用 |
-| `--discovery_naming_backup_request_ms` | int32 | -1 | 允许调整 | 命名服务通道 backup request(ms)，-1=禁用 |
-
 ## Discovery Client（sidecar）
 
-所有服务容器通过 discovery_client 向 discovery server 注册。以下参数由 entrypoint.sh 注入。`--discovery_addr` 取自全局配置 `DISCOVERY_ADDR`，其余参数均有合理默认值，通常无需修改。
+所有服务容器通过 discovery_client 向服务发现后端注册。支持双后端：`discovery_server` 或 `etcd`。以下参数由 entrypoint.sh 注入。
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--service_type` | string | — | 必须指定 | 服务类型名 |
 | `--service_port` | int32 | — | 必须指定 | 本容器主服务端口 |
-| `--discovery_addr` | string | (全局 `DISCOVERY_ADDR`) | 必须指定 | Discovery 地址 |
+| `--registry_backend` | string | "etcd" | 允许调整 | 注册后端：`etcd` 或 `discovery_server` |
+| `--discovery_addr` | string | (全局 `DISCOVERY_ADDR`) | 必须指定 | Discovery 地址（discovery_server 后端） |
+| `--etcd_endpoints` | string | (全局 `ETCD_ENDPOINTS`) | 允许调整 | etcd 地址，逗号分隔（etcd 后端） |
 | `--host` | string | "auto" | 不建议修改 | 本容器 IP |
 | `--heartbeat_interval` | int32 | 5 | 不建议修改 | 心跳间隔 (秒) |
 | `--health_check_timeout` | int32 | 2 | 不建议修改 | TCP 探测超时 (秒) |
 | `--fail_threshold` | int32 | 3 | 不建议修改 | 连续失败次数阈值 |
 | `--startup_timeout` | int32 | 30 | 不建议修改 | 等待主服务就绪超时 (秒) |
-
-### Client 端参数（Discovery Client → Discovery Server）
-
-| 参数 | 类型 | 默认值 | 配置级别 | 说明 |
-|------|------|--------|---------|------|
-| `--discovery_client_timeout_ms` | int32 | 5000 | 允许调整 | Discovery Client RPC 超时(ms) |
-| `--discovery_client_connection_type` | string | "single" | 不建议修改 | 到 Discovery 的连接类型 |
-| `--discovery_client_max_retry` | int32 | 2 | 不建议修改 | 通道重试次数 |
-| `--discovery_client_connect_timeout_ms` | int32 | -1 | 允许调整 | TCP 建连超时(ms)，-1=禁用 |
-| `--discovery_client_backup_request_ms` | int32 | -1 | 允许调整 | Backup request 延迟阈值(ms)，-1=禁用 |
 
 ## Feature
 
@@ -165,9 +152,7 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8003 | 允许调整 | 监听端口 |
-| `--kvworker_host` | string | "141.61.84.245" | 必须指定 | 元戎 KVWorker 主机地址 |
-| `--kvworker_port` | int32 | 31502 | 必须指定 | 元戎 KVWorker 端口 |
-| `--etcd_address` | string | "141.61.84.245:2379" | 必须指定 | etcd 集群地址（SDK 内定义） |
+| `--kv_worker_service` | string | "kv_worker" | 允许调整 | KV Worker 在 Discovery 中的注册服务类型名 |
 | `--precalc_result_size_mb` | double | 8.5 | 允许调整 | 前置计算结果大小 (MB) |
 | `--ttl_seconds` | int32 | 5 | 允许调整 | KV 缓存 TTL 时间（秒） |
 | `--payload_size_kb` | int32 | 100 | 允许调整 | Payload 大小 (KB) |
@@ -187,7 +172,9 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8004 | 允许调整 | 监听端口 |
-| `--discovery_addr` | string | "" | 必须指定 | Discovery 地址（取自全局 `DISCOVERY_ADDR`） |
+| `--registry_backend` | string | "etcd" | 允许调整 | 服务发现后端：`etcd`（默认）或 `discovery_server` |
+| `--discovery_addr` | string | "" | 必须指定 | Discovery 地址（discovery_server 后端，取自全局 `DISCOVERY_ADDR`） |
+| `--etcd_endpoints` | string | "127.0.0.1:2379" | 允许调整 | etcd 节点地址，逗号分隔（etcd 后端，取自全局 `ETCD_ENDPOINTS`） |
 | `--top_k` | int32 | 100 | 允许调整 | 返回前 K 个商品 |
 | `--sub_worker_service_type` | string | "rank_sub" | 允许调整 | RankSub 在 Discovery 中的注册服务类型名 |
 | `--sub_worker_parallelism` | int32 | 4 | 允许调整 | 并发分桶数 |
@@ -209,6 +196,7 @@
 | `--sub_worker_max_retry` | int32 | 3 | 允许调整 | 到 RankSub 的重试次数 |
 | `--sub_worker_connect_timeout_ms` | int32 | -1 | 允许调整 | TCP 建连超时(ms)，-1=禁用 |
 | `--sub_worker_backup_request_ms` | int32 | -1 | 允许调整 | Backup request 延迟阈值(ms)，-1=禁用 |
+| `--sub_worker_lb_policy` | string | "" | 允许调整 | Sub-worker 通道负载均衡策略 (rr/wrr/random/la)，空=BRPC 默认(rr) |
 
 ## RankSub
 
@@ -217,9 +205,7 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
-| `--kvworker_host` | string | "141.61.84.245" | 必须指定 | KVWorker 主机地址 |
-| `--kvworker_port` | int32 | 31502 | 必须指定 | KVWorker 端口 |
-| `--etcd_address` | string | "141.61.84.245:2379" | 必须指定 | etcd 集群地址（SDK 内定义） |
+| `--kv_worker_service` | string | "kv_worker" | 允许调整 | KV Worker 在 Discovery 中的注册服务类型名 |
 | `--scoring_delay_ms` | int32 | 100 | 允许调整 | 模拟打分耗时 (ms) |
 
 ### Server 端参数
@@ -232,16 +218,16 @@
 
 ## KV Worker (Datasystem)
 
-KV Worker 通过 `docker run` 独立启动（不在 docker-compose.yml 中），以下参数通过环境变量传入。启动脚本 `services/kv_worker/start_datasystem.sh` 内部调用 `dscli start --worker_args` 启动 Datasystem Worker。
+KV Worker 已纳入 docker-compose.yml，通过 `kv-worker` 服务定义启动。启动脚本 `services/kv_worker/start_datasystem.sh` 内部调用 `dscli start --worker_args` 启动 Datasystem Worker。Precalc 和 RankSub 通过服务发现（`--kv_worker_service` flag）动态查找 KV Worker 实例。
 
 ### 环境变量
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
-| `worker_address` | string | -- | 必须指定 | Worker 监听地址 (IP:port)，不能使用 127.0.0.1 |
-| `etcd_address` | string | -- | 必须指定 | Etcd 集群地址 (IP:port) |
-| `enable_urma` | int | -- | 必须指定 | 是否启用 URMA (0/1) |
-| `cpu_affinity` | string | "0-64" | 允许调整 | CPU 核绑定范围 |
+| `KV_WORKER_ADDRESS` | string | "kv-worker:31501" | 必须指定 | Worker 监听地址（容器名:端口） |
+| `etcd_address` | string | "etcd:2379" | 必须指定 | Etcd 集群地址（容器名:端口） |
+| `ENABLE_URMA` | int | 0 | 必须指定 | 是否启用 URMA (0/1) |
+| `CPU_AFFINITY` | string | "0-64" | 允许调整 | CPU 核绑定范围 |
 
 ### dscli 启动参数
 

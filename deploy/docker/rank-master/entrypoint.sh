@@ -1,9 +1,20 @@
 #!/bin/bash
 set -e
 
+REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
+ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
+DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
+
 echo "==========================================="
 echo "Starting RankMaster Service"
 echo "==========================================="
+
+# Build discovery flags for rank_master_server
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+else
+    DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
+fi
 
 cd /app/build
 ./bin/rank_master_server \
@@ -12,7 +23,7 @@ cd /app/build
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     --top_k=${TOP_K:-100} \
-    --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} \
+    $DISCOVERY_FLAGS \
     --sub_worker_service_type=${SUB_WORKER_SERVICE_TYPE:-rank_sub} \
     --sub_worker_parallelism=${SUB_WORKER_PARALLELISM:-4} \
     --sub_worker_connection_type=${SUB_WORKER_CONNECTION_TYPE:-pooled} \
@@ -25,14 +36,14 @@ SERVICE_PID=$!
 
 echo "Starting Discovery Client..."
 /app/discovery_client \
-    --service_type=rank_master \
+    --service_type=rank_service \
     --service_port=${SERVER_PORT:-8004} \
-    --discovery_addr=${DISCOVERY_ADDR:-discovery-server:8100} \
-    --discovery_client_timeout_ms=${DISCOVERY_CLIENT_TIMEOUT_MS:-5000} \
-    --discovery_client_connection_type=${DISCOVERY_CLIENT_CONNECTION_TYPE:-single} \
-    --discovery_client_max_retry=${DISCOVERY_CLIENT_MAX_RETRY:-2} \
-    --discovery_client_connect_timeout_ms=${DISCOVERY_CLIENT_CONNECT_TIMEOUT_MS:--1} \
-    --discovery_client_backup_request_ms=${DISCOVERY_CLIENT_BACKUP_REQUEST_MS:--1}
+    $DISCOVERY_FLAGS \
+    --host=${HOST:-auto} \
+    --heartbeat_interval=${HEARTBEAT_INTERVAL:-5} \
+    --health_check_timeout=${HEALTH_CHECK_TIMEOUT:-2} \
+    --fail_threshold=${FAIL_THRESHOLD:-3} \
+    --startup_timeout=${STARTUP_TIMEOUT:-30}
 EXIT_CODE=$?
 
 kill "$SERVICE_PID" 2>/dev/null || true

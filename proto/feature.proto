@@ -38,6 +38,8 @@ message UserFeatureRequest {
 message UserFeatureResponse {
     FeatureType feature_type = 1;
     KRUserFeatureResponse kr_feat_rsp = 2;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 // SKU 特征请求
@@ -56,6 +58,8 @@ message KRSKUFeature {
 message SKUFeatureResponse {
     FeatureType feature_type = 1;
     repeated KRSKUFeature kr_sku_feats = 2;
+    int32 error_code = 100;
+    string error_message = 101;
 }
 
 // 特征服务定义

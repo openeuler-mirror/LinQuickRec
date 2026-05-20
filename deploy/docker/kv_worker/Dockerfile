@@ -1,13 +1,26 @@
 FROM linquickrec/base:latest
 
+ARG PROTO_DIR=proto/
+ARG COMMON_DIR=common/
+ARG SERVICE_DIR=services/kv_worker/
+ARG DISCOVERY_DIR=services/discovery/
 ARG ENTRYPOINT_FILE=deploy/docker/kv_worker/entrypoint.sh
 
-WORKDIR /workerspace
+WORKDIR /app
 
-COPY services/kv_worker/ /workerspace/
+COPY ${PROTO_DIR} /app/proto/
+COPY ${COMMON_DIR} /app/common/
+COPY ${DISCOVERY_DIR} /app/services/discovery/
 
-RUN pip install openyuanrong_datasystem*.whl
+RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
+    cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
+    make discovery_client -j$(nproc) && \
+    cp bin/discovery_client /app/discovery_client && \
+    rm -rf /tmp/build_discovery
+RUN chmod +x /app/discovery_client
 
+COPY ${SERVICE_DIR} /workerspace/
+RUN chmod +x /workerspace/start_datasystem.sh
 COPY ${ENTRYPOINT_FILE} /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

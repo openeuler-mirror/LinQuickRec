@@ -5,6 +5,12 @@
 
 #include "common/logger.h"
 
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
+DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
 DEFINE_int32(server_num_threads, 0,
              "Server bthread num_threads, 0 = BRPC default");
 DEFINE_int32(server_idle_timeout_sec, -1,

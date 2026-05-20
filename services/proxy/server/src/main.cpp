@@ -3,13 +3,10 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
-<<<<<<< HEAD
-#include "common/global_thread_pool.h"
+#include "common/logger.h"
 
 DEFINE_string(registry_backend, "discovery_server",
     "Registry backend: discovery_server or etcd");
-=======
->>>>>>> 100ba84d254c4af17901d6680df43936e8f6f4e6
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
     "etcd endpoints, comma-separated (for etcd backend)");

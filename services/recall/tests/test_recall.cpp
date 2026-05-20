@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 
 #include <rapidjson/document.h>
 
@@ -107,7 +108,7 @@ void test_build_vllm_request_structure() {
     assert(std::string(d["messages"][1]["content"].GetString()).find(input_json) != std::string::npos);
 
     assert(d.HasMember("max_tokens"));
-    assert(d["max_tokens"].GetInt() == 102400);
+    assert(d["max_tokens"].GetInt() == 8192);
 
     assert(d.HasMember("temperature"));
     assert(d.HasMember("top_p"));
@@ -275,6 +276,42 @@ void test_parse_vllm_response_single_sku() {
     std::cout << "[PASS] parse_vllm_response: single SKU" << std::endl;
 }
 
+void test_parse_vllm_response_dedup_and_fill() {
+    // 5 tokens: 3 unique (123456, 234567, 345678) + 2 duplicates
+    std::string body = R"({
+        "choices": [{
+            "message": {
+                "content": "123456,234567,123456,345678,234567"
+            }
+        }]
+    })";
+
+    RecallResponse response;
+    bool ok = parse_vllm_response(body, &response, 5);
+    assert(ok);
+    // Should have exactly 5 unique SKU IDs after filling
+    assert(response.sku_ids_size() == 5);
+
+    // Verify no duplicates
+    std::unordered_set<uint64_t> seen;
+    for (int i = 0; i < response.sku_ids_size(); ++i) {
+        assert(seen.insert(response.sku_ids(i)).second);
+    }
+
+    // Verify original uniques are preserved
+    bool has_123456 = false, has_234567 = false, has_345678 = false;
+    for (int i = 0; i < response.sku_ids_size(); ++i) {
+        uint64_t id = response.sku_ids(i);
+        if (id == 123456) has_123456 = true;
+        if (id == 234567) has_234567 = true;
+        if (id == 345678) has_345678 = true;
+        assert(id >= 100000 && id <= 999999);
+    }
+    assert(has_123456 && has_234567 && has_345678);
+
+    std::cout << "[PASS] parse_vllm_response: dedup and fill to target" << std::endl;
+}
+
 // ============================================================================
 // main
 // ============================================================================
@@ -305,6 +342,7 @@ int main(int argc, char* argv[]) {
     test_parse_vllm_response_non_numeric_tokens();
     test_parse_vllm_response_only_non_numeric();
     test_parse_vllm_response_single_sku();
+    test_parse_vllm_response_dedup_and_fill();
 
     std::cout << "\n=== All Recall Tests Passed ===" << std::endl;
     return 0;

@@ -20,14 +20,14 @@ spec:
       - name: precalc
         image: linquickrec/precalc:latest
         ports:
-        - containerPort: 8004
+        - containerPort: 8003
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8004"
+          value: "8003"
         resources:
           requests:
             cpu: "1"
@@ -37,12 +37,12 @@ spec:
             memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8004
+            port: 8003
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8004
+            port: 8003
           initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
@@ -62,6 +62,6 @@ spec:
     app: precalc-service
   ports:
   - name: rpc
-    port: 8004
-    targetPort: 8004
+    port: 8003
+    targetPort: 8003
   type: ClusterIP

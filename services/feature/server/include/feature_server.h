@@ -6,6 +6,7 @@
 
 #include <brpc/server.h>
 
+#include "common/error.h"
 #include "feature.pb.h"
 
 DECLARE_int32(server_port);
@@ -28,20 +29,13 @@ public:
                         google::protobuf::Closure* done) override;
 
 private:
-    struct UserFeatureResult {
-        bool success = false;
-        UserFeatureResponse response;
-        std::string error_message;
-    };
+    common::error::Status process_user_features_request(
+        const UserFeatureRequest* request,
+        UserFeatureResponse* response);
 
-    struct SKUFeatureResult {
-        bool success = false;
-        SKUFeatureResponse response;
-        std::string error_message;
-    };
-
-    UserFeatureResult process_user_features_request(const UserFeatureRequest* request);
-    SKUFeatureResult process_sku_features_request(const SKUFeatureRequest* request);
+    common::error::Status process_sku_features_request(
+        const SKUFeatureRequest* request,
+        SKUFeatureResponse* response);
 };
 
 } // namespace feature

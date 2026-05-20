@@ -12,11 +12,11 @@ WORKDIR /app
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
 COPY ${SERVICE_DIR} /app/services/precalc/
+COPY ${DISCOVERY_DIR} /app/services/discovery/
+
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
-
-COPY ${DISCOVERY_DIR} /app/services/discovery/
 RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
     cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
     make discovery_client -j$(nproc) && \

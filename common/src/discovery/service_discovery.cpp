@@ -1,16 +1,11 @@
-#include "service_discovery.h"
+#include "common/service_discovery.h"
 
 #include <chrono>
 #include <thread>
 
-#include <gflags/gflags.h>
-
-DECLARE_string(feature_service_name);
-DECLARE_string(recall_service_name);
-DECLARE_string(precalc_service_name);
-DECLARE_string(rank_service_name);
-
 #include "common/logger.h"
+
+namespace common {
 
 static constexpr int COOLDOWN_SECONDS = 10;
 static constexpr int MAX_CONSECUTIVE_FAILURES = 3;
@@ -45,41 +40,36 @@ void ServiceDiscovery::refresh_loop() {
 }
 
 void ServiceDiscovery::refresh_all() {
+    // No-op if no services have been queried yet.
+    // Subclasses or callers should populate the service list.
+    // This base implementation refreshes all cached services.
     if (!provider_) return;
 
-    std::vector<std::string> known_services = {
-        FLAGS_feature_service_name,
-        FLAGS_recall_service_name,
-        FLAGS_precalc_service_name,
-        FLAGS_rank_service_name
-    };
+    std::lock_guard<std::mutex> lock(mutex_);
 
-    for (const auto& svc : known_services) {
+    for (auto& [svc, _] : cache_) {
         auto instances = provider_->Discover(svc);
 
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            int old_count = static_cast<int>(cache_[svc].size());
-            int new_count = static_cast<int>(instances.size());
+        int old_count = static_cast<int>(cache_[svc].size());
+        int new_count = static_cast<int>(instances.size());
 
-            cache_[svc] = std::move(instances);
-            if (rr_index_.find(svc) == rr_index_.end()) {
-                rr_index_[svc] = 0;
-            }
+        cache_[svc] = std::move(instances);
+        if (rr_index_.find(svc) == rr_index_.end()) {
+            rr_index_[svc] = 0;
+        }
 
-            bool is_first = !first_refresh_[svc];
-            first_refresh_[svc] = true;
+        bool is_first = !first_refresh_[svc];
+        first_refresh_[svc] = true;
 
-            if (is_first) {
-                LOG_INFO << "Discover(" << svc << "): "
-                         << new_count << " instance(s) (initial)";
-            } else if (new_count != old_count) {
-                LOG_INFO << "Discover(" << svc << "): "
-                         << old_count << " -> " << new_count << " instance(s)";
-            } else {
-                LOG_DEBUG << "Discover(" << svc << "): "
-                          << new_count << " instance(s)";
-            }
+        if (is_first) {
+            LOG_INFO << "Discover(" << svc << "): "
+                     << new_count << " instance(s) (initial)";
+        } else if (new_count != old_count) {
+            LOG_INFO << "Discover(" << svc << "): "
+                     << old_count << " -> " << new_count << " instance(s)";
+        } else {
+            LOG_DEBUG << "Discover(" << svc << "): "
+                      << new_count << " instance(s)";
         }
     }
 }
@@ -91,7 +81,29 @@ bool ServiceDiscovery::GetInstance(const std::string& service_name,
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = cache_.find(service_name);
-    if (it == cache_.end() || it->second.empty()) return false;
+
+    // Cache miss: 同步查询一次，填充 cache，后续 refresh_all 可正常刷新
+    if (it == cache_.end()) {
+        if (!provider_) return false;
+
+        auto instances = provider_->Discover(service_name);
+        int count = static_cast<int>(instances.size());
+        cache_[service_name] = std::move(instances);
+        rr_index_[service_name] = 0;
+        first_refresh_[service_name] = true;
+
+        LOG_INFO << "Discover(" << service_name << "): "
+                 << count << " instance(s) (lazy init)";
+
+        it = cache_.find(service_name);
+        if (it == cache_.end() || it->second.empty()) {
+            LOG_WARN << "Discover(" << service_name
+                     << "): provider returned 0 instances (lazy init)";
+            return false;
+        }
+    }
+
+    if (it->second.empty()) return false;
 
     auto& instances = it->second;
     auto& idx = rr_index_[service_name];
@@ -133,3 +145,5 @@ void ServiceDiscovery::ReportFailure(const std::string& instance_id) {
                         << " (cooldown " << COOLDOWN_SECONDS << "s)";
     }
 }
+
+} // namespace common

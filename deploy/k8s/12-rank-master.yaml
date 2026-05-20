@@ -20,20 +20,14 @@ spec:
       - name: rank-master
         image: linquickrec/rank-master:latest
         ports:
-        - containerPort: 8005
+        - containerPort: 8004
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8005"
-        - name: RANK_SUB_HOST
-          value: "rank-sub-service"
-        - name: RANK_SUB_PORT
-          value: "8006"
-        - name: SUB_WORKER_ADDRESSES
-          value: "rank-sub-service:8006"
+          value: "8004"
         resources:
           requests:
             cpu: "1"
@@ -43,12 +37,12 @@ spec:
             memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8005
+            port: 8004
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8005
+            port: 8004
           initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
@@ -68,6 +62,6 @@ spec:
     app: rank-master-service
   ports:
   - name: rpc
-    port: 8005
-    targetPort: 8005
+    port: 8004
+    targetPort: 8004
   type: ClusterIP

@@ -14,7 +14,9 @@
 #include <brpc/controller.h>
 #include <brpc/server.h>
 
-#include "discovery_naming_service.h"
+#include "common/service_discovery.h"
+
+#include "common/logger.h"
 
 DEFINE_int32(server_port, 8080, "Proxy HTTP service port");
 DEFINE_int32(feature_timeout_ms, 3000, "Feature service timeout (ms)");
@@ -28,6 +30,8 @@ DEFINE_int32(downstream_max_retry, 3,
              "Downstream channel BRPC max retry");
 DEFINE_int32(downstream_connect_timeout_ms, -1,
              "Downstream channel connect timeout (ms), -1 = disabled");
+DEFINE_string(downstream_lb_policy, "",
+              "Downstream channel load balancer (rr/wrr/random/la), empty = brpc default");
 
 DEFINE_int32(feature_backup_request_ms, -1,
              "Feature channel backup request (ms), -1 = disabled");
@@ -79,81 +83,47 @@ namespace proxy {
 ProxyServiceImpl::ProxyServiceImpl() {
     LOG_INFO << "ProxyServiceImpl initializing...";
 
-<<<<<<< HEAD
-    std::string addr = (FLAGS_registry_backend == "etcd")
+    std::string backend_addr = (FLAGS_registry_backend == "etcd")
         ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
-
-    discovery_ = std::make_unique<ServiceDiscovery>(
-        FLAGS_registry_backend, addr, FLAGS_discovery_refresh_interval_ms);
-
-    LOG_INFO << "ProxyServiceImpl initialized";
-    LOG_INFO << "  Backend: " << FLAGS_registry_backend;
-    LOG_INFO << "  Address: " << addr;
-=======
-    feature_channel_ = std::make_unique<brpc::Channel>();
-    recall_channel_ = std::make_unique<brpc::Channel>();
-    precalc_channel_ = std::make_unique<brpc::Channel>();
-    rank_channel_ = std::make_unique<brpc::Channel>();
-
-    // Shared options
-    brpc::ChannelOptions opts;
-    opts.connection_type = FLAGS_downstream_connection_type.c_str();
-    opts.max_retry = FLAGS_downstream_max_retry;
-    if (FLAGS_downstream_connect_timeout_ms >= 0) {
-        opts.connect_timeout_ms = FLAGS_downstream_connect_timeout_ms;
-    }
-
-    // Feature channel
-    opts.timeout_ms = FLAGS_feature_timeout_ms;
-    opts.backup_request_ms = FLAGS_feature_backup_request_ms;
-    if (feature_channel_->Init("discovery://" + FLAGS_feature_service_name, &opts) != 0) {
-        LOG_ERROR << "Failed to init feature channel";
-    } else {
-        LOG_INFO << "Feature channel initialized (timeout="
-                 << FLAGS_feature_timeout_ms << "ms)";
-    }
-
-    // Recall channel
-    opts.timeout_ms = FLAGS_recall_timeout_ms;
-    opts.backup_request_ms = FLAGS_recall_backup_request_ms;
-    if (recall_channel_->Init("discovery://" + FLAGS_recall_service_name, &opts) != 0) {
-        LOG_ERROR << "Failed to init recall channel";
-    } else {
-        LOG_INFO << "Recall channel initialized (timeout="
-                 << FLAGS_recall_timeout_ms << "ms)";
-    }
-
-    // Precalc channel
-    opts.timeout_ms = FLAGS_precalc_timeout_ms;
-    opts.backup_request_ms = FLAGS_precalc_backup_request_ms;
-    if (precalc_channel_->Init("discovery://" + FLAGS_precalc_service_name, &opts) != 0) {
-        LOG_ERROR << "Failed to init precalc channel";
-    } else {
-        LOG_INFO << "Precalc channel initialized (timeout="
-                 << FLAGS_precalc_timeout_ms << "ms)";
-    }
-
-    // Rank channel
-    opts.timeout_ms = FLAGS_rank_timeout_ms;
-    opts.backup_request_ms = FLAGS_rank_backup_request_ms;
-    if (rank_channel_->Init("discovery://" + FLAGS_rank_service_name, &opts) != 0) {
-        LOG_ERROR << "Failed to init rank channel";
-    } else {
-        LOG_INFO << "Rank channel initialized (timeout="
-                 << FLAGS_rank_timeout_ms << "ms)";
-    }
+    service_discovery_ = std::make_unique<common::ServiceDiscovery>(
+        FLAGS_registry_backend, backend_addr,
+        FLAGS_discovery_refresh_interval_ms);
 
     LOG_INFO << "ProxyServiceImpl initialized";
-    LOG_INFO << "  Discovery: " << FLAGS_discovery_addr;
+    LOG_INFO << "  Discovery: backend=" << FLAGS_registry_backend
+             << " address=" << backend_addr;
     LOG_INFO << "  Downstream: connection_type=" << FLAGS_downstream_connection_type
              << " max_retry=" << FLAGS_downstream_max_retry
              << " connect_timeout_ms=" << FLAGS_downstream_connect_timeout_ms;
->>>>>>> 100ba84d254c4af17901d6680df43936e8f6f4e6
 }
 
 ProxyServiceImpl::~ProxyServiceImpl() {
     LOG_INFO << "ProxyServiceImpl destroyed";
 }
+
+namespace {
+
+std::unique_ptr<brpc::Channel> make_channel(
+    const std::string& addr, int timeout_ms, int backup_request_ms) {
+    auto ch = std::make_unique<brpc::Channel>();
+    brpc::ChannelOptions opts;
+    opts.timeout_ms = timeout_ms;
+    opts.connection_type = FLAGS_downstream_connection_type.c_str();
+    opts.max_retry = FLAGS_downstream_max_retry;
+    if (FLAGS_downstream_connect_timeout_ms >= 0) {
+        opts.connect_timeout_ms = FLAGS_downstream_connect_timeout_ms;
+    }
+    if (backup_request_ms >= 0) {
+        opts.backup_request_ms = backup_request_ms;
+    }
+    if (ch->Init(addr.c_str(), &opts) != 0) {
+        LOG_ERROR << "Failed to init channel to " << addr;
+        return nullptr;
+    }
+    return ch;
+}
+
+} // anonymous namespace
 
 void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
                                   const RecommendRequest* request,
@@ -177,6 +147,28 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     const RecommendRequest* request,
     feature::UserFeatureResponse* response) {
 
+    std::string host;
+    int port;
+    std::string instance_id;
+    if (!service_discovery_->GetInstance(
+            FLAGS_feature_service_name, host, port, instance_id)) {
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0001,
+            "FeatureService: no available instance");
+    }
+
+    std::string addr = host + ":" + std::to_string(port);
+    auto channel = make_channel(addr, FLAGS_feature_timeout_ms,
+                                FLAGS_feature_backup_request_ms);
+    if (!channel) {
+        service_discovery_->ReportFailure(instance_id);
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0001,
+            "FeatureService: channel init failed for " + addr);
+    }
+
     feature::UserFeatureRequest feat_req;
     feat_req.set_feature_type(feature::KuaiRand);
     feat_req.mutable_kr_feat_req()->set_user_id(request->user_id());
@@ -188,18 +180,21 @@ common::error::Status ProxyServiceImpl::call_feature_service(
         cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
     }
 
-    feature::FeatureService_Stub stub(feature_channel_.get());
+    feature::FeatureService_Stub stub(channel.get());
     stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
 
     if (cntl.Failed()) {
+        service_discovery_->ReportFailure(instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0001,
             "FeatureService: " + cntl.ErrorText());
     }
 
+    service_discovery_->ReportSuccess(instance_id);
     LOG_INFO << "FeatureService success: user_id=" << request->user_id()
-             << " user_logs=" << response->kr_feat_rsp().user_logs_size();
+             << " user_logs=" << response->kr_feat_rsp().user_logs_size()
+             << " instance=" << instance_id;
     return common::error::Status::OK();
 }
 
@@ -207,6 +202,28 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     uint64_t user_id,
     const feature::UserFeatureResponse& user_feat,
     recall::RecallResponse* response) {
+
+    std::string host;
+    int port;
+    std::string instance_id;
+    if (!service_discovery_->GetInstance(
+            FLAGS_recall_service_name, host, port, instance_id)) {
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0002,
+            "RecallService: no available instance");
+    }
+
+    std::string addr = host + ":" + std::to_string(port);
+    auto channel = make_channel(addr, FLAGS_recall_timeout_ms,
+                                FLAGS_recall_backup_request_ms);
+    if (!channel) {
+        service_discovery_->ReportFailure(instance_id);
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0002,
+            "RecallService: channel init failed for " + addr);
+    }
 
     recall::RecallRequest recall_req;
     recall_req.set_user_id(user_id);
@@ -226,17 +243,20 @@ common::error::Status ProxyServiceImpl::call_recall_service(
         cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
     }
 
-    recall::RecallService_Stub stub(recall_channel_.get());
+    recall::RecallService_Stub stub(channel.get());
     stub.Recall(&cntl, &recall_req, response, nullptr);
 
     if (cntl.Failed()) {
+        service_discovery_->ReportFailure(instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0002,
             "RecallService: " + cntl.ErrorText());
     }
 
-    LOG_INFO << "RecallService success: sku_ids=" << response->sku_ids_size();
+    service_discovery_->ReportSuccess(instance_id);
+    LOG_INFO << "RecallService success: sku_ids=" << response->sku_ids_size()
+             << " instance=" << instance_id;
     return common::error::Status::OK();
 }
 
@@ -244,6 +264,28 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     uint64_t /*user_id*/,
     const feature::UserFeatureResponse& user_feat,
     precalc::PrecalcResponse* response) {
+
+    std::string host;
+    int port;
+    std::string instance_id;
+    if (!service_discovery_->GetInstance(
+            FLAGS_precalc_service_name, host, port, instance_id)) {
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0003,
+            "PrecalcService: no available instance");
+    }
+
+    std::string addr = host + ":" + std::to_string(port);
+    auto channel = make_channel(addr, FLAGS_precalc_timeout_ms,
+                                FLAGS_precalc_backup_request_ms);
+    if (!channel) {
+        service_discovery_->ReportFailure(instance_id);
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0003,
+            "PrecalcService: channel init failed for " + addr);
+    }
 
     precalc::PrecalcRequest precalc_req;
     precalc_req.set_user_feat(user_feat.kr_feat_rsp().other().empty()
@@ -257,17 +299,20 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
         cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
     }
 
-    precalc::PrecalcService_Stub stub(precalc_channel_.get());
+    precalc::PrecalcService_Stub stub(channel.get());
     stub.Precalculate(&cntl, &precalc_req, response, nullptr);
 
     if (cntl.Failed()) {
+        service_discovery_->ReportFailure(instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0003,
             "PrecalcService: " + cntl.ErrorText());
     }
 
-    LOG_INFO << "PrecalcService success: user_feat_key=" << response->user_feat_key();
+    service_discovery_->ReportSuccess(instance_id);
+    LOG_INFO << "PrecalcService success: user_feat_key=" << response->user_feat_key()
+             << " instance=" << instance_id;
     return common::error::Status::OK();
 }
 
@@ -275,6 +320,28 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     const recall::RecallResponse& recall_rsp,
     const precalc::PrecalcResponse& precalc_rsp,
     RecommendResponse* response) {
+
+    std::string host;
+    int port;
+    std::string instance_id;
+    if (!service_discovery_->GetInstance(
+            FLAGS_rank_service_name, host, port, instance_id)) {
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0004,
+            "RankService: no available instance");
+    }
+
+    std::string addr = host + ":" + std::to_string(port);
+    auto channel = make_channel(addr, FLAGS_rank_timeout_ms,
+                                FLAGS_rank_backup_request_ms);
+    if (!channel) {
+        service_discovery_->ReportFailure(instance_id);
+        return common::error::Status::Error(
+            common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0004,
+            "RankService: channel init failed for " + addr);
+    }
 
     rank::RankMasterRequest rank_req;
     rank_req.set_user_feat_key(precalc_rsp.user_feat_key());
@@ -293,22 +360,25 @@ common::error::Status ProxyServiceImpl::call_rank_service(
         cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
     }
 
-    rank::RankMasterService_Stub stub(rank_channel_.get());
+    rank::RankMasterService_Stub stub(channel.get());
     rank::RankMasterResponse rank_rsp;
     stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
 
     if (cntl.Failed()) {
+        service_discovery_->ReportFailure(instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0004,
             "RankService: " + cntl.ErrorText());
     }
 
+    service_discovery_->ReportSuccess(instance_id);
     for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
         response->add_candidates(rank_rsp.candidates(i));
     }
 
-    LOG_INFO << "RankService success: candidates=" << response->candidates_size();
+    LOG_INFO << "RankService success: candidates=" << response->candidates_size()
+             << " instance=" << instance_id;
     return common::error::Status::OK();
 }
 

@@ -13,6 +13,7 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
+#include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
@@ -31,6 +32,7 @@ DECLARE_string(sub_worker_connection_type);
 DECLARE_int32(sub_worker_max_retry);
 DECLARE_int32(sub_worker_connect_timeout_ms);
 DECLARE_int32(sub_worker_backup_request_ms);
+DECLARE_string(sub_worker_lb_policy);
 DECLARE_int32(sub_worker_parallelism);
 
 namespace rank {
@@ -98,7 +100,7 @@ private:
                      int top_k,
                      std::vector<uint64_t>& candidates);
 
-    std::unique_ptr<brpc::Channel> sub_worker_channel_;
+    std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
 
 } // namespace rank

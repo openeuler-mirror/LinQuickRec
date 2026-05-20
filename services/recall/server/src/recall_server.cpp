@@ -9,9 +9,11 @@
 #include <mutex>
 #include <queue>
 #include <random>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 #include <brpc/controller.h>
@@ -33,8 +35,8 @@ DEFINE_int32(server_port, 8002, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
 DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
 
-DEFINE_string(vllm_connection_type, "single",
-              "vLLM channel connection type (single/pooled/short)");
+DEFINE_string(vllm_connection_type, "pooled",
+              "vLLM channel connection type (pooled/short)");
 DEFINE_int32(vllm_max_retry, 3,
              "vLLM channel BRPC max retry");
 DEFINE_int32(vllm_connect_timeout_ms, -1,
@@ -47,7 +49,7 @@ namespace recall {
 
 using namespace common::error;
 
-constexpr int VLLM_MAX_TOKENS = 10240;
+constexpr int VLLM_MAX_TOKENS = 1024;
 constexpr double VLLM_TEMPERATURE = 0.7;
 constexpr double VLLM_TOP_P = 0.9;
 
@@ -98,10 +100,11 @@ std::string build_vllm_request(const std::string& request_json) {
     Value system_msg(kObjectType);
     system_msg.AddMember("role", "system", allocator);
     std::ostringstream system_prompt_ss;
-    system_prompt_ss << "你是一个搜推广助手，请根据用户特征和日志返回推荐的 SKU ID 列表。\n"
-                     << "请恰好生成 " << FLAGS_sku_count << " 个 SKU ID，不要多也不要少。\n"
-                     << "每个SKU ID 都是一个 64 位无符号整数，范围在 100000 到 999999 之间。\n"
-                     << "返回格式：用逗号分隔的数字，例如：123456,567890,111111,...";
+    system_prompt_ss << "You are a search/recommendation assistant. Based on user features and logs, "
+                     << "return exactly " << FLAGS_sku_count << " recommended SKU IDs.\n"
+                     << "Each SKU ID is a 64-bit unsigned integer in range [100000, 999999].\n"
+                     << "CRITICAL: Output ONLY the comma-separated numbers. No explanation, no markdown, "
+                     << "no extra text before or after. Format example: 123456,567890,111111,222222,...";
     system_msg.AddMember("content", Value(system_prompt_ss.str().c_str(), allocator).Move(), allocator);
     messages.PushBack(system_msg, allocator);
 
@@ -109,7 +112,7 @@ std::string build_vllm_request(const std::string& request_json) {
     user_msg.AddMember("role", "user", allocator);
 
     std::ostringstream prompt_ss;
-    prompt_ss << "用户请求数据：" << request_json;
+    prompt_ss << "User request data: " << request_json;
     user_msg.AddMember("content", Value(prompt_ss.str().c_str(), allocator).Move(), allocator);
 
     messages.PushBack(user_msg, allocator);
@@ -119,6 +122,14 @@ std::string build_vllm_request(const std::string& request_json) {
     d.AddMember("temperature", VLLM_TEMPERATURE, allocator);
     d.AddMember("top_p", VLLM_TOP_P, allocator);
     d.AddMember("stream", false, allocator);
+
+    if (FLAGS_sku_count > 0) {
+        std::ostringstream regex_oss;
+        regex_oss << "\\d{6}(,\\d{6}){" << (FLAGS_sku_count - 1) << "}";
+        std::string regex_pattern = regex_oss.str();
+        d.AddMember("guided_regex", Value(regex_pattern.c_str(), allocator).Move(), allocator);
+        d.AddMember("guided_decoding_backend", "xgrammar", allocator);
+    }
 
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
@@ -156,8 +167,11 @@ bool parse_vllm_response(const std::string& response_body,
         return false;
     }
 
-    const std::string content = first_choice["message"]["content"].GetString();
+    std::string content = first_choice["message"]["content"].GetString();
 
+    content = std::regex_replace(content, std::regex("[^0-9,]"), "");
+
+    std::vector<uint64_t> parsed_ids;
     std::istringstream iss(content);
     std::string token;
     while (std::getline(iss, token, ',')) {
@@ -168,21 +182,61 @@ bool parse_vllm_response(const std::string& response_body,
 
             if (!token.empty()) {
                 uint64_t sku_id = std::stoull(token);
-                response->add_sku_ids(sku_id);
+                parsed_ids.push_back(sku_id);
             }
         } catch (const std::exception& e) {
             LOG_WARN << "Failed to parse SKU ID: " << token << ", error: " << e.what();
         }
     }
 
-    if (response->sku_ids_size() == 0) {
+    int raw_count = static_cast<int>(parsed_ids.size());
+    if (raw_count == 0) {
         LOG_WARN << common::error::Status(recall_errors::NO_SKU_RETURNED,
             "No SKU IDs parsed from response").ToString();
         return false;
     }
 
+    std::unordered_set<uint64_t> seen;
+    std::vector<uint64_t> unique_ids;
+    for (uint64_t id : parsed_ids) {
+        if (seen.insert(id).second) {
+            unique_ids.push_back(id);
+        }
+    }
+
+    int unique_count = static_cast<int>(unique_ids.size());
+    int dup_count = raw_count - unique_count;
+    if (dup_count > 0) {
+        LOG_INFO << "Deduplicated " << dup_count << " duplicate SKU IDs, "
+                 << unique_count << " unique remaining";
+    }
+
+    if (unique_count < max_sku_count) {
+        int need = max_sku_count - unique_count;
+        LOG_INFO << "Filling " << need << " missing SKU IDs with random values";
+
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<uint64_t> dist(100000, 999999);
+
+        for (int i = 0; i < need; ++i) {
+            uint64_t new_id;
+            do {
+                new_id = dist(rng);
+            } while (seen.count(new_id));
+            seen.insert(new_id);
+            unique_ids.push_back(new_id);
+        }
+    }
+
+    std::shuffle(unique_ids.begin(), unique_ids.end(), std::mt19937(std::random_device{}()));
+
+    for (uint64_t id : unique_ids) {
+        response->add_sku_ids(id);
+    }
+
     LOG_INFO << "Successfully parsed " << response->sku_ids_size()
-              << " SKU IDs from response (target: " << max_sku_count << ")";
+              << " unique SKU IDs (raw=" << raw_count
+              << ", target=" << max_sku_count << ")";
 
     return true;
 }

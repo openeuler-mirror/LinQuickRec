@@ -105,7 +105,7 @@ add_custom_command(
     DEPENDS ${PROTO_DIR}/rank_sub.proto
 )
 
-# 生成 discovery protobuf 文件（用于动态发现）
+# 生成 discovery protobuf 文件（服务发现需要）
 add_custom_command(
     OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/discovery.pb.h
     COMMAND protobuf::protoc
@@ -120,6 +120,7 @@ add_executable(rank_master_server
     server/src/rank_master_server.cpp
     server/src/discovery_resolver.cpp
     server/src/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
     ${PROTO_OUT_DIR}/discovery.pb.cc
@@ -215,6 +216,7 @@ message(STATUS "===========================================")
 add_executable(rank_master_test
     tests/test_rank_master.cpp
     server/src/rank_master_server.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc
     ${PROTO_OUT_DIR}/discovery.pb.cc

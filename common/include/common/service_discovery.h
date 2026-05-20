@@ -1,5 +1,5 @@
-#ifndef SERVICE_DISCOVERY_H
-#define SERVICE_DISCOVERY_H
+#ifndef COMMON_SERVICE_DISCOVERY_H
+#define COMMON_SERVICE_DISCOVERY_H
 
 #include <atomic>
 #include <chrono>
@@ -11,6 +11,8 @@
 
 #include "discovery.pb.h"
 #include "discovery_provider.h"
+
+namespace common {
 
 class ServiceDiscovery {
 public:
@@ -53,4 +55,6 @@ private:
     std::atomic<bool> running_{true};
 };
 
-#endif // SERVICE_DISCOVERY_H
+} // namespace common
+
+#endif // COMMON_SERVICE_DISCOVERY_H

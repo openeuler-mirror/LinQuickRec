@@ -18,7 +18,6 @@
 #include "proxy_server.h"
 #include "rank_master.pb.h"
 #include "recall.pb.h"
-#include "discovery_naming_service.h"
 
 DEFINE_string(registry_backend, "discovery_server", "");
 DEFINE_string(discovery_addr, "127.0.0.1:18100", "");

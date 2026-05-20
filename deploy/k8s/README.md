@@ -60,74 +60,42 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 #### 使用 minikube（本地开发）
 
 ```bash
-# 安装 minikube
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
-# 启动集群
 minikube start --driver=docker --gpus all --cpus=4 --memory=16g
-
-# 配置 kubectl（minikube 自动配置）
 minikube kubectl -- get pods -A
-
-# 或者创建别名
 alias kubectl="minikube kubectl --"
 ```
 
 ### 2. 配置 kubectl
 
 ```bash
-# 查看当前上下文
 kubectl config current-context
-
-# 查看集群信息
 kubectl cluster-info
-
-# 查看节点状态
 kubectl get nodes
-
-# 如果是多节点集群，查看节点详情
-kubectl describe node <node-name>
-
-# 测试 kubectl 连接
-kubectl get namespaces
 ```
 
-如果使用远程集群，需要将 kubeconfig 文件复制到本地：
+如果使用远程集群：
 
 ```bash
-# 从远程 Master 节点复制配置
 scp user@master-ip:/etc/kubernetes/admin.conf ~/.kube/config
-
-# 或者合并到现有配置
-KUBECONFIG=~/.kube/config:/path/to/remote-config kubectl config view --flatten > ~/.kube/config-new
-mv ~/.kube/config-new ~/.kube/config
 ```
 
 ### 3. 配置 GPU 节点（Recall 服务需要）
 
 ```bash
-# 检查节点是否有 GPU 资源
 kubectl get nodes -o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\\.com/gpu
 
-# 如果显示 <none>，需要安装 NVIDIA 设备插件
-# 前提：节点已安装 NVIDIA 驱动和 nvidia-container-toolkit
-
-# 安装 NVIDIA GPU Operator（推荐）
+# 安装 NVIDIA GPU Operator
 kubectl apply -f https://raw.githubusercontent.com/NVIDIA/gpu-operator/v23.9.0/deployments/gpu-operator/gpu-operator.yaml
-
-# 等待安装完成
 kubectl wait --for=condition=ready pod -l app=nvidia-device-plugin-daemonset -n gpu-operator --timeout=300s
-
-# 再次检查
-kubectl get nodes -o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\\.com/gpu
-# 应该显示类似：1
 ```
 
 ### 4. 准备镜像
 
 ```bash
-# 构建镜像（在项目根目录执行）
+docker build -f deploy/docker/etcd/Dockerfile -t linquickrec/etcd:latest .
+docker build -f deploy/docker/kv_worker/Dockerfile -t linquickrec/kv-worker:latest .
 docker build -f deploy/docker/feature/Dockerfile -t linquickrec/feature:latest .
 docker build -f deploy/docker/recall/Dockerfile -t linquickrec/recall:latest .
 docker build -f deploy/docker/precalc/Dockerfile -t linquickrec/precalc:latest .
@@ -135,18 +103,14 @@ docker build -f deploy/docker/rank-master/Dockerfile -t linquickrec/rank-master:
 docker build -f deploy/docker/rank-sub/Dockerfile -t linquickrec/rank-sub:latest .
 docker build -f deploy/docker/proxy/Dockerfile -t linquickrec/proxy:latest .
 
-# 如果使用 minikube，直接加载到 minikube 的 Docker 中
-minikube image load linquickrec/feature:latest
-minikube image load linquickrec/recall:latest
-minikube image load linquickrec/precalc:latest
-minikube image load linquickrec/rank-master:latest
-minikube image load linquickrec/rank-sub:latest
-minikube image load linquickrec/proxy:latest
+# minikube 环境：加载到 minikube Docker
+minikube image load linquickrec/etcd:latest
+minikube image load linquickrec/kv-worker:latest
+# ... 其他镜像同理
 
-# 如果使用远程集群，推送到镜像仓库
+# 远程集群：推送到镜像仓库
 docker tag linquickrec/recall:latest <registry>/linquickrec/recall:latest
 docker push <registry>/linquickrec/recall:latest
-# 然后修改 YAML 中的 image 为完整仓库地址
 ```
 
 > Discovery 服务镜像需单独构建：`docker build -f services/discovery/Dockerfile -t linquickrec/discovery:latest .`
@@ -155,14 +119,16 @@ docker push <registry>/linquickrec/recall:latest
 
 ```
 namespace: linquickrec
-├── ConfigMap: linquickrec-config          # 共享配置
-├── Deployment: discovery-server (1 Pod)    # 服务发现中心
-├── Deployment: feature-service (1 Pod)     # 特征服务 (Mock)
-├── Deployment: proxy-service (1 Pod)       # 网关服务
-├── Deployment: recall-service (1 Pod)      # 召回服务，需要 GPU
-├── Deployment: precalc-service (1 Pod)     # 前置计算服务
-├── Deployment: rank-master-service (1 Pod) # 精排主图服务
-└── Deployment: rank-sub-service (10 Pods)  # 精排子图服务，可水平扩展
+├── ConfigMap: linquickrec-config              # 共享配置
+├── StatefulSet: etcd (1 Pod)                  # 服务注册中心（etcd 模式）
+├── Deployment: kv-worker (1 Pod)              # KV Worker（元戎 Datasystem）
+├── Deployment: discovery-server (1 Pod)        # 服务发现中心（BRPC 模式备用）
+├── Deployment: feature-service (1 Pod)         # 特征服务 (Mock)
+├── Deployment: proxy-service (1 Pod)           # 网关服务
+├── Deployment: recall-service (1 Pod)          # 召回服务，需要 GPU
+├── Deployment: precalc-service (1 Pod)         # 前置计算服务
+├── Deployment: rank-master-service (1 Pod)     # 精排主图服务
+└── Deployment: rank-sub-service (3 Pods)       # 精排子图服务，可水平扩展
 ```
 
 ### 调用关系
@@ -170,46 +136,36 @@ namespace: linquickrec
 ```
 Client
   ↓
-Proxy (8080)
-  ├─ Stage 1: FeatureService (8003) ──→ 返回用户特征 (Mock)       ← 同步
-  ├─ Stage 2: RecallService (8001) ──→ vLLM (8000) ──→ Qwen3-0.6B ← 并行
-  │          PrecalcService (8004) ──→ RankKVWorker (31502)         ← 并行
-  └─ Stage 3: RankMaster (8005) ──→ K8s 负载均衡 ──→ RankSub ×10 (8006) ──→ RankKVWorker (31502)
+Proxy (:8080)
+  ├─ Stage 1: FeatureService (:8001) ──→ 返回用户特征 (Mock)       ← 同步
+  ├─ Stage 2: RecallService (:8002) ──→ vLLM (:8000) ──→ Qwen3-0.6B ← 并行
+  │          PrecalcService (:8003) ──→ KVWorker (:31501/:31502)     ← 并行
+  └─ Stage 3: RankMaster (:8004) ──→ 服务发现 ──→ RankSub ×3 (:8005) ──→ KVWorker (:31501/:31502)
        ↓
   Proxy → Client
 ```
 
-所有服务启动时向 Discovery Server 注册，并通过心跳维持在线状态。服务间通过 K8s ClusterIP Service 发现，无需映射端口到宿主机。RankMaster 创建 10 个 brpc Channel 连接 `rank-sub-service:8006`，由 kube-proxy 自动负载均衡到 10 个 RankSub Pod。
+### 服务发现机制
 
-### 文件说明
+每个服务镜像的 `ENTRYPOINT ["/app/entrypoint.sh"]` 自动完成服务注册：
 
-| 文件 | 资源 | 说明 |
-|------|------|------|
-| `00-namespace.yaml` | Namespace | 创建 `linquickrec` 命名空间 |
-| `01-configmap.yaml` | ConfigMap | 共享环境变量（服务地址、KVWorker、超时、模型路径等） |
-| `09-discovery.yaml` | Deployment + Service | Discovery 服务发现中心，端口 8100 |
-| `09-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8003 |
-| `09-proxy.yaml` | Deployment + Service | Proxy 网关服务，端口 8080 |
-| `10-recall.yaml` | Deployment + Service | Recall 服务，需要 GPU 节点，readinessProbe 120s |
-| `11-precalc.yaml` | Deployment + Service | Precalc 服务，1 副本 |
-| `12-rank-master.yaml` | Deployment + Service | RankMaster 服务，1 副本，配置 `SUB_WORKER_ADDRESSES` |
-| `13-rank-sub.yaml` | Deployment + Service | RankSub 服务，10 副本 |
+1. 启动主服务进程（如 `feature_server`）
+2. 根据 `REGISTRY_BACKEND` 环境变量启动对应的 `discovery_client`，向 etcd 或 discovery-server 注册本服务并维持心跳
 
-## 部署命令
+Pod 内只有一个容器（主容器），无需额外的 sidecar。entrypoint.sh 会根据 `REGISTRY_BACKEND` 自动选择注册后端。
 
-### 前提条件
+### 后端选择
 
-- K8s 集群已就绪，kubectl 已配置
-- Recall 服务需要 GPU 节点（已安装 NVIDIA 设备插件）
-- Docker 镜像已构建并推送到可访问的镜像仓库
+通过 ConfigMap 中的 `REGISTRY_BACKEND` 切换服务发现后端，两种模式互斥：
 
-### 一键部署
+**etcd 模式**（`REGISTRY_BACKEND=etcd`，默认）：
 
 ```bash
-# 按编号顺序应用所有资源
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
-kubectl apply -f 09-discovery.yaml
+kubectl apply -f 02-etcd.yaml          # 部署 etcd
+kubectl apply -f 03-kv-worker.yaml
+# 跳过 09-discovery.yaml
 kubectl apply -f 09-feature.yaml
 kubectl apply -f 09-proxy.yaml
 kubectl apply -f 10-recall.yaml
@@ -218,26 +174,77 @@ kubectl apply -f 12-rank-master.yaml
 kubectl apply -f 13-rank-sub.yaml
 ```
 
+**discovery_server 模式**（`REGISTRY_BACKEND=discovery_server`）：
+
+```bash
+kubectl apply -f 00-namespace.yaml
+kubectl apply -f 01-configmap.yaml
+# 跳过 02-etcd.yaml
+kubectl apply -f 03-kv-worker.yaml
+kubectl apply -f 09-discovery.yaml     # 部署 discovery-server
+kubectl apply -f 09-feature.yaml
+kubectl apply -f 09-proxy.yaml
+kubectl apply -f 10-recall.yaml
+kubectl apply -f 11-precalc.yaml
+kubectl apply -f 12-rank-master.yaml
+kubectl apply -f 13-rank-sub.yaml
+```
+
+> 只需修改 ConfigMap 中 `REGISTRY_BACKEND` 的值即可切换模式，容器 entrypoint.sh 自动适配，无需修改 Deployment。
+
+### 文件说明
+
+| 文件 | 资源 | 说明 |
+|------|------|------|
+| `00-namespace.yaml` | Namespace | 创建 `linquickrec` 命名空间 |
+| `01-configmap.yaml` | ConfigMap | 共享环境变量（服务发现、超时、vLLM 配置等） |
+| `02-etcd.yaml` | StatefulSet + Service | etcd 服务注册中心，端口 2379/2380 |
+| `03-kv-worker.yaml` | Deployment + Service | KV Worker（元戎 Datasystem），端口 31501/31502 |
+| `09-discovery.yaml` | Deployment + Service | Discovery 服务发现中心（备用），端口 8100 |
+| `09-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8001 |
+| `09-proxy.yaml` | Deployment + Service | Proxy 网关服务，端口 8080 |
+| `10-recall.yaml` | Deployment + Service | Recall 召回服务，需要 GPU 节点，端口 8002 |
+| `11-precalc.yaml` | Deployment + Service | Precalc 前置计算服务，端口 8003 |
+| `12-rank-master.yaml` | Deployment + Service | RankMaster 精排主图服务，端口 8004 |
+| `13-rank-sub.yaml` | Deployment + Service | RankSub 精排子图服务，端口 8005 |
+| `deploy.sh` | 部署脚本 | 一键部署/删除，支持 etcd / discovery / delete 三个子命令 |
+
+## 一键部署
+
+```bash
+cd deploy/k8s
+
+# etcd 模式（默认）
+./deploy.sh etcd
+
+# discovery_server 模式
+./deploy.sh discovery
+
+# 删除所有资源
+./deploy.sh delete
+```
+
+脚本会自动检查 `kubectl` 可用性和集群连通性，按正确顺序部署/删除所有资源。
+
+### 手动部署
+
+如果需要逐文件控制，可参照"后端选择"章节中的 `kubectl apply` 命令。`02-etcd.yaml` 和 `09-discovery.yaml` 互斥，不要同时应用。
+
 ### 查看状态
 
 ```bash
-# 查看所有资源
 kubectl get all -n linquickrec
-
-# 查看 Pod 状态
 kubectl get pods -n linquickrec -o wide
 
-# 查看某个服务的日志
-kubectl logs -f deployment/discovery-server -n linquickrec
-kubectl logs -f deployment/feature-service -n linquickrec
+# 查看 etcd 中注册的服务
+kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/services/ --prefix
+
+# 查看日志
 kubectl logs -f deployment/proxy-service -n linquickrec
 kubectl logs -f deployment/recall-service -n linquickrec
-kubectl logs -f deployment/rank-master-service -n linquickrec
+kubectl logs -f deployment/feature-service -n linquickrec
 
-# 查看所有 RankSub Pod 的日志
-kubectl logs -f deployment/rank-sub-service -n linquickrec --all-containers --max-log-requests=10
-
-# 查看事件（排查启动问题）
+# 查看事件
 kubectl get events -n linquickrec --sort-by='.lastTimestamp'
 ```
 
@@ -245,39 +252,27 @@ kubectl get events -n linquickrec --sort-by='.lastTimestamp'
 
 ```bash
 # 调整 RankSub 副本数
-kubectl scale deployment rank-sub-service --replicas=5 -n linquickrec
+kubectl scale deployment rank-sub-service --replicas=10 -n linquickrec
 
-# 同时更新 ConfigMap 中的 SUB_WORKER_COUNT
-kubectl edit configmap linquickrec-config -n linquickrec
-# 将 SUB_WORKER_COUNT 改为对应副本数
+# 调整其他服务（支持多副本的服务）
+kubectl scale deployment feature-service --replicas=3 -n linquickrec
+kubectl scale deployment precalc-service --replicas=3 -n linquickrec
 ```
 
-> 扩缩容 RankSub 后，需要重启 RankMaster 使其读取新的 `SUB_WORKER_COUNT`：
-> `kubectl rollout restart deployment rank-master-service -n linquickrec`
+> 服务通过 etcd 服务发现动态感知副本变化，无需额外配置修改。
 
 ### 更新与回滚
 
 ```bash
-# 更新镜像（触发滚动更新）
 kubectl set image deployment/recall-service recall=linquickrec/recall:v2 -n linquickrec
-
-# 查看滚动更新状态
 kubectl rollout status deployment/recall-service -n linquickrec
-
-# 查看历史版本
 kubectl rollout history deployment/recall-service -n linquickrec
-
-# 回滚到上一版本
 kubectl rollout undo deployment/recall-service -n linquickrec
-
-# 回滚到指定版本
-kubectl rollout undo deployment/recall-service --to-revision=2 -n linquickrec
 ```
 
 ### 删除
 
 ```bash
-# 按逆序删除
 kubectl delete -f 13-rank-sub.yaml
 kubectl delete -f 12-rank-master.yaml
 kubectl delete -f 11-precalc.yaml
@@ -285,39 +280,45 @@ kubectl delete -f 10-recall.yaml
 kubectl delete -f 09-proxy.yaml
 kubectl delete -f 09-feature.yaml
 kubectl delete -f 09-discovery.yaml
+kubectl delete -f 03-kv-worker.yaml
+kubectl delete -f 02-etcd.yaml
 kubectl delete -f 01-configmap.yaml
 kubectl delete -f 00-namespace.yaml
 ```
 
 ## 配置说明
 
-所有服务的共享配置在 `01-configmap.yaml` 中，通过 `envFrom` 注入到每个容器。各服务额外的环境变量在其 Deployment 中单独设置。
+所有服务的共享配置在 `01-configmap.yaml` 中，通过 `envFrom` 注入到每个容器。
 
 | 配置项 | 值 | 使用者 |
 |--------|-----|--------|
-| `DISCOVERY_ADDR` | discovery-server:8100 | 所有服务 (discovery_client) |
-| `FEATURE_SERVICE_ADDR` | feature-service:8003 | Proxy |
-| `RECALL_SERVICE_ADDR` | recall-service:8001 | Proxy |
-| `PRECALC_SERVICE_ADDR` | precalc-service:8004 | Proxy |
-| `RANK_SERVICE_ADDR` | rank-master-service:8005 | Proxy |
+| `REGISTRY_BACKEND` | etcd | 所有服务 |
+| `ETCD_ENDPOINTS` | etcd:2379 | 所有服务 (discovery_client + 服务进程) |
+| `DISCOVERY_ADDR` | discovery-server:8100 | BRPC 模式备用 |
+| `FEATURE_SERVICE_NAME` | feature_service | Proxy |
+| `RECALL_SERVICE_NAME` | recall_service | Proxy |
+| `PRECALC_SERVICE_NAME` | precalc_service | Proxy |
+| `RANK_SERVICE_NAME` | rank_service | Proxy |
+| `SUB_WORKER_SERVICE_TYPE` | rank_sub | RankMaster |
+| `KV_WORKER_SERVICE` | kv_worker | Precalc, RankSub |
+| `HEARTBEAT_INTERVAL` | 5 | 所有服务 (discovery_client) |
 | `KVWORKER_HOST` | 141.61.84.245 | Precalc, RankSub |
 | `KVWORKER_PORT` | 31502 | Precalc, RankSub |
-| `ETCD_ADDRESS` | 141.61.84.245:2379 | Precalc, RankSub |
 | `VLLM_BASE_URL` | http://127.0.0.1:8000 | Recall |
-| `VLLM_ENDPOINT` | /v1/chat/completions | Recall |
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | Recall |
-| `SUB_WORKER_COUNT` | 10 | RankMaster |
-| `SUB_WORKER_TIMEOUT_MS` | 5000 | RankMaster |
+| `SUB_WORKER_PARALLELISM` | 4 | RankMaster |
 | `TOP_K` | 100 | RankMaster |
 | `SCORING_DELAY_MS` | 100 | RankSub |
+| `TTL_SECONDS` | 100 | Precalc |
 
 修改 ConfigMap 后需要重启相关服务才能生效。
 
 ## 注意事项
 
-- **FeatureService (Mock)**：当前为 Mock 实现，返回随机用户特征和 SKU 特征。替换为真实实现时，只需修改 `services/FeatureService/` 下的源码并重新构建镜像
+- **etcd 模式**：当前默认使用 etcd 做服务注册与发现。每个服务的 entrypoint.sh 自动启动 discovery_client 向 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `09-discovery.yaml`（同时移除 etcd）。
 - **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
-- **RankSub 扩容**：修改副本数后需同步更新 ConfigMap 中的 `SUB_WORKER_COUNT` 并重启 RankMaster
+- **RankSub 副本数**：默认 3，通过 `kubectl scale` 水平扩展，RankMaster 通过 etcd 服务发现自动感知
 - **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
-- **启动顺序**：Discovery Server 应最先启动，其他服务依赖它进行注册和心跳
+- **启动顺序**：etcd 应最先启动，其他服务依赖 etcd 进行注册和发现
+- **KV Worker**：使用 hostIPC 和 privileged 模式，挂载 /dev/shm

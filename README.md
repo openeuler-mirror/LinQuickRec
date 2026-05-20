@@ -6,7 +6,9 @@
 
 ### 服务发现
 
-所有服务容器在启动时通过一个 sidecar 进程向服务发现中心（`discovery_server`，端口 8100）完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 sidecar 以固定间隔发送心跳维持 UP 状态；心跳超时后服务发现中心将实例标记为 DOWN，超过清理时间后从注册表移除。
+系统支持双后端服务发现：**discovery_server**（自研 BRPC 服务端，默认）和 **etcd**（etcd v3 集群），通过 `--registry_backend` 参数选择。
+
+所有服务容器在启动时通过 sidecar 进程（`discovery_client`）向服务发现后端完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 sidecar 以固定间隔发送心跳维持 UP 状态（discovery_server 后端）或通过 etcd lease keep-alive 自动续约（etcd 后端）；心跳超时/lease 过期后实例自动被移除。
 
 Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向服务发现中心查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
 
@@ -53,7 +55,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
                  |
                  v
   ┌──────────────────────────────┐
-  │  Proxy (8080)                │<──── Discovery (8100)
+  │  Proxy (8080)                │<──── Discovery (8100) / etcd (2379)
   └──────────────┬───────────────┘
                  |
                  v
@@ -103,7 +105,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 |------|------|
 | 通信框架 | BRPC |
 | 序列化 | Protocol Buffers |
-| 服务发现 | BRPC RPC（自研） |
+| 服务发现 | BRPC RPC（自研）/ etcd |
 | 日志 | common::logger |
 | 线程池 | common::ThreadPool |
 | 错误码 | common::error::Status（0xMMTTCCCC）|
@@ -266,6 +268,7 @@ LinQuickRec-yh/
 - [x] RankMaster + RankSub 精排服务
 - [x] Proxy 网关服务
 - [x] Discovery 服务发现中心
+- [x] etcd 服务发现后端支持
 - [x] API 接口文档
 - [x] Feature 服务端和客户端（模拟实现）
 - [ ] Feature 对接真实数据源（KuaiRand / Redis）

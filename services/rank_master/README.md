@@ -99,6 +99,7 @@ make rank_master_server rank_master_test_client rank_master_test -j$(nproc)
 | `--sub_worker_max_retry` | int32 | 3 | Sub-worker 通道 BRPC 重试次数 |
 | `--sub_worker_connect_timeout_ms` | int32 | -1 | Sub-worker 通道建连超时 (ms)，-1=禁用 |
 | `--sub_worker_backup_request_ms` | int32 | -1 | Sub-worker 通道 backup request (ms)，-1=禁用 |
+| `--sub_worker_lb_policy` | string | "" | Sub-worker 通道负载均衡策略 (rr/wrr/random/la)，空=默认(rr) |
 
 **Discovery resolver 通道参数：**
 

@@ -1,4 +1,4 @@
-# Recall 服务（含 vLLM，需要 GPU 节点）
+# Recall 召回服务（含 vLLM，需要 GPU 节点）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,7 +20,7 @@ spec:
       - name: recall
         image: linquickrec/recall:latest
         ports:
-        - containerPort: 8001
+        - containerPort: 8002
           name: rpc
         - containerPort: 8000
           name: vllm
@@ -29,7 +29,7 @@ spec:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8001"
+          value: "8002"
         resources:
           requests:
             cpu: "2"
@@ -39,12 +39,12 @@ spec:
             nvidia.com/gpu: 1
         readinessProbe:
           tcpSocket:
-            port: 8001
+            port: 8002
           initialDelaySeconds: 120
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8001
+            port: 8002
           initialDelaySeconds: 180
           periodSeconds: 15
         volumeMounts:
@@ -64,8 +64,8 @@ spec:
     app: recall-service
   ports:
   - name: rpc
-    port: 8001
-    targetPort: 8001
+    port: 8002
+    targetPort: 8002
   - name: vllm
     port: 8000
     targetPort: 8000
