@@ -50,53 +50,42 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 
 ## 系统架构
 
-```
-          External Request
-                 |
-                 v
-  ┌──────────────────────────────┐
-  │  Proxy (8080)                │<──── Discovery (8100) / etcd (2379)
-  └──────────────┬───────────────┘
-                 |
-                 v
-  ┌──────────────────────────────┐
-  │  Feature (8001)              │<──── Redis (6379)
-  │  [pending]                   │
-  └──────────────┬───────────────┘
-                 |
-                 v
-     (parallel, global thread pool)
-                 |
-        ┌────────┼────────┐
-        v                 v
-  ┌────────────┐   ┌──────────────┐
-  │ Recall xN  │   │ Precalc xN   │
-  │ 8002       │   │ 8003         │
-  └──────┬─────┘   └──────┬───────┘
-         │ Write          │ Write
-         v                v
-  ┌────────────┐   ┌──────────────┐
-  │ KVWorker   │   │ KVWorker     │
-  │ 31501      │   │ 31502        │
-  └────────────┘   └──────┬───────┘
-                          │ Read
-                          v
-                   ┌──────────────┐
-                   │ RankMaster   │
-                   │ xN, 8004     │
-                   └──────┬───────┘
-                          │
-                          v
-                   ┌──────────────┐
-                   │ RankSub xN   │
-                   │ 8005         │
-                   └──────┬───────┘
-                          │ Read
-                          v
-                   ┌──────────────┐
-                   │ KVWorker     │
-                   │ 31502        │
-                   └──────────────┘
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Proxy as Proxy (:8080)
+    participant Disc as Discovery / etcd
+    participant Feature as Feature (:8001)
+    participant Recall as Recall (:8002)
+    participant vLLM
+    participant Precalc as Precalc (:8003)
+    participant KV as KVWorker (:31502)
+    participant RMaster as RankMaster (:8004)
+    participant RSub as RankSub xN (:8005)
+
+    Note over Client,RSub: 服务发现（定时缓存刷新）
+    Proxy->>Disc: Discover(all downstream services)
+    Disc-->>Proxy: UP instances per service_type
+
+    Note over Client,RSub: 请求处理
+    Client->>Proxy: POST /Proxy/Recommend
+    Proxy->>Feature: Recommend()
+    Feature-->>Proxy: user features
+
+    par Parallel via thread pool
+        Recall->>vLLM: LLM inference (HTTP)
+        vLLM-->>Recall: recall candidates
+        Precalc->>KV: set precalc tensor (LeaseGrant+Create+Set)
+    end
+
+    Proxy->>RMaster: Rank()
+    RMaster->>RSub: Rank() shard xN
+    RSub->>KV: get precalc tensor
+    Note over RSub: simulate scoring
+    RSub-->>RMaster: scored results
+    RMaster-->>Proxy: ranked product list
+
+    Proxy-->>Client: RecommendResponse (candidates)
 ```
 
 ## 技术栈
@@ -122,12 +111,12 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 | Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
 | Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
 | Recall | 8002 | RecallService | ✅ 已完成 | vLLM |
-| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker(31502) |
-| RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub(8005) |
-| RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker(31502) |
+| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker (31502, write) |
+| RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub (8005) |
+| RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker (31502, read) |
 | Feature | 8001 | FeatureService | ✅ 已完成（模拟实现） | — |
-| KVWorker | — | KVWorkerService | 由元戎提供服务 | — |
-| vLLM | — | — | 模型服务 | Qwen3-0.6B |
+| KVWorker | 31502 | — | 由元戎提供服务 | etcd (internal) |
+| vLLM | 8000 | — | 模型服务 | Qwen3-0.6B |
 
 ## 对外接口
 
