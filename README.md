@@ -6,11 +6,11 @@
 
 ### 服务发现
 
-系统支持双后端服务发现：**discovery_server**（自研 BRPC 服务端，默认）和 **etcd**（etcd v3 集群），通过 `--registry_backend` 参数选择。
+系统使用 **etcd**（etcd v3 集群）作为服务发现后端（也支持自研 discovery_server 后端，通过 `--registry_backend=discovery_server` 切换）。
 
-所有服务容器在启动时通过 sidecar 进程（`discovery_client`）向服务发现后端完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 sidecar 以固定间隔发送心跳维持 UP 状态（discovery_server 后端）或通过 etcd lease keep-alive 自动续约（etcd 后端）；心跳超时/lease 过期后实例自动被移除。
+所有服务容器在启动时通过 sidecar 进程（`discovery_client`）向 etcd 完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 etcd lease keep-alive 机制自动维护心跳，lease 过期后实例自动被移除。
 
-Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向服务发现中心查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
+Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向 etcd 查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
 
 调用失败时的降级策略：
 
@@ -52,43 +52,33 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant Proxy as Proxy (:8080)
-    participant Disc as Discovery / etcd
-    participant Feature as Feature (:8001)
-    participant Recall as Recall (:8002)
+    participant Proxy as Proxy
+    participant etcd
+    participant Feature as Feature
+    participant Recall as Recall
     participant vLLM
-    participant Precalc as Precalc (:8003)
-    participant KV as KVWorker (:31502)
-    participant RMaster as RankMaster (:8004)
-    participant RSub as RankSub xN (:8005)
-
-    Note over Client,RSub: 服务发现（定时缓存刷新）
-    Proxy->>Disc: Discover(all downstream services)
-    Disc-->>Proxy: UP instances per service_type
-
-    Note over Client,RSub: 请求处理
-    Client->>Proxy: POST /Proxy/Recommend
+    participant Precalc as Precalc
+    participant KV as KVWorker
+    participant RM as RankMaster
+    participant RS as RankSub
+    Note over Proxy,etcd: 1. Service Discovery
+    Proxy->>etcd: Discover(feature, recall, precalc, rank)
+    etcd-->>Proxy: UP instances
+    Note over Proxy,Feature: 2. Recommendation Flow
     Proxy->>Feature: Recommend()
     Feature-->>Proxy: user features
-
-    par Parallel via thread pool
-        Recall->>vLLM: LLM inference (HTTP)
-        vLLM-->>Recall: recall candidates
-        Precalc->>KV: set precalc tensor (LeaseGrant+Create+Set)
+    par Parallel
+        Recall->>vLLM: LLM inference
+        vLLM-->>Recall: candidates
+        Precalc->>KV: set tensor
     end
-
-    Proxy->>RMaster: Rank()
-    RMaster->>RSub: Rank() shard xN
-    RSub->>KV: get precalc tensor
-    Note over RSub: simulate scoring
-    RSub-->>RMaster: scored results
-    RMaster-->>Proxy: ranked product list
-
-    Proxy-->>Client: RecommendResponse (candidates)
+    Proxy->>RM: Rank()
+    RM->>RS: Rank() shard xN
+    RS->>KV: get tensor
+    RS-->>RM: scores
+    RM-->>Proxy: ranked list
+    Proxy-->>Client: candidates
 ```
-
-![System Architecture](docs/images/system-arch.png)
 
 ## 技术栈
 

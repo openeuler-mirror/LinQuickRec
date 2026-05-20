@@ -1,4 +1,4 @@
-@startuml
+@startuml System Architecture
 skinparam backgroundColor #ffffff
 skinparam sequenceMessageAlign center
 
