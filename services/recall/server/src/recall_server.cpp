@@ -49,7 +49,7 @@ namespace recall {
 
 using namespace common::error;
 
-constexpr int VLLM_MAX_TOKENS = 8192;
+constexpr int VLLM_MAX_TOKENS = 1024;
 constexpr double VLLM_TEMPERATURE = 0.7;
 constexpr double VLLM_TOP_P = 0.9;
 
