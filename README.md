@@ -88,6 +88,8 @@ sequenceDiagram
     Proxy-->>Client: RecommendResponse (candidates)
 ```
 
+![System Architecture](docs/images/system-arch.png)
+
 ## 技术栈
 
 | 类别 | 技术 |

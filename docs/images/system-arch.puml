@@ -1,0 +1,40 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam sequenceMessageAlign center
+
+title LinQuickRec System Architecture
+
+actor Client
+participant "Proxy (:8080)" as Proxy
+database "Discovery / etcd" as Disc
+participant "Feature (:8001)" as Feature
+participant "Recall (:8002)" as Recall
+actor "vLLM" as vLLM
+participant "Precalc (:8003)" as Precalc
+database "KVWorker (:31502)" as KV
+participant "RankMaster (:8004)" as RM
+participant "RankSub (:8005)" as RS
+
+== Service Discovery (cached) ==
+Proxy -> Disc: Discover(all downstream services)
+Disc --> Proxy: UP instances per service_type
+
+== Request Processing ==
+Client -> Proxy: POST /Proxy/Recommend
+Proxy -> Feature: Recommend()
+Feature --> Proxy: user features
+
+par Parallel via thread pool
+  Recall -> vLLM: LLM inference (HTTP)
+  vLLM --> Recall: recall candidates
+  Precalc -> KV: set precalc tensor (Create+Set)
+end
+
+Proxy -> RM: Rank()
+RM -> RS: Rank() shard xN
+RS -> KV: get precalc tensor
+note right: simulate scoring
+RS --> RM: scored results
+RM --> Proxy: ranked product list
+Proxy --> Client: RecommendResponse (candidates)
+@enduml
