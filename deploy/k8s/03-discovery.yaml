@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: discovery
-        image: linquickrec/discovery:latest
+        image: 192.168.84.245:5000/linquickrec/discovery:latest
         ports:
         - containerPort: 8100
           name: rpc

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: recall
-        image: linquickrec/recall:latest
+        image: 192.168.84.245:5000/linquickrec/recall:latest
         ports:
         - containerPort: 8002
           name: rpc

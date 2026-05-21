@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: feature
-        image: linquickrec/feature:latest
+        image: 192.168.84.245:5000/linquickrec/feature:latest
         ports:
         - containerPort: 8001
           name: rpc

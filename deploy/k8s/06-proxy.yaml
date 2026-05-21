@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: proxy
-        image: linquickrec/proxy:latest
+        image: 192.168.84.245:5000/linquickrec/proxy:latest
         ports:
         - containerPort: 8080
           name: rpc

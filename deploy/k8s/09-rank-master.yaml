@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: rank-master
-        image: linquickrec/rank-master:latest
+        image: 192.168.84.245:5000/linquickrec/rank-master:latest
         ports:
         - containerPort: 8004
           name: rpc

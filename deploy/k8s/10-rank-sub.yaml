@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: rank-sub
-        image: linquickrec/rank-sub:latest
+        image: 192.168.84.245:5000/linquickrec/rank-sub:latest
         ports:
         - containerPort: 8005
           name: rpc

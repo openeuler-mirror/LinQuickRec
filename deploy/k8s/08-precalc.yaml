@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: precalc
-        image: linquickrec/precalc:latest
+        image: 192.168.84.245:5000/linquickrec/precalc:latest
         ports:
         - containerPort: 8003
           name: rpc
