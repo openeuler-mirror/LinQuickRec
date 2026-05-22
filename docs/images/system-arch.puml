@@ -1,40 +1,80 @@
-@startuml System Architecture
+@startuml System Sequence
 skinparam backgroundColor #ffffff
 skinparam sequenceMessageAlign center
 
-title LinQuickRec System Architecture
+title LinQuickRec System Sequence
 
 actor Client
 participant "Proxy (:8080)" as Proxy
-database "Discovery / etcd" as Disc
 participant "Feature (:8001)" as Feature
 participant "Recall (:8002)" as Recall
-actor "vLLM" as vLLM
 participant "Precalc (:8003)" as Precalc
-database "KVWorker (:31502)" as KV
 participant "RankMaster (:8004)" as RM
-participant "RankSub (:8005)" as RS
-
-== Service Discovery (cached) ==
-Proxy -> Disc: Discover(all downstream services)
-Disc --> Proxy: UP instances per service_type
+participant "RankSub (:8005) xN" as RS
+database "KVWorker (:31501)" as KV1
+database "KVWorker (:31502)" as KV2
 
 == Request Processing ==
 Client -> Proxy: POST /Proxy/Recommend
-Proxy -> Feature: Recommend()
-Feature --> Proxy: user features
+activate Proxy
 
-par Parallel via thread pool
-  Recall -> vLLM: LLM inference (HTTP)
-  vLLM --> Recall: recall candidates
-  Precalc -> KV: set precalc tensor (Create+Set)
+Proxy -> Feature: get user features
+activate Feature
+Feature --> Proxy: user features
+deactivate Feature
+
+par Parallel
+  Proxy -> Recall: Recall()
+  activate Recall
+  Recall -> KV1: get kv cache
+  activate KV1
+  KV1 --> Recall: kv data
+  deactivate KV1
+  Recall -> Recall: inference
+  activate Recall
+  deactivate Recall
+  note right: recall inference
+  Recall -> KV1: set kv cache
+  activate KV1
+  deactivate KV1
+  Recall --> Proxy: candidates
+  deactivate Recall
+
+also
+  Proxy -> Precalc: Precalculate()
+  activate Precalc
+  Precalc -> Precalc: inference
+  activate Precalc
+  deactivate Precalc
+  note right: precalc inference
+  Precalc -> KV2: set precalc tensor
+  activate KV2
+  deactivate KV2
+  Precalc --> Proxy: precalc result
+  deactivate Precalc
 end
 
+Proxy -> Feature: get item info
+activate Feature
+Feature --> Proxy: item info
+deactivate Feature
+
 Proxy -> RM: Rank()
+activate RM
 RM -> RS: Rank() shard xN
-RS -> KV: get precalc tensor
+activate RS
+RS -> KV2: get precalc tensor
+activate KV2
+KV2 --> RS: tensor data
+deactivate KV2
+RS -> RS: inference
+activate RS
+deactivate RS
 note right: simulate scoring
 RS --> RM: scored results
+deactivate RS
 RM --> Proxy: ranked product list
+deactivate RM
 Proxy --> Client: RecommendResponse (candidates)
+deactivate Proxy
 @enduml

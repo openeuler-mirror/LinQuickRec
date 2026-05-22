@@ -2,111 +2,38 @@
 
 ## 项目简介
 
-本项目是一个搜推广时延模拟与通信优化验证系统，采用 BRPC 通信框架和 Protocol Buffers 序列化协议，通过多阶段流水线架构模拟推荐系统的完整调用链路。系统关注平均时延和 P99 时延两项主要指标。
-
-### 服务发现
-
-系统使用 **etcd**（etcd v3 集群）作为服务发现后端（也支持自研 discovery_server 后端，通过 `--registry_backend=discovery_server` 切换）。
-
-所有服务容器在启动时通过 sidecar 进程（`discovery_client`）向 etcd 完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 etcd lease keep-alive 机制自动维护心跳，lease 过期后实例自动被移除。
-
-Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向 etcd 查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
-
-调用失败时的降级策略：
-
-| 阶段 | 失败场景 | 降级行为 |
-|------|---------|---------|
-| 发现阶段 | 某服务类型无 UP 实例 | 直接返回对应错误码，不继续后续阶段 |
-| 调用阶段 | 单次 RPC 失败 | 自动重试下一个 UP 实例 |
-| 调用阶段 | 全部实例均失败 | 返回服务错误，中断当前阶段 |
-| 熔断 | 同一实例连续多次失败 | 标记为不健康，冷却后恢复 |
-
-下游实例列表在 Proxy 内部定时缓存刷新，减少每次请求的发现开销。
-
-详见 [Discovery/README.md](services/discovery/README.md)。
-
-### 错误码体系
-
-全域错误码体系采用 `0xMMTTCCCC` 格式，不同服务之间均使用统一的错误码体系：
-
-- **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
-- **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
-- **CCCC (16bit)** — 具体错误码
-
-详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系)。
-
-### 负载均衡
-
-上游服务通过 Discovery 获取下游服务的全部 UP 实例列表，使用 round-robin 策略选取目标实例。单次调用失败后自动重试下一个实例，连续多次失败触发熔断（10s cooldown）。
-
-### 负载仿真
-
-系统通过以下方式模拟真实推荐场景的负载特征：
-
-- **时延注入**：RankSub 通过 `--scoring_delay_ms` 参数模拟不同计算开销的商品打分时延
-- **数据仿真**：测试客户端可指定 SKU 数量、tensor 大小、payload 大小等参数，模拟不同规模的数据传输
-- **并发仿真**：Proxy 全局线程池可配置并发度，模拟不同并发请求量下的系统行为
-- **副本扩缩**：Recall、Precalc、RankMaster、RankSub 均支持多副本部署，通过 docker-compose scale 模拟集群规模变化
+本项目是一个搜推广时延模拟与通信优化验证系统，采用 BRPC 通信框架和 Protocol Buffers 序列化协议，通过多阶段流水线架构模拟推荐系统的完整调用链路。系统关注平均时延和 P99 时延两项主要指标，验证UB特性对于系统性能的提升效果。
 
 ## 系统架构
 
-```mermaid
-sequenceDiagram
-    participant Proxy as Proxy
-    participant etcd
-    participant Feature as Feature
-    participant Recall as Recall
-    participant vLLM
-    participant Precalc as Precalc
-    participant KV as KVWorker
-    participant RM as RankMaster
-    participant RS as RankSub
-    Note over Proxy,etcd: 1. Service Discovery
-    Proxy->>etcd: Discover(feature, recall, precalc, rank)
-    etcd-->>Proxy: UP instances
-    Note over Proxy,Feature: 2. Recommendation Flow
-    Proxy->>Feature: Recommend()
-    Feature-->>Proxy: user features
-    par Parallel
-        Recall->>vLLM: LLM inference
-        vLLM-->>Recall: candidates
-        Precalc->>KV: set tensor
-    end
-    Proxy->>RM: Rank()
-    RM->>RS: Rank() shard xN
-    RS->>KV: get tensor
-    RS-->>RM: scores
-    RM-->>Proxy: ranked list
-    Proxy-->>Client: candidates
-```
+![系统架构图](docs/images/system-arch.png)
 
 ## 技术栈
 
 | 类别 | 技术 |
 |------|------|
-| 通信框架 | BRPC |
+| 通信框架 | BRPC (可支持UB协议) |
 | 序列化 | Protocol Buffers |
-| 服务发现 | BRPC RPC（自研）/ etcd |
+| KVCache | 元戎 (openYuanrong Datasystem) |
+| 容器化搭建 | Docker + Docker Compose |
+| 容器化部署 | Kubernetes |
+| 模型推理 | vLLM (Qwen3-0.6B) |
+| 服务发现 | ETCD |
+| JSON 处理 | RapidJSON/ |
 | 日志 | common::logger |
 | 线程池 | common::ThreadPool |
 | 错误码 | common::error::Status（0xMMTTCCCC）|
-| 模型推理 | vLLM (Qwen3-0.6B) |
-| JSON 处理 | RapidJSON |
-| KVCache | 元戎 (openYuanrong) |
-| 容器化 | Docker + Docker Compose |
-| 容器化部署 | Kubernetes |
 
 ## 服务列表
 
 | 服务 | 端口 | Proto Service | 状态 | 依赖 |
 |------|------|---------------|------|------|
-| Discovery | 8100 | DiscoveryService | ✅ 已完成 | — |
+| Discovery | - | DiscoveryService | ✅ 已完成 | — |
 | Proxy | 8080 | ProxyService | ✅ 已完成 | Discovery, Feature, Recall, Precalc, Rank |
-| Recall | 8002 | RecallService | ✅ 已完成 | vLLM |
-| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker (31502, write) |
-| RankMaster | 8004 | RankMasterService | ✅ 已完成 | RankSub (8005) |
-| RankSub | 8005 | RankSubService | ✅ 已完成 | KVWorker (31502, read) |
-| Feature | 8001 | FeatureService | ✅ 已完成（模拟实现） | — |
+| Recall | 8002 | RecallService | ✅ 已完成 | vLLM, KVWorker |
+| Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker |
+| RankMaster | 8004 | RankMasterService | ✅ 已完成 | Discovery, RankSub |
+| Feature | 8001 | FeatureService | ✅ 模拟实现 | — |
 | KVWorker | 31502 | — | 由元戎提供服务 | etcd (internal) |
 | vLLM | 8000 | — | 模型服务 | Qwen3-0.6B |
 
@@ -152,7 +79,7 @@ Content-Type: application/json
 
 ### error_code 编码
 
-错误码采用 `0xMMTTCCCC` 格式，详见 [错误码体系](#错误码体系) 和 [proxy/README.md](services/proxy/README.md)。
+错误码采用 `0xMMTTCCCC` 格式，详见 [错误码体系](#错误码体系)。
 
 ## 配置参考
 
@@ -240,6 +167,56 @@ LinQuickRec-yh/
 ## 容器搭建
 
 容器构建与部署详见 [deploy/docker/README.md](deploy/docker/README.md)。
+
+## 核心功能
+
+### 端到端推荐系统
+
+系统通过 Proxy 对外暴露 HTTP 接口，客户端提交推荐请求后，Proxy 依次调用 Feature、Recall、Precalc、RankMaster 和 RankSub 服务，最终返回排序结果。整个调用链路模拟了真实推荐系统的多阶段流水线架构。
+
+### 服务发现
+
+系统使用 **etcd**（etcd v3 集群）作为服务发现后端（也支持自研 discovery_server 后端，通过 `--registry_backend=discovery_server` 切换）。
+
+所有服务容器在启动时通过 sidecar 进程（`discovery_client`）向 etcd 完成实例注册，注册信息包括服务类型、地址、端口和唯一实例标识。注册后 etcd lease keep-alive 机制自动维护心跳，lease 过期后实例自动被移除。
+
+Proxy 作为网关入口，不配置任何下游服务的静态地址。每次请求到达时，Proxy 向 etcd 查询指定服务类型的全部 UP 实例，通过负载均衡策略选取目标实例发起调用。
+
+调用失败时的降级策略：
+
+| 阶段 | 失败场景 | 降级行为 |
+|------|---------|---------|
+| 发现阶段 | 某服务类型无 UP 实例 | 直接返回对应错误码，不继续后续阶段 |
+| 调用阶段 | 单次 RPC 失败 | 自动重试下一个 UP 实例 |
+| 调用阶段 | 全部实例均失败 | 返回服务错误，中断当前阶段 |
+| 熔断 | 同一实例连续多次失败 | 标记为不健康，冷却后恢复 |
+
+下游实例列表在 Proxy 内部定时缓存刷新，减少每次请求的发现开销。
+
+详见 [Discovery/README.md](services/discovery/README.md)。
+
+### 错误码体系
+
+全域错误码体系采用 `0xMMTTCCCC` 格式，不同服务之间均使用统一的错误码体系：
+
+- **MM (8bit)** — 模块代码（COMMON=0x00, PROXY=0x01, RECALL=0x03, ...）
+- **TT (8bit)** — 错误类型（SUCCESS/INVALID_INPUT/SERVICE_ERROR/...）
+- **CCCC (16bit)** — 具体错误码
+
+详见 [common/DESIGN.md](common/DESIGN.md#2-错误码体系)。
+
+### 负载均衡
+
+上游服务通过 Discovery 获取下游服务的全部 UP 实例列表，使用 round-robin 策略选取目标实例。单次调用失败后自动重试下一个实例，连续多次失败触发熔断（10s cooldown）。
+
+### 负载仿真
+
+系统通过以下方式模拟真实推荐场景的负载特征：
+
+- **时延注入**：RankSub 通过 `--scoring_delay_ms` 参数模拟不同计算开销的商品打分时延
+- **数据仿真**：测试客户端可指定 SKU 数量、tensor 大小、payload 大小等参数，模拟不同规模的数据传输
+- **并发仿真**：Proxy 全局线程池可配置并发度，模拟不同并发请求量下的系统行为
+- **副本扩缩**：Recall、Precalc、RankMaster、RankSub 均支持多副本部署，通过 docker-compose scale 模拟集群规模变化
 
 ## 后续开发
 
