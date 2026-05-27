@@ -127,7 +127,7 @@ namespace: linquickrec
 ├── Deployment: rank-master-service (1 Pod)     # 精排主图服务
 └── Deployment: rank-sub-service (3 Pods)       # 精排子图服务，可水平扩展
 
-> etcd 服务注册中心部署在宿主机 (141.61.84.245:2379)，不在 K8s 集群内。
+> etcd 服务注册中心部署在宿主机 (141.61.84.245:2381)，不在 K8s 集群内。
 ```
 
 ### 调用关系
@@ -234,7 +234,7 @@ kubectl get all -n linquickrec
 kubectl get pods -n linquickrec -o wide
 
 # 查看 etcd 中注册的服务（宿主机 etcd）
-etcdctl --endpoints=141.61.84.245:2379 get /linquickrec/services/ --prefix
+etcdctl --endpoints=141.61.84.245:2381 get /linquickrec/services/ --prefix
 
 # 查看日志
 kubectl logs -f deployment/proxy-service -n linquickrec
@@ -289,7 +289,7 @@ kubectl delete -f 00-namespace.yaml
 | 配置项 | 值 | 使用者 |
 |--------|-----|--------|
 | `REGISTRY_BACKEND` | etcd | 所有服务 |
-| `ETCD_ENDPOINTS` | 141.61.84.245:2379 | 所有服务 (discovery_client + 服务进程)，外部宿主机部署 |
+| `ETCD_ENDPOINTS` | 141.61.84.245:2381 | 所有服务 (discovery_client + 服务进程)，外部宿主机部署 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | BRPC 模式备用 |
 | `HOST_ID` | default-host | KV Worker, Precalc, RankSub（通过 Downward API 注入节点名） |
 | `FEATURE_SERVICE_NAME` | feature_service | Proxy |
@@ -310,10 +310,10 @@ kubectl delete -f 00-namespace.yaml
 
 ## 注意事项
 
-- **etcd 模式**：当前默认使用 etcd 做服务注册与发现，etcd 部署在宿主机 (141.61.84.245:2379)，不在 K8s 集群内。每个服务的 entrypoint.sh 自动启动 discovery_client 向外部 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`。
+- **etcd 模式**：当前默认使用 etcd 做服务注册与发现，etcd 部署在宿主机 (141.61.84.245:2381)，不在 K8s 集群内。每个服务的 entrypoint.sh 自动启动 discovery_client 向外部 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`。
 - **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
 - **RankSub 副本数**：默认 3，通过 `kubectl scale` 水平扩展，RankMaster 通过 etcd 服务发现自动感知
 - **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
-- **启动顺序**：确保宿主机 etcd (141.61.84.245:2379) 已启动，其他服务依赖 etcd 进行注册和发现
+- **启动顺序**：确保宿主机 etcd (141.61.84.245:2381) 已启动，其他服务依赖 etcd 进行注册和发现
 - **KV Worker**：使用 hostIPC 和 privileged 模式，挂载 /dev/shm
