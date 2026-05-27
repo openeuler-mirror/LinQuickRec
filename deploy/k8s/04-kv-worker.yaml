@@ -29,11 +29,15 @@ spec:
         - name: worker_address
           value: "0.0.0.0:31501"
         - name: etcd_address
-          value: "etcd:2379"
+          value: "141.61.84.245:2379"
         - name: enable_urma
           value: "0"
         - name: cpu_affinity
           value: "0-64"
+        - name: HOST_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         envFrom:
         - configMapRef:
             name: linquickrec-config

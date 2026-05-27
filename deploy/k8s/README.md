@@ -94,7 +94,6 @@ kubectl wait --for=condition=ready pod -l app=nvidia-device-plugin-daemonset -n 
 ### 4. 准备镜像
 
 ```bash
-docker build -f deploy/docker/etcd/Dockerfile -t linquickrec/etcd:latest .
 docker build -f deploy/docker/kv_worker/Dockerfile -t linquickrec/kv-worker:latest .
 docker build -f deploy/docker/feature/Dockerfile -t linquickrec/feature:latest .
 docker build -f deploy/docker/recall/Dockerfile -t linquickrec/recall:latest .
@@ -104,7 +103,6 @@ docker build -f deploy/docker/rank-sub/Dockerfile -t linquickrec/rank-sub:latest
 docker build -f deploy/docker/proxy/Dockerfile -t linquickrec/proxy:latest .
 
 # minikube 环境：加载到 minikube Docker
-minikube image load linquickrec/etcd:latest
 minikube image load linquickrec/kv-worker:latest
 # ... 其他镜像同理
 
@@ -120,7 +118,6 @@ docker push <registry>/linquickrec/recall:latest
 ```
 namespace: linquickrec
 ├── ConfigMap: linquickrec-config              # 共享配置
-├── StatefulSet: etcd (1 Pod)                  # 服务注册中心（etcd 模式）
 ├── Deployment: kv-worker (1 Pod)              # KV Worker（元戎 Datasystem）
 ├── Deployment: discovery-server (1 Pod)        # 服务发现中心（BRPC 模式备用）
 ├── Deployment: feature-service (1 Pod)         # 特征服务 (Mock)
@@ -129,6 +126,8 @@ namespace: linquickrec
 ├── Deployment: precalc-service (1 Pod)         # 前置计算服务
 ├── Deployment: rank-master-service (1 Pod)     # 精排主图服务
 └── Deployment: rank-sub-service (3 Pods)       # 精排子图服务，可水平扩展
+
+> etcd 服务注册中心部署在宿主机 (141.61.84.245:2379)，不在 K8s 集群内。
 ```
 
 ### 调用关系
@@ -163,9 +162,9 @@ Pod 内只有一个容器（主容器），无需额外的 sidecar。entrypoint.
 ```bash
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
-kubectl apply -f 02-etcd.yaml          # 部署 etcd
+# etcd 在宿主机外部部署，无需 apply 02-etcd.yaml
 kubectl apply -f 04-kv-worker.yaml
-# 跳过 03-discovery.yaml
+# 跳过 03-discovery.yaml，etcd 模式使用宿主机外部 etcd
 kubectl apply -f 05-feature.yaml
 kubectl apply -f 06-proxy.yaml
 kubectl apply -f 07-recall.yaml
@@ -179,7 +178,6 @@ kubectl apply -f 10-rank-sub.yaml
 ```bash
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
-# 跳过 02-etcd.yaml
 kubectl apply -f 04-kv-worker.yaml
 kubectl apply -f 03-discovery.yaml     # 部署 discovery-server
 kubectl apply -f 05-feature.yaml
@@ -198,7 +196,6 @@ kubectl apply -f 10-rank-sub.yaml
 |------|------|------|
 | `00-namespace.yaml` | Namespace | 创建 `linquickrec` 命名空间 |
 | `01-configmap.yaml` | ConfigMap | 共享环境变量（服务发现、超时、vLLM 配置等） |
-| `02-etcd.yaml` | StatefulSet + Service | etcd 服务注册中心，端口 2379/2380 |
 | `04-kv-worker.yaml` | Deployment + Service | KV Worker（元戎 Datasystem），端口 31501/31502 |
 | `03-discovery.yaml` | Deployment + Service | Discovery 服务发现中心（备用），端口 8100 |
 | `05-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8001 |
@@ -207,7 +204,7 @@ kubectl apply -f 10-rank-sub.yaml
 | `08-precalc.yaml` | Deployment + Service | Precalc 前置计算服务，端口 8003 |
 | `09-rank-master.yaml` | Deployment + Service | RankMaster 精排主图服务，端口 8004 |
 | `10-rank-sub.yaml` | Deployment + Service | RankSub 精排子图服务，端口 8005 |
-| `deploy.sh` | 部署脚本 | 一键部署/删除，支持 etcd / discovery / delete 三个子命令 |
+| `deploy.sh` | 部署脚本 | 一键部署/删除，支持 etcd / discovery / delete 三个子命令（etcd 模式使用宿主机外部 etcd） |
 
 ## 一键部署
 
@@ -228,7 +225,7 @@ cd deploy/k8s
 
 ### 手动部署
 
-如果需要逐文件控制，可参照"后端选择"章节中的 `kubectl apply` 命令。`02-etcd.yaml` 和 `03-discovery.yaml` 互斥，不要同时应用。
+如果需要逐文件控制，可参照"后端选择"章节中的 `kubectl apply` 命令。`02-etcd.yaml` 已移除（etcd 在宿主机外部部署），`03-discovery.yaml` 仅在 discovery_server 模式下使用。
 
 ### 查看状态
 
@@ -236,8 +233,8 @@ cd deploy/k8s
 kubectl get all -n linquickrec
 kubectl get pods -n linquickrec -o wide
 
-# 查看 etcd 中注册的服务
-kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/services/ --prefix
+# 查看 etcd 中注册的服务（宿主机 etcd）
+etcdctl --endpoints=141.61.84.245:2379 get /linquickrec/services/ --prefix
 
 # 查看日志
 kubectl logs -f deployment/proxy-service -n linquickrec
@@ -281,7 +278,6 @@ kubectl delete -f 06-proxy.yaml
 kubectl delete -f 05-feature.yaml
 kubectl delete -f 03-discovery.yaml
 kubectl delete -f 04-kv-worker.yaml
-kubectl delete -f 02-etcd.yaml
 kubectl delete -f 01-configmap.yaml
 kubectl delete -f 00-namespace.yaml
 ```
@@ -293,8 +289,9 @@ kubectl delete -f 00-namespace.yaml
 | 配置项 | 值 | 使用者 |
 |--------|-----|--------|
 | `REGISTRY_BACKEND` | etcd | 所有服务 |
-| `ETCD_ENDPOINTS` | etcd:2379 | 所有服务 (discovery_client + 服务进程) |
+| `ETCD_ENDPOINTS` | 141.61.84.245:2379 | 所有服务 (discovery_client + 服务进程)，外部宿主机部署 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | BRPC 模式备用 |
+| `HOST_ID` | default-host | KV Worker, Precalc, RankSub（通过 Downward API 注入节点名） |
 | `FEATURE_SERVICE_NAME` | feature_service | Proxy |
 | `RECALL_SERVICE_NAME` | recall_service | Proxy |
 | `PRECALC_SERVICE_NAME` | precalc_service | Proxy |
@@ -302,8 +299,6 @@ kubectl delete -f 00-namespace.yaml
 | `SUB_WORKER_SERVICE_TYPE` | rank_sub | RankMaster |
 | `KV_WORKER_SERVICE` | kv_worker | Precalc, RankSub |
 | `HEARTBEAT_INTERVAL` | 5 | 所有服务 (discovery_client) |
-| `KVWORKER_HOST` | 141.61.84.245 | Precalc, RankSub |
-| `KVWORKER_PORT` | 31502 | Precalc, RankSub |
 | `VLLM_BASE_URL` | http://127.0.0.1:8000 | Recall |
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | Recall |
 | `SUB_WORKER_PARALLELISM` | 4 | RankMaster |
@@ -315,10 +310,10 @@ kubectl delete -f 00-namespace.yaml
 
 ## 注意事项
 
-- **etcd 模式**：当前默认使用 etcd 做服务注册与发现。每个服务的 entrypoint.sh 自动启动 discovery_client 向 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`（同时移除 etcd）。
+- **etcd 模式**：当前默认使用 etcd 做服务注册与发现，etcd 部署在宿主机 (141.61.84.245:2379)，不在 K8s 集群内。每个服务的 entrypoint.sh 自动启动 discovery_client 向外部 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`。
 - **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
 - **RankSub 副本数**：默认 3，通过 `kubectl scale` 水平扩展，RankMaster 通过 etcd 服务发现自动感知
 - **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
-- **启动顺序**：etcd 应最先启动，其他服务依赖 etcd 进行注册和发现
+- **启动顺序**：确保宿主机 etcd (141.61.84.245:2379) 已启动，其他服务依赖 etcd 进行注册和发现
 - **KV Worker**：使用 hostIPC 和 privileged 模式，挂载 /dev/shm

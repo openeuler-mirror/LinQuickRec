@@ -19,7 +19,7 @@ COMMON_FILES=(
 
 # 模式专属资源
 declare -A MODE_FILES
-MODE_FILES["etcd"]="02-etcd.yaml"
+MODE_FILES["etcd"]=""
 MODE_FILES["discovery"]="03-discovery.yaml"
 
 # 逆序删除
@@ -32,7 +32,6 @@ DELETE_FILES=(
     "05-feature.yaml"
     "04-kv-worker.yaml"
     "03-discovery.yaml"
-    "02-etcd.yaml"
     "01-configmap.yaml"
     "00-namespace.yaml"
 )
@@ -84,7 +83,7 @@ usage() {
     cat <<EOF
 用法: $0 <etcd|discovery|delete>
 
-  etcd          etcd 模式：部署 etcd + 所有服务
+  etcd          etcd 模式：使用宿主机外部 etcd (141.61.84.245:2379)，部署所有服务
   discovery     discovery_server 模式：部署 discovery-server + 所有服务
   delete        逆序删除全部资源
 EOF

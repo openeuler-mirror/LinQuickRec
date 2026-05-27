@@ -39,6 +39,7 @@ taskset -c ${cpu_affinity} \
 dscli start --worker_args \
     --worker_address "${worker_address}" \
     --etcd_address "${etcd_address}" \
+    --host_id_env_name HOST_ID \
     --shared_memory_size_mb 2048 \
     --log_dir "./datasystem_log/log_${worker_port}" \
     --arena_per_tenant 1 \

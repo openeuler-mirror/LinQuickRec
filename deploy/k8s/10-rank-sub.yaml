@@ -28,6 +28,10 @@ spec:
         env:
         - name: SERVER_PORT
           value: "8005"
+        - name: HOST_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         resources:
           requests:
             cpu: "1"

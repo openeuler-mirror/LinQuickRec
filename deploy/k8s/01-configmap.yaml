@@ -8,9 +8,10 @@ data:
   # 服务发现
   # ========================
   REGISTRY_BACKEND: "etcd"
-  ETCD_ENDPOINTS: "etcd:2379"
+  ETCD_ENDPOINTS: "141.61.84.245:2379"
   DISCOVERY_ADDR: "discovery-server:8100"
   DISCOVERY_REFRESH_INTERVAL_MS: "5000"
+  HOST_ID: "default-host"
 
   # ========================
   # 各服务在 etcd 中的注册名
@@ -29,12 +30,6 @@ data:
   HEALTH_CHECK_TIMEOUT: "2"
   FAIL_THRESHOLD: "3"
   STARTUP_TIMEOUT: "30"
-
-  # ========================
-  # KV Worker
-  # ========================
-  KVWORKER_HOST: "141.61.84.245"
-  KVWORKER_PORT: "31502"
 
   # ========================
   # BRPC Server 参数（所有服务）
