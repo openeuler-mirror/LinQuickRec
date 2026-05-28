@@ -41,6 +41,7 @@ metadata:
     app: etcd
 spec:
   serviceName: etcd
+  podManagementPolicy: Parallel
   replicas: 5
   selector:
     matchLabels:
