@@ -8,6 +8,7 @@ NAMESPACE="linquickrec"
 COMMON_FILES=(
     "00-namespace.yaml"
     "01-configmap.yaml"
+    "02-etcd-pv.yaml"
     "04-kv-worker.yaml"
     "05-feature.yaml"
     "06-proxy.yaml"
@@ -33,6 +34,7 @@ DELETE_FILES=(
     "04-kv-worker.yaml"
     "03-discovery.yaml"
     "02-etcd.yaml"
+    "02-etcd-pv.yaml"
     "01-configmap.yaml"
     "00-namespace.yaml"
 )
