@@ -5,12 +5,12 @@ echo "==========================================="
 echo "Starting etcd"
 echo "==========================================="
 
-DATA_DIR="${ETCD_DATA_DIR:-/var/lib/etcd}"
+DATA_DIR="${DATA_DIR:-/var/lib/etcd}"
 mkdir -p "$DATA_DIR"
 
-CLUSTER_SIZE="${ETCD_CLUSTER_SIZE:-5}"
-SERVICE_NAME="${ETCD_SERVICE_NAME:-etcd}"
-NAMESPACE="${ETCD_NAMESPACE:-linquickrec}"
+CLUSTER_SIZE="${CLUSTER_SIZE:-5}"
+SERVICE_NAME="${SERVICE_NAME:-etcd}"
+NAMESPACE="${CLUSTER_NS:-linquickrec}"
 
 echo "  Hostname: $HOSTNAME"
 echo "  Cluster Size: $CLUSTER_SIZE"
@@ -39,7 +39,7 @@ echo "==========================================="
 exec etcd \
   --name "$HOSTNAME" \
   --data-dir "$DATA_DIR" \
-  --snapshot-count "${ETCD_SNAPSHOT_COUNT:-5000}" \
+  --snapshot-count "${SNAPSHOT_COUNT:-5000}" \
   --listen-client-urls http://0.0.0.0:2379 \
   --advertise-client-urls http://${MY_DNS}:2379 \
   --listen-peer-urls http://0.0.0.0:2380 \

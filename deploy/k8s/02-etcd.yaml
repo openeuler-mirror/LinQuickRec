@@ -59,13 +59,13 @@ spec:
         - containerPort: 2380
           name: peer
         env:
-        - name: ETCD_DATA_DIR
+        - name: DATA_DIR
           value: /var/lib/etcd
-        - name: ETCD_CLUSTER_SIZE
+        - name: CLUSTER_SIZE
           value: "5"
-        - name: ETCD_SERVICE_NAME
+        - name: SERVICE_NAME
           value: "etcd"
-        - name: ETCD_NAMESPACE
+        - name: CLUSTER_NS
           value: "linquickrec"
         readinessProbe:
           exec:
