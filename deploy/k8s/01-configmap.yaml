@@ -8,7 +8,7 @@ data:
   # 服务发现
   # ========================
   REGISTRY_BACKEND: "etcd"
-  ETCD_ENDPOINTS: "141.61.84.245:2381"
+  ETCD_ENDPOINTS: "etcd-client:2379"
   DISCOVERY_ADDR: "discovery-server:8100"
   DISCOVERY_REFRESH_INTERVAL_MS: "5000"
   HOST_ID: "default-host"

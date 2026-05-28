@@ -5,28 +5,45 @@ echo "==========================================="
 echo "Starting etcd"
 echo "==========================================="
 
-# 数据目录
 DATA_DIR="${ETCD_DATA_DIR:-/var/lib/etcd}"
 mkdir -p "$DATA_DIR"
 
-# 本机 IP（容器网络下默认用 0.0.0.0）
-HOST_IP="${ETCD_HOST_IP:-0.0.0.0}"
+CLUSTER_SIZE="${ETCD_CLUSTER_SIZE:-5}"
+SERVICE_NAME="${ETCD_SERVICE_NAME:-etcd}"
+NAMESPACE="${ETCD_NAMESPACE:-linquickrec}"
 
-# 集群配置
-ETCD_NAME="${ETCD_NAME:-etcd-node1}"
-ETCD_TOKEN="${ETCD_INITIAL_CLUSTER_TOKEN:-etcd-cluster-1}"
+echo "  Hostname: $HOSTNAME"
+echo "  Cluster Size: $CLUSTER_SIZE"
+echo "  Service: $SERVICE_NAME.$NAMESPACE"
 
-echo "  Host IP: $HOST_IP"
-echo "  Data Dir: $DATA_DIR"
-echo "  Cluster Name: $ETCD_NAME"
+# 生成 initial-cluster 列表
+CLUSTER=""
+for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
+    if [ -n "$CLUSTER" ]; then CLUSTER+=","; fi
+    CLUSTER+="etcd-${i}=http://etcd-${i}.${SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:2380"
+done
+
+# 有数据目录则视为重启，用 existing 状态
+CLUSTER_STATE="new"
+if [ -d "$DATA_DIR/member" ]; then
+    CLUSTER_STATE="existing"
+fi
+
+MY_DNS="${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc.cluster.local"
+
+echo "  My DNS: $MY_DNS"
+echo "  Cluster State: $CLUSTER_STATE"
+echo "  Cluster: $CLUSTER"
+echo "==========================================="
 
 exec etcd \
-  --name "$ETCD_NAME" \
+  --name "$HOSTNAME" \
   --data-dir "$DATA_DIR" \
+  --snapshot-count "${ETCD_SNAPSHOT_COUNT:-5000}" \
   --listen-client-urls http://0.0.0.0:2379 \
-  --advertise-client-urls http://${HOST_IP}:2379 \
+  --advertise-client-urls http://${MY_DNS}:2379 \
   --listen-peer-urls http://0.0.0.0:2380 \
-  --initial-advertise-peer-urls http://${HOST_IP}:2380 \
-  --initial-cluster-token "$ETCD_TOKEN" \
-  --initial-cluster ${ETCD_NAME}=http://${HOST_IP}:2380 \
-  --initial-cluster-state new
+  --initial-advertise-peer-urls http://${MY_DNS}:2380 \
+  --initial-cluster-token "linquickrec-etcd" \
+  --initial-cluster "$CLUSTER" \
+  --initial-cluster-state "$CLUSTER_STATE"
