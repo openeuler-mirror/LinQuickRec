@@ -17,6 +17,8 @@ spec:
         app: kv-worker
     spec:
       hostIPC: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: kv-worker
         image: 192.168.84.245:5000/linquickrec/kv-worker:latest
@@ -26,12 +28,12 @@ spec:
         - containerPort: 31502
           name: worker2
         env:
-        - name: POD_IP
+        - name: NODE_IP
           valueFrom:
             fieldRef:
-              fieldPath: status.podIP
+              fieldPath: status.hostIP
         - name: worker_address
-          value: "$(POD_IP):31501"
+          value: "$(NODE_IP):31501"
         - name: etcd_address
           value: "etcd-client:2379"
         - name: enable_urma
