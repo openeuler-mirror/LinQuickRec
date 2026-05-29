@@ -25,6 +25,18 @@ if [ -z "${enable_urma}" ]; then
      exit 1
 fi
 
+ETCD_HOST="${etcd_address%%:*}"
+ETCD_PORT="${etcd_address##*:}"
+
+if ! [[ "${ETCD_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    ETCD_IP="$(getent hosts "${ETCD_HOST}" | awk '{print $1; exit}')"
+    if [ -z "${ETCD_IP}" ]; then
+        echo "[ERROR] failed to resolve etcd host: ${ETCD_HOST}"
+        exit 1
+    fi
+    etcd_address="${ETCD_IP}:${ETCD_PORT}"
+fi
+
 # Default configuration
 cpu_affinity="0-64"
 

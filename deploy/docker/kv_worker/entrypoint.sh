@@ -5,6 +5,34 @@ REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
 ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 
+# 元戎 SDK 不接受 DNS hostname，需解析为 IP
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    ETCD_HOST="${ETCD_ENDPOINTS%%:*}"
+    ETCD_PORT="${ETCD_ENDPOINTS##*:}"
+    ETCD_IP=$(getent hosts "$ETCD_HOST" | head -1 | awk '{print $1}')
+    if [ -z "$ETCD_IP" ]; then
+        echo "[ERROR] failed to resolve etcd host: $ETCD_HOST"
+        exit 1
+    fi
+    ETCD_ENDPOINTS="${ETCD_IP}:${ETCD_PORT}"
+fi
+
+# etcd_address 供元戎 SDK 使用，同样需要解析主机名为 IP
+if [ -n "${etcd_address}" ]; then
+    ETCD_ADDR_HOST="${etcd_address%%:*}"
+    ETCD_ADDR_PORT="${etcd_address##*:}"
+    if [[ "${ETCD_ADDR_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        ETCD_ADDR_IP="$ETCD_ADDR_HOST"
+    else
+        ETCD_ADDR_IP=$(getent hosts "$ETCD_ADDR_HOST" | head -1 | awk '{print $1}')
+        if [ -z "$ETCD_ADDR_IP" ]; then
+            echo "[ERROR] failed to resolve etcd host: $ETCD_ADDR_HOST"
+            exit 1
+        fi
+    fi
+    export etcd_address="${ETCD_ADDR_IP}:${ETCD_ADDR_PORT}"
+fi
+
 echo "==========================================="
 echo "Starting KV Worker"
 echo "==========================================="
