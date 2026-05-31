@@ -3,6 +3,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <future>
 #include <iostream>
@@ -21,6 +22,8 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
+#include <datasystem/kv_client.h>
+
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -33,7 +36,16 @@ DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");
 DEFINE_string(model_name, "/workspace/share/Qwen3-0.6B/", "模型名称");
 DEFINE_int32(server_port, 8002, "服务器监听端口");
 DEFINE_int32(vllm_timeout_ms, 100000, "vLLM 请求超时时间（毫秒）");
-DEFINE_int32(sku_count, 100, "返回的 SKU ID 数量（默认 100）");
+DEFINE_int32(sku_count, 1000, "返回的 SKU ID 数量（默认 1000）");
+DEFINE_bool(enable_vllm, true, "是否启用 vLLM 生成式召回（false 时使用 KVCache 随机召回）");
+DEFINE_string(kv_worker_service, "kv_worker", "KV Worker 服务名（用于 KVCache 召回）");
+DEFINE_string(registry_backend, "discovery_server",
+    "Registry backend: discovery_server or etcd");
+DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
+DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
+    "etcd endpoints, comma-separated (for etcd backend)");
+DEFINE_int32(kvcache_ttl_seconds, 3600, "KVCache TTL（秒，默认 1 小时）");
+DEFINE_int32(kvcache_size_bytes, 256, "KVCache 大小（字节，作为 RNG seed blob）");
 
 DEFINE_string(vllm_connection_type, "pooled",
               "vLLM channel connection type (pooled/short)");
@@ -241,9 +253,47 @@ bool parse_vllm_response(const std::string& response_body,
     return true;
 }
 
+// 从 kvcache blob 派生 RNG seed，生成 sku_count 个不重复 SKU ID
+static void generate_skus_from_seed(const uint8_t* seed_data, size_t seed_size,
+                                    int sku_count, RecallResponse* response) {
+    // 将 seed blob 折叠为一个 64-bit seed
+    uint64_t seed = 0;
+    for (size_t i = 0; i < seed_size; ++i) {
+        seed ^= static_cast<uint64_t>(seed_data[i]) << ((i % 8) * 8);
+    }
+
+    std::mt19937_64 rng(seed);
+    std::uniform_int_distribution<uint64_t> dist(100000, 999999);
+
+    std::unordered_set<uint64_t> seen;
+    while (static_cast<int>(seen.size()) < sku_count) {
+        seen.insert(dist(rng));
+    }
+
+    for (uint64_t id : seen) {
+        response->add_sku_ids(id);
+    }
+}
+
 RecallServiceImpl::RecallServiceImpl()
     : vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
-    LOG_INFO << "RecallServiceImpl initialized";
+    LOG_INFO << "RecallServiceImpl initialized, enable_vllm=" << FLAGS_enable_vllm;
+
+    if (!FLAGS_enable_vllm) {
+        datasystem::ServiceDiscoveryOptions sdOpts;
+        sdOpts.etcdAddress = FLAGS_etcd_endpoints;
+        sdOpts.hostIdEnvName = "HOST_ID";
+        sdOpts.affinityPolicy = datasystem::ServiceAffinityPolicy::PREFERRED_SAME_NODE;
+        service_discovery_ = std::make_shared<datasystem::ServiceDiscovery>(sdOpts);
+
+        auto rc = service_discovery_->Init();
+        if (!rc.IsOk()) {
+            LOG_ERROR << "ServiceDiscovery init failed: " << rc.ToString();
+        }
+
+        LOG_INFO << "KVCache mode: KV Worker ServiceDiscovery initialized"
+                  << ", etcd=" << FLAGS_etcd_endpoints;
+    }
 }
 
 void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
@@ -276,6 +326,131 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
     }
 }
 
+std::string RecallServiceImpl::derive_kvcache_key(const RecallRequest* request) {
+    // 哈希 user_id + 所有 user_logs vec 值
+    std::hash<std::string> hasher;
+    std::ostringstream oss;
+    oss << request->user_id();
+    for (int i = 0; i < request->user_logs_size(); ++i) {
+        const auto& log = request->user_logs(i);
+        for (int j = 0; j < log.vec_size(); ++j) {
+            oss << "," << log.vec(j);
+        }
+    }
+    size_t hash_value = hasher(oss.str());
+
+    char buf[17];
+    std::snprintf(buf, sizeof(buf), "%016zx", hash_value);
+    return "rc:" + std::string(buf, 16);
+}
+
+RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
+    const RecallRequest* request) {
+
+    RecallServiceImpl::RecallResult result;
+    int64_t start_us = butil::gettimeofday_us();
+
+    std::string kv_key = derive_kvcache_key(request);
+    LOG_DEBUG << "KVCache key: " << kv_key;
+
+    datasystem::ConnectOptions connectOptions;
+    connectOptions.serviceDiscovery = service_discovery_;
+
+    datasystem::KVClient kv_client(connectOptions);
+    datasystem::Status kv_status = kv_client.Init();
+    if (!kv_status.IsOk()) {
+        result.success = false;
+        result.status = common::error::Status(recall_errors::KVCLIENT_INIT_FAILED,
+            "KVClient init failed: " + kv_status.ToString());
+        result.error_message = result.status.ToString();
+        return result;
+    }
+
+    // 尝试 Get
+    datasystem::Optional<datasystem::Buffer> buffer;
+    int64_t kv_get_start_us = butil::gettimeofday_us();
+    kv_status = kv_client.Get(kv_key, buffer);
+    int64_t kv_get_cost_us = butil::gettimeofday_us() - kv_get_start_us;
+
+    if (kv_status.IsOk()) {
+        // Cache HIT：用已有 kvcache 生成 SKU
+        LOG_INFO << "KVCache HIT: key=" << kv_key
+                  << ", size=" << buffer->GetSize() << " bytes"
+                  << ", get_cost=" << kv_get_cost_us / 1000.0 << " ms";
+
+        generate_skus_from_seed(
+            reinterpret_cast<const uint8_t*>(buffer->ImmutableData()),
+            buffer->GetSize(),
+            FLAGS_sku_count,
+            &result.response);
+    } else {
+        // Cache MISS：生成随机 kvcache，写入 KVWorker，再生成 SKU
+        LOG_INFO << "KVCache MISS: key=" << kv_key
+                  << ", get_cost=" << kv_get_cost_us / 1000.0 << " ms"
+                  << ", generating new kvcache";
+
+        int cache_size = FLAGS_kvcache_size_bytes;
+        std::vector<uint8_t> seed_blob(cache_size);
+        {
+            std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int> byte_dist(0, 255);
+            for (auto& b : seed_blob) {
+                b = static_cast<uint8_t>(byte_dist(rng));
+            }
+        }
+
+        // 写入 KVWorker
+        datasystem::WriteParam param;
+        param.ttlSecond = FLAGS_kvcache_ttl_seconds;
+        param.writeMode = datasystem::WriteMode::NONE_L2_CACHE;
+        param.existence = datasystem::ExistenceOpt::NONE;
+        param.cacheType = datasystem::CacheType::MEMORY;
+
+        std::shared_ptr<datasystem::Buffer> write_buffer;
+        int64_t create_start_us = butil::gettimeofday_us();
+        kv_status = kv_client.Create(kv_key, cache_size, param, write_buffer);
+        int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
+
+        if (!kv_status.IsOk()) {
+            result.success = false;
+            result.status = common::error::Status(recall_errors::KVCLIENT_CREATE_FAILED,
+                "KVClient Create failed: " + kv_status.ToString());
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        std::memcpy(write_buffer->MutableData(), seed_blob.data(), cache_size);
+
+        int64_t set_start_us = butil::gettimeofday_us();
+        kv_status = kv_client.Set(write_buffer);
+        int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
+
+        if (!kv_status.IsOk()) {
+            result.success = false;
+            result.status = common::error::Status(recall_errors::KVCLIENT_SET_FAILED,
+                "KVClient Set failed: " + kv_status.ToString());
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        LOG_INFO << "KVCache written: key=" << kv_key
+                  << ", size=" << cache_size << " bytes"
+                  << ", ttl=" << FLAGS_kvcache_ttl_seconds << "s"
+                  << ", create_cost=" << create_cost_us / 1000.0 << " ms"
+                  << ", set_cost=" << set_cost_us / 1000.0 << " ms";
+
+        generate_skus_from_seed(seed_blob.data(), seed_blob.size(),
+                                FLAGS_sku_count, &result.response);
+    }
+
+    LOG_INFO << "KVCache recall completed, key=" << kv_key
+              << ", sku_count=" << result.response.sku_ids_size()
+              << ", total_cost=" << (butil::gettimeofday_us() - start_us) / 1000.0 << " ms";
+
+    result.success = true;
+    return result;
+}
+
 RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const RecallRequest* request) {
     RecallServiceImpl::RecallResult result;
     int64_t server_receive_us = butil::gettimeofday_us();
@@ -287,6 +462,11 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         return result;
     }
 
+    if (!FLAGS_enable_vllm) {
+        return process_kvcache_recall(request);
+    }
+
+    // vLLM 路径
     std::string request_json = proto_to_json(request);
     LOG_DEBUG << "Request JSON size: " << request_json.size() << " bytes";
 

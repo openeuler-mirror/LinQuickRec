@@ -243,7 +243,7 @@ deploy:
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
+| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
 | `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
 
 ## 8. 端口分配

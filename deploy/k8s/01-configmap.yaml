@@ -90,7 +90,10 @@ data:
   VLLM_MAX_RETRY: "3"
   VLLM_CONNECT_TIMEOUT_MS: "-1"
   VLLM_BACKUP_REQUEST_MS: "-1"
-  SKU_COUNT: "100"
+  ENABLE_VLLM: "false"
+  SKU_COUNT: "1000"
+  KVCACHE_TTL_SECONDS: "3600"
+  KVCACHE_SIZE_BYTES: "256"
 
   # ========================
   # Precalc

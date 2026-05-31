@@ -1,0 +1,66 @@
+# Recall 召回服务（KVCache 模式，无 vLLM，无需 GPU 节点）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recall-service
+  namespace: linquickrec
+  labels:
+    app: recall-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recall-service
+  template:
+    metadata:
+      labels:
+        app: recall-service
+    spec:
+      containers:
+      - name: recall
+        image: 192.168.84.245:5000/linquickrec/recall-novllm:latest
+        ports:
+        - containerPort: 8002
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8002"
+        - name: ENABLE_VLLM
+          value: "false"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "2Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8002
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/linquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recall-service
+  namespace: linquickrec
+spec:
+  selector:
+    app: recall-service
+  ports:
+  - name: rpc
+    port: 8002
+    targetPort: 8002
+  type: ClusterIP

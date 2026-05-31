@@ -130,6 +130,9 @@ namespace recall_errors {
     constexpr uint32_t NO_SKU_RETURNED            = MakeErrorCode(ModuleCode::RECALL, ErrorType::NOT_FOUND,     0x0007);
     constexpr uint32_t EMPTY_USER_ID              = MakeErrorCode(ModuleCode::RECALL, ErrorType::INVALID_INPUT,  0x0008);
     constexpr uint32_t INTERNAL_ERROR             = MakeErrorCode(ModuleCode::RECALL, ErrorType::INTERNAL,      0x0009);
+    constexpr uint32_t KVCLIENT_INIT_FAILED       = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR,  0x000A);
+    constexpr uint32_t KVCLIENT_CREATE_FAILED     = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR,  0x000B);
+    constexpr uint32_t KVCLIENT_SET_FAILED        = MakeErrorCode(ModuleCode::RECALL, ErrorType::SERVICE_ERROR,  0x000C);
 }
 
 namespace precalc_errors {

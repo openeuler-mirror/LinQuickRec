@@ -156,7 +156,9 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/recall/Dockerfile
-    image: linquickrec/recall:latest
+      args:
+        ENABLE_VLLM: "${ENABLE_VLLM:-true}"
+    image: ${RECALL_IMAGE:-linquickrec/recall:latest}
     volumes:
       - /usr/local/cuda-12.9:/usr/local/cuda
     container_name: recall-service
@@ -180,7 +182,11 @@ services:
       VLLM_MAX_RETRY: "${VLLM_MAX_RETRY:-3}"
       VLLM_CONNECT_TIMEOUT_MS: "${VLLM_CONNECT_TIMEOUT_MS:--1}"
       VLLM_BACKUP_REQUEST_MS: "${VLLM_BACKUP_REQUEST_MS:--1}"
-      SKU_COUNT: "${SKU_COUNT:-100}"
+      ENABLE_VLLM: "${ENABLE_VLLM:-true}"
+      SKU_COUNT: "${SKU_COUNT:-1000}"
+      KV_WORKER_SERVICE: "${KV_WORKER_SERVICE:-kv_worker}"
+      KVCACHE_TTL_SECONDS: "${KVCACHE_TTL_SECONDS:-3600}"
+      KVCACHE_SIZE_BYTES: "${KVCACHE_SIZE_BYTES:-256}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"

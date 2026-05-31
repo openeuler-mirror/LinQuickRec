@@ -125,7 +125,7 @@
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | 允许调整 | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | 允许调整 | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 允许调整 | 模型名称/路径 |
-| `--sku_count` | int32 | 100 | 允许调整 | 返回的 SKU ID 数量 |
+| `--sku_count` | int32 | 1000 | 允许调整 | 返回的 SKU ID 数量 |
 
 ### Server 端参数
 

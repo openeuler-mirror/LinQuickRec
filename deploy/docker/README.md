@@ -219,7 +219,7 @@ docker compose top                    # 容器内进程
 | `VLLM_ENDPOINT` | /v1/chat/completions | 允许调整 | vLLM 接口路径 |
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 允许调整 | 模型路径（容器内） |
 | `VLLM_TIMEOUT_MS` | 100000 | 允许调整 | vLLM 请求超时 |
-| `SKU_COUNT` | 100 | 允许调整 | SKU 数量 |
+| `SKU_COUNT` | 1000 | 允许调整 | SKU 数量 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### Precalc
