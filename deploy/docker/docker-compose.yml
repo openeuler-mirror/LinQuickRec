@@ -99,6 +99,7 @@ services:
       etcd_address: "etcd:2379"
       enable_urma: "${ENABLE_URMA:-0}"
       cpu_affinity: "${CPU_AFFINITY:-0-64}"
+      shared_memory_size_mb: "${SHARED_MEMORY_SIZE_MB:-2048}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"

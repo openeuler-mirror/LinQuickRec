@@ -24,6 +24,13 @@ data:
   KV_WORKER_SERVICE: "kv_worker"
 
   # ========================
+  # KV Worker (datasystem)
+  # ========================
+  # Worker 共享内存大小(MB)；必须 < 宿主机 /dev/shm，且 < 容器内存 limit
+  SHM_SIZE_MB: "2048"
+  CPU_AFFINITY: "0-64"
+
+  # ========================
   # Discovery Client (sidecar) 心跳与健康检查
   # ========================
   HEARTBEAT_INTERVAL: "5"
@@ -88,7 +95,7 @@ data:
   # ========================
   # Precalc
   # ========================
-  TTL_SECONDS: "100"
+  TTL_SECONDS: "5"
   PRECALC_RESULT_SIZE_MB: "8.5"
   PAYLOAD_SIZE_KB: "100"
 

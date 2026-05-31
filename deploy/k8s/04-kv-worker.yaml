@@ -39,7 +39,15 @@ spec:
         - name: enable_urma
           value: "0"
         - name: cpu_affinity
-          value: "0-64"
+          valueFrom:
+            configMapKeyRef:
+              name: linquickrec-config
+              key: CPU_AFFINITY
+        - name: shared_memory_size_mb
+          valueFrom:
+            configMapKeyRef:
+              name: linquickrec-config
+              key: SHM_SIZE_MB
         - name: HOST_ID
           valueFrom:
             fieldRef:
@@ -53,6 +61,7 @@ spec:
             memory: "2Gi"
           limits:
             cpu: "4"
+            # 容器内存上限：需 >= SHM_SIZE_MB 再留余量（纯manifest无变量替换，在此处改）
             memory: "8Gi"
         securityContext:
           privileged: true
