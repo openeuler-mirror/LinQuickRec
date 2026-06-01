@@ -1,0 +1,80 @@
+# KV Worker（元戎 Datasystem）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kv-worker
+  namespace: linquickrec
+  labels:
+    app: kv-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-worker
+  template:
+    metadata:
+      labels:
+        app: kv-worker
+    spec:
+      hostIPC: true
+      containers:
+      - name: kv-worker
+        image: 192.168.84.245:5000/linquickrec/kv-worker:latest
+        ports:
+        - containerPort: 31501
+          name: worker
+        - containerPort: 31502
+          name: worker2
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: worker_address
+          value: "$(POD_IP):31501"
+        - name: etcd_address
+          value: "etcd-client:2379"
+        - name: enable_urma
+          value: "0"
+        - name: cpu_affinity
+          value: "0-64"
+        - name: HOST_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+      volumes:
+      - name: shm
+        hostPath:
+          path: /dev/shm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kv-worker
+  namespace: linquickrec
+spec:
+  selector:
+    app: kv-worker
+  ports:
+  - name: worker
+    port: 31501
+    targetPort: 31501
+  - name: worker2
+    port: 31502
+    targetPort: 31502
+  type: ClusterIP

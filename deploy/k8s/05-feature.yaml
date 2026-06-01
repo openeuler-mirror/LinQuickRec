@@ -1,0 +1,67 @@
+# Feature 特征服务 (Mock 实现)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-service
+  namespace: linquickrec
+  labels:
+    app: feature-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feature-service
+  template:
+    metadata:
+      labels:
+        app: feature-service
+    spec:
+      containers:
+      - name: feature
+        image: 192.168.84.245:5000/linquickrec/feature:latest
+        ports:
+        - containerPort: 8001
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8001"
+        resources:
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/linquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-service
+  namespace: linquickrec
+spec:
+  selector:
+    app: feature-service
+  ports:
+  - name: rpc
+    port: 8001
+    targetPort: 8001
+  type: ClusterIP

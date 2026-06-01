@@ -118,7 +118,6 @@ add_custom_command(
 # ============================================================================
 add_executable(rank_master_server
     server/src/rank_master_server.cpp
-    server/src/discovery_resolver.cpp
     server/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/rank_master.pb.cc

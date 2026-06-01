@@ -5,6 +5,14 @@ REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
 ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 
+# 元戎 SDK 不接受 DNS hostname，需解析为 IP
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    ETCD_HOST="${ETCD_ENDPOINTS%%:*}"
+    ETCD_PORT="${ETCD_ENDPOINTS##*:}"
+    ETCD_IP=$(getent hosts "$ETCD_HOST" | head -1 | awk '{print $1}')
+    ETCD_ENDPOINTS="${ETCD_IP}:${ETCD_PORT}"
+fi
+
 echo "==========================================="
 echo "Starting RankSub Service"
 echo "==========================================="

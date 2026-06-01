@@ -15,7 +15,7 @@
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
-#include "discovery_provider.h"
+#include <datasystem/datasystem.h>
 #include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
@@ -72,7 +72,7 @@ private:
     common::error::Status process_rank_request(const RankSubRequest* request,
                                               RankSubResponse* response);
 
-    std::unique_ptr<discovery::IDiscoveryProvider> discovery_provider_;
+    std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
 };
 
 } // namespace rank

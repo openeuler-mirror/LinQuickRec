@@ -12,7 +12,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
-#include "discovery_provider.h"
+#include <datasystem/datasystem.h>
 #include "precalc.pb.h"
 
 DECLARE_int32(server_port);
@@ -68,7 +68,7 @@ private:
     common::error::Status write_to_kvworker(const std::string& user_feat_key,
                                              const std::string& precalc_result);
 
-    std::unique_ptr<discovery::IDiscoveryProvider> discovery_provider_;
+    std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
 };
 
 } // namespace precalc

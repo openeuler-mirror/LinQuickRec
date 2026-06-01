@@ -8,9 +8,10 @@ data:
   # 服务发现
   # ========================
   REGISTRY_BACKEND: "etcd"
-  ETCD_ENDPOINTS: "etcd:2379"
+  ETCD_ENDPOINTS: "etcd-client:2379"
   DISCOVERY_ADDR: "discovery-server:8100"
   DISCOVERY_REFRESH_INTERVAL_MS: "5000"
+  HOST_ID: "default-host"
 
   # ========================
   # 各服务在 etcd 中的注册名
@@ -31,12 +32,15 @@ data:
   STARTUP_TIMEOUT: "30"
 
   # ========================
+<<<<<<< HEAD
   # KV Worker
   # ========================
   KVWORKER_HOST: "141.61.84.245"
   KVWORKER_PORT: "31502"
 
   # ========================
+=======
+>>>>>>> yh/master
   # BRPC Server 参数（所有服务）
   # ========================
   SERVER_NUM_THREADS: "0"
@@ -55,7 +59,11 @@ data:
   # ========================
   FEATURE_TIMEOUT_MS: "3000"
   RECALL_TIMEOUT_MS: "120000"
+<<<<<<< HEAD
   PRECALC_TIMEOUT_MS: "5000"
+=======
+  PRECALC_TIMEOUT_MS: "30000"
+>>>>>>> yh/master
   RANK_TIMEOUT_MS: "10000"
 
   # ========================
@@ -84,7 +92,11 @@ data:
   MODEL_NAME: "/app/models/Qwen3-0.6B/"
   VLLM_TIMEOUT_MS: "100000"
   VLLM_STARTUP_TIMEOUT: "120"
+<<<<<<< HEAD
   VLLM_CONNECTION_TYPE: "single"
+=======
+  VLLM_CONNECTION_TYPE: "pooled"
+>>>>>>> yh/master
   VLLM_MAX_RETRY: "3"
   VLLM_CONNECT_TIMEOUT_MS: "-1"
   VLLM_BACKUP_REQUEST_MS: "-1"

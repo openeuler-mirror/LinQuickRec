@@ -25,6 +25,18 @@ if [ -z "${enable_urma}" ]; then
      exit 1
 fi
 
+ETCD_HOST="${etcd_address%%:*}"
+ETCD_PORT="${etcd_address##*:}"
+
+if ! [[ "${ETCD_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    ETCD_IP="$(getent hosts "${ETCD_HOST}" | awk '{print $1; exit}')"
+    if [ -z "${ETCD_IP}" ]; then
+        echo "[ERROR] failed to resolve etcd host: ${ETCD_HOST}"
+        exit 1
+    fi
+    etcd_address="${ETCD_IP}:${ETCD_PORT}"
+fi
+
 # Default configuration
 cpu_affinity="0-64"
 
@@ -39,6 +51,7 @@ taskset -c ${cpu_affinity} \
 dscli start --worker_args \
     --worker_address "${worker_address}" \
     --etcd_address "${etcd_address}" \
+    --host_id_env_name HOST_ID \
     --shared_memory_size_mb 2048 \
     --log_dir "./datasystem_log/log_${worker_port}" \
     --arena_per_tenant 1 \

@@ -8,31 +8,33 @@ NAMESPACE="linquickrec"
 COMMON_FILES=(
     "00-namespace.yaml"
     "01-configmap.yaml"
-    "03-kv-worker.yaml"
-    "09-feature.yaml"
-    "09-proxy.yaml"
-    "10-recall.yaml"
-    "11-precalc.yaml"
-    "12-rank-master.yaml"
-    "13-rank-sub.yaml"
+    "02-etcd-pv.yaml"
+    "04-kv-worker.yaml"
+    "05-feature.yaml"
+    "06-proxy.yaml"
+    "07-recall.yaml"
+    "08-precalc.yaml"
+    "09-rank-master.yaml"
+    "10-rank-sub.yaml"
 )
 
 # 模式专属资源
 declare -A MODE_FILES
 MODE_FILES["etcd"]="02-etcd.yaml"
-MODE_FILES["discovery"]="09-discovery.yaml"
+MODE_FILES["discovery"]="03-discovery.yaml"
 
 # 逆序删除
 DELETE_FILES=(
-    "13-rank-sub.yaml"
-    "12-rank-master.yaml"
-    "11-precalc.yaml"
-    "10-recall.yaml"
-    "09-proxy.yaml"
-    "09-feature.yaml"
-    "03-kv-worker.yaml"
-    "09-discovery.yaml"
+    "10-rank-sub.yaml"
+    "09-rank-master.yaml"
+    "08-precalc.yaml"
+    "07-recall.yaml"
+    "06-proxy.yaml"
+    "05-feature.yaml"
+    "04-kv-worker.yaml"
+    "03-discovery.yaml"
     "02-etcd.yaml"
+    "02-etcd-pv.yaml"
     "01-configmap.yaml"
     "00-namespace.yaml"
 )
@@ -56,7 +58,11 @@ apply_mode() {
 
     for f in "${COMMON_FILES[@]}"; do
         # 在 discovery 模式下插入专属文件（排在 namespace/configmap 之后、服务之前）
+<<<<<<< HEAD
         if [ "$f" = "03-kv-worker.yaml" ] && [ -n "$mode_file" ]; then
+=======
+        if [ "$f" = "04-kv-worker.yaml" ] && [ -n "$mode_file" ]; then
+>>>>>>> yh/master
             log "apply ${mode_file}"
             kubectl apply -f "${SCRIPT_DIR}/${mode_file}"
         fi
@@ -84,7 +90,11 @@ usage() {
     cat <<EOF
 用法: $0 <etcd|discovery|delete>
 
+<<<<<<< HEAD
   etcd          etcd 模式：部署 etcd + 所有服务
+=======
+  etcd          etcd 模式：部署集群内 etcd (5 副本) + 所有服务
+>>>>>>> yh/master
   discovery     discovery_server 模式：部署 discovery-server + 所有服务
   delete        逆序删除全部资源
 EOF

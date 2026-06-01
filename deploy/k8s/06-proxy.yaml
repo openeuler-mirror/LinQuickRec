@@ -1,0 +1,67 @@
+# Proxy 网关服务
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-service
+  namespace: linquickrec
+  labels:
+    app: proxy-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy-service
+  template:
+    metadata:
+      labels:
+        app: proxy-service
+    spec:
+      containers:
+      - name: proxy
+        image: 192.168.84.245:5000/linquickrec/proxy:latest
+        ports:
+        - containerPort: 8080
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8080"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/linquickrec
+      volumes:
+      - name: log
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-service
+  namespace: linquickrec
+spec:
+  selector:
+    app: proxy-service
+  ports:
+  - name: rpc
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

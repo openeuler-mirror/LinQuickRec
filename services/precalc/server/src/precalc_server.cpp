@@ -21,6 +21,8 @@
 
 using namespace datasystem;
 
+using namespace datasystem;
+
 DEFINE_int32(server_port, 8003, "服务器监听端口");
 DEFINE_string(registry_backend, "discovery_server",
     "Registry backend: discovery_server or etcd");
@@ -44,13 +46,19 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG_INFO << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
     LOG_INFO << "TTL: " << FLAGS_ttl_seconds << " seconds";
 
-    std::string addr = (FLAGS_registry_backend == "etcd")
-        ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
-    discovery_provider_ = discovery::CreateDiscoveryProvider(
-        FLAGS_registry_backend, addr);
-    LOG_INFO << "KV Worker discovery: backend=" << FLAGS_registry_backend
-              << ", address=" << addr
-              << ", service=" << FLAGS_kv_worker_service;
+    datasystem::ServiceDiscoveryOptions sdOpts;
+    sdOpts.etcdAddress = FLAGS_etcd_endpoints;
+    sdOpts.hostIdEnvName = "HOST_ID";
+    sdOpts.affinityPolicy = datasystem::ServiceAffinityPolicy::PREFERRED_SAME_NODE;
+    service_discovery_ = std::make_shared<datasystem::ServiceDiscovery>(sdOpts);
+
+    auto rc = service_discovery_->Init();
+    if (!rc.IsOk()) {
+        LOG_ERROR << "ServiceDiscovery init failed: " << rc.ToString();
+    }
+
+    LOG_INFO << "KV Worker ServiceDiscovery: etcd=" << FLAGS_etcd_endpoints
+              << ", affinity=PREFERRED_SAME_NODE";
 }
 
 void PrecalcServiceImpl::Precalculate(google::protobuf::RpcController* controller,
@@ -109,35 +117,25 @@ common::error::Status PrecalcServiceImpl::validate_and_extract_key(
 common::error::Status PrecalcServiceImpl::write_to_kvworker(
     const std::string& user_feat_key, const std::string& precalc_result) {
 
-    auto instances = discovery_provider_->Discover(FLAGS_kv_worker_service);
-    if (instances.empty()) {
-        auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
-            "No kv_worker instances discovered for service: " + FLAGS_kv_worker_service);
-        LOG_ERROR << status.ToString();
-        return status;
-    }
+    datasystem::ConnectOptions connectOptions;
+    connectOptions.serviceDiscovery = service_discovery_;
 
-    static std::atomic<size_t> rr_idx{0};
-    size_t idx = rr_idx++ % instances.size();
-    const auto& inst = instances[idx];
-
-    ConnectOptions connectOptions;
-    connectOptions.host = inst.host();
-    connectOptions.port = inst.port();
-
-    LOG_DEBUG << "Resolved kv_worker via discovery: "
-              << inst.host() << ":" << inst.port()
-              << " (instance " << idx << "/" << instances.size() << ")";
+    LOG_INFO << "KVWorker write start: key=" << user_feat_key
+             << ", size=" << precalc_result.size() << " bytes";
+    LOG_INFO << "KVClient Init start";
 
     KVClient kv_client(connectOptions);
 
+    int64_t init_start_us = butil::gettimeofday_us();
     datasystem::Status kv_status = kv_client.Init();
+    int64_t init_cost_us = butil::gettimeofday_us() - init_start_us;
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
             "KVClient init failed: " + kv_status.ToString());
         LOG_ERROR << status.ToString();
         return status;
     }
+    LOG_INFO << "KVClient Init success, cost=" << init_cost_us / 1000.0 << " ms";
 
     SetParam param;
     param.ttlSecond = FLAGS_ttl_seconds;
@@ -146,23 +144,36 @@ common::error::Status PrecalcServiceImpl::write_to_kvworker(
     param.cacheType = CacheType::MEMORY;
 
     std::shared_ptr<Buffer> buffer;
+    LOG_INFO << "KVClient Create start: key=" << user_feat_key
+             << ", size=" << precalc_result.size() << " bytes";
+    int64_t create_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Create(user_feat_key, precalc_result.size(), param, buffer);
+    int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_CREATE_FAILED,
             "KVClient Create failed: " + kv_status.ToString());
         LOG_ERROR << status.ToString();
         return status;
     }
+    LOG_INFO << "KVClient Create success, cost=" << create_cost_us / 1000.0 << " ms";
 
+    int64_t memcpy_start_us = butil::gettimeofday_us();
     std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
+    int64_t memcpy_cost_us = butil::gettimeofday_us() - memcpy_start_us;
+    LOG_INFO << "KVClient buffer memcpy completed, cost="
+             << memcpy_cost_us / 1000.0 << " ms";
 
+    LOG_INFO << "KVClient Set start: key=" << user_feat_key;
+    int64_t set_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Set(buffer);
+    int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_SET_FAILED,
             "KVClient Set failed: " + kv_status.ToString());
         LOG_ERROR << status.ToString();
         return status;
     }
+    LOG_INFO << "KVClient Set success, cost=" << set_cost_us / 1000.0 << " ms";
 
     LOG_INFO << "Precalc result written to KVWorker: key=" << user_feat_key
               << ", size=" << precalc_result.size() << " bytes ("
@@ -187,9 +198,13 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     }
 
     size_t precalc_size = static_cast<size_t>(FLAGS_precalc_result_size_mb * 1024 * 1024);
+    LOG_INFO << "Generating precalc result: size=" << precalc_size << " bytes ("
+             << FLAGS_precalc_result_size_mb << " MB)";
+    int64_t generate_start_us = butil::gettimeofday_us();
     std::string precalc_result = common::generate_random_string(precalc_size);
-    LOG_DEBUG << "Generated precalc result with size: " << precalc_size << " bytes ("
-              << FLAGS_precalc_result_size_mb << " MB)";
+    int64_t generate_cost_us = butil::gettimeofday_us() - generate_start_us;
+    LOG_INFO << "Generated precalc result, cost=" << generate_cost_us / 1000.0
+             << " ms";
 
     int64_t kvwrite_start_us = butil::gettimeofday_us();
 
