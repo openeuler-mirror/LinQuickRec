@@ -29,7 +29,7 @@ find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 
 # RapidJSON 路径设置
-set(RAPIDJSON_INCLUDE_DIRS "/usr/local/include")
+set(RAPIDJSON_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/rapidjson/include")
 
 # ============================================================================
 # Protobuf 代码生成

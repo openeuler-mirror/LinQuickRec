@@ -1,7 +1,10 @@
 #include "etcd_discovery_provider.h"
 
+#include <rapidjson/document.h>
+
 #include "common/logger.h"
-#include "simple_json.h"
+
+using namespace rapidjson;
 
 namespace discovery {
 
@@ -25,24 +28,25 @@ std::vector<ServiceInstance> EtcdDiscoveryProvider::Discover(
 
     std::vector<ServiceInstance> result;
     for (const auto& [key, value] : kvs) {
-        try {
-            simple_json::Value val = simple_json::Value::parse(value);
-            ServiceInstance inst;
-            inst.set_service_name(service_name);
-            inst.set_host(val.get("host").str());
-            inst.set_port(static_cast<int32_t>(val.get("port").integer()));
-
-            size_t last_slash = key.rfind('/');
-            if (last_slash != std::string::npos) {
-                inst.set_instance_id(key.substr(last_slash + 1));
-            }
-
-            inst.set_status(InstanceStatus::UP);
-            result.push_back(std::move(inst));
-        } catch (const std::exception& e) {
-            LOG_ERROR << "EtcdDiscoveryProvider parse error for key "
-                       << key << ": " << e.what();
+        Document d;
+        d.Parse(value.c_str());
+        if (d.HasParseError()) {
+            LOG_ERROR << "EtcdDiscoveryProvider parse error for key " << key;
+            continue;
         }
+
+        ServiceInstance inst;
+        inst.set_service_name(service_name);
+        inst.set_host(d["host"].GetString());
+        inst.set_port(d["port"].GetInt());
+
+        size_t last_slash = key.rfind('/');
+        if (last_slash != std::string::npos) {
+            inst.set_instance_id(key.substr(last_slash + 1));
+        }
+
+        inst.set_status(InstanceStatus::UP);
+        result.push_back(std::move(inst));
     }
 
     return result;

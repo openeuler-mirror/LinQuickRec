@@ -3,9 +3,14 @@
 #include <cstring>
 #include <sstream>
 
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #include "common/logger.h"
 #include "etcd_http.h"
-#include "simple_json.h"
+
+using namespace rapidjson;
 
 namespace discovery {
 
@@ -28,6 +33,25 @@ static bool parseEndpoint(const std::string& ep, std::string& host, int& port) {
         port = 2379;
     }
     return true;
+}
+
+static std::string stringify(const Document& d) {
+    StringBuffer buf;
+    Writer<StringBuffer> w(buf);
+    d.Accept(w);
+    return buf.GetString();
+}
+
+static bool hasError(const std::string& json_resp) {
+    if (json_resp.empty()) return true;
+    Document d;
+    d.Parse(json_resp.c_str());
+    if (d.HasParseError()) return true;
+    if (d.HasMember("error")) {
+        LOG_ERROR << "etcd error: " << d["error"].GetString();
+        return true;
+    }
+    return false;
 }
 
 } // namespace
@@ -124,99 +148,86 @@ std::string EtcdClient::prefixEnd(const std::string& prefix) {
     return "";
 }
 
-bool EtcdClient::hasError(const std::string& json_resp) {
-    if (json_resp.empty()) return true;
-    try {
-        simple_json::Value resp = simple_json::Value::parse(json_resp);
-        if (resp.contains("error")) {
-            LOG_ERROR << "etcd error: " << resp.get("error").str();
-            return true;
-        }
-    } catch (const std::exception& e) {
-        LOG_ERROR << "etcd response parse error: " << e.what();
-        return true;
-    }
-    return false;
-}
-
 int64_t EtcdClient::leaseGrant(int64_t ttl_seconds) {
-    simple_json::Value req_body = simple_json::Value::object();
-    req_body["TTL"] = simple_json::Value(std::to_string(ttl_seconds));
+    Document d;
+    d.SetObject();
+    auto& alloc = d.GetAllocator();
+    d.AddMember("TTL", Value(std::to_string(ttl_seconds).c_str(), alloc), alloc);
 
-    std::string resp = post("/v3/lease/grant", req_body.dump());
+    std::string resp = post("/v3/lease/grant", stringify(d));
     if (resp.empty() || hasError(resp)) return 0;
 
-    try {
-        simple_json::Value resp_json = simple_json::Value::parse(resp);
-        if (resp_json.contains("ID")) {
-            return std::stoll(resp_json.get("ID").str());
-        }
-    } catch (const std::exception& e) {
-        LOG_ERROR << "leaseGrant parse error: " << e.what();
+    Document r;
+    r.Parse(resp.c_str());
+    if (r.HasParseError()) return 0;
+    if (r.HasMember("ID") && r["ID"].IsString()) {
+        return std::stoll(r["ID"].GetString());
     }
     return 0;
 }
 
 bool EtcdClient::leaseRevoke(int64_t lease_id) {
-    simple_json::Value req_body = simple_json::Value::object();
-    req_body["ID"] = simple_json::Value(std::to_string(lease_id));
+    Document d;
+    d.SetObject();
+    auto& alloc = d.GetAllocator();
+    d.AddMember("ID", Value(std::to_string(lease_id).c_str(), alloc), alloc);
 
-    std::string resp = post("/v3/kv/lease/revoke", req_body.dump());
-    if (resp.empty() || hasError(resp)) return false;
-    return true;
+    std::string resp = post("/v3/kv/lease/revoke", stringify(d));
+    return !resp.empty() && !hasError(resp);
 }
 
 bool EtcdClient::put(const std::string& key, const std::string& value,
                      int64_t lease_id) {
-    simple_json::Value req_body = simple_json::Value::object();
-    req_body["key"] = simple_json::Value(base64Encode(key));
-    req_body["value"] = simple_json::Value(base64Encode(value));
+    Document d;
+    d.SetObject();
+    auto& alloc = d.GetAllocator();
+    d.AddMember("key", Value(base64Encode(key).c_str(), alloc), alloc);
+    d.AddMember("value", Value(base64Encode(value).c_str(), alloc), alloc);
     if (lease_id > 0) {
-        req_body["lease"] = simple_json::Value(std::to_string(lease_id));
+        d.AddMember("lease", Value(std::to_string(lease_id).c_str(), alloc), alloc);
     }
 
-    std::string resp = post("/v3/kv/put", req_body.dump());
-    if (resp.empty() || hasError(resp)) return false;
-    return true;
+    std::string resp = post("/v3/kv/put", stringify(d));
+    return !resp.empty() && !hasError(resp);
 }
 
 bool EtcdClient::deleteKey(const std::string& key) {
-    simple_json::Value req_body = simple_json::Value::object();
-    req_body["key"] = simple_json::Value(base64Encode(key));
+    Document d;
+    d.SetObject();
+    auto& alloc = d.GetAllocator();
+    d.AddMember("key", Value(base64Encode(key).c_str(), alloc), alloc);
 
-    std::string resp = post("/v3/kv/deleterange", req_body.dump());
-    if (resp.empty() || hasError(resp)) return false;
-    return true;
+    std::string resp = post("/v3/kv/deleterange", stringify(d));
+    return !resp.empty() && !hasError(resp);
 }
 
 std::vector<std::pair<std::string, std::string>> EtcdClient::range(
     const std::string& prefix) {
 
-    simple_json::Value req_body = simple_json::Value::object();
-    req_body["key"] = simple_json::Value(base64Encode(prefix));
+    Document d;
+    d.SetObject();
+    auto& alloc = d.GetAllocator();
+    d.AddMember("key", Value(base64Encode(prefix).c_str(), alloc), alloc);
 
     std::string end = prefixEnd(prefix);
     if (!end.empty()) {
-        req_body["range_end"] = simple_json::Value(base64Encode(end));
+        d.AddMember("range_end", Value(base64Encode(end).c_str(), alloc), alloc);
     }
 
-    std::string resp = post("/v3/kv/range", req_body.dump());
+    std::string resp = post("/v3/kv/range", stringify(d));
     if (resp.empty() || hasError(resp)) return {};
 
     std::vector<std::pair<std::string, std::string>> result;
-    try {
-        simple_json::Value resp_json = simple_json::Value::parse(resp);
-        if (resp_json.contains("kvs")) {
-            const auto& kvs = resp_json.get("kvs");
-            for (size_t i = 0; i < kvs.size(); ++i) {
-                const auto& kv = kvs[i];
-                std::string k = base64Decode(kv.get("key").str());
-                std::string v = base64Decode(kv.get("value").str());
-                result.emplace_back(std::move(k), std::move(v));
-            }
+    Document r;
+    r.Parse(resp.c_str());
+    if (r.HasParseError()) return result;
+
+    if (r.HasMember("kvs") && r["kvs"].IsArray()) {
+        for (auto& kv : r["kvs"].GetArray()) {
+            std::string k = base64Decode(kv["key"].GetString());
+            std::string v = base64Decode(kv["value"].GetString());
+            result.emplace_back(std::move(k), std::move(v));
         }
-    } catch (const std::exception& e) {
-        LOG_ERROR << "range parse error: " << e.what();
     }
     return result;
 }

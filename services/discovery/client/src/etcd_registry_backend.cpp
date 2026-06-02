@@ -2,8 +2,13 @@
 
 #include <chrono>
 
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #include "common/logger.h"
-#include "simple_json.h"
+
+using namespace rapidjson;
 
 namespace discovery {
 
@@ -57,11 +62,17 @@ RegisterResult EtcdRegistryBackend::Register(
         return result;
     }
 
-    simple_json::Value val = simple_json::Value::object();
-    val["host"] = simple_json::Value(host);
-    val["port"] = simple_json::Value(static_cast<int64_t>(port));
+    Document val;
+    val.SetObject();
+    auto& alloc = val.GetAllocator();
+    val.AddMember("host", Value(host.c_str(), alloc), alloc);
+    val.AddMember("port", port, alloc);
 
-    if (!client_->put(key, val.dump(), lease_id)) {
+    StringBuffer buf;
+    Writer<StringBuffer> w(buf);
+    val.Accept(w);
+
+    if (!client_->put(key, buf.GetString(), lease_id)) {
         LOG_ERROR << "EtcdRegistryBackend: put failed";
         client_->leaseRevoke(lease_id);
         return result;
@@ -121,20 +132,24 @@ void EtcdRegistryBackend::keepAliveLoop(int64_t lease_id,
             std::chrono::seconds(interval_sec));
         if (!running_) break;
 
-        simple_json::Value req_body = simple_json::Value::object();
-        req_body["ID"] = simple_json::Value(std::to_string(lease_id));
-        std::string resp = client_->post("/v3/lease/keepalive", req_body.dump());
+        Document d;
+        d.SetObject();
+        auto& alloc = d.GetAllocator();
+        d.AddMember("ID", Value(std::to_string(lease_id).c_str(), alloc), alloc);
+
+        StringBuffer buf;
+        Writer<StringBuffer> w(buf);
+        d.Accept(w);
+
+        std::string resp = client_->post("/v3/lease/keepalive", buf.GetString());
         if (resp.empty()) {
             LOG_WARN << "Etcd keep-alive failed for lease " << lease_id;
         } else {
-            try {
-                simple_json::Value resp_json = simple_json::Value::parse(resp);
-                if (resp_json.contains("error")) {
-                    LOG_ERROR << "Etcd keep-alive error for lease " << lease_id
-                              << ": " << resp_json.get("error").str();
-                }
-            } catch (const std::exception& e) {
-                LOG_WARN << "Etcd keep-alive parse error: " << e.what();
+            Document r;
+            r.Parse(resp.c_str());
+            if (!r.HasParseError() && r.HasMember("error")) {
+                LOG_ERROR << "Etcd keep-alive error for lease " << lease_id
+                          << ": " << r["error"].GetString();
             }
         }
     }

@@ -33,7 +33,6 @@ add_library(discovery_client_lib STATIC
     src/etcd_discovery_provider.cpp
     src/registry_backend_factory.cpp
     src/discovery_provider_factory.cpp
-    src/simple_json.cpp
 )
 
 target_include_directories(discovery_client_lib PUBLIC
@@ -42,6 +41,7 @@ target_include_directories(discovery_client_lib PUBLIC
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../3rdparty/rapidjson/include
 )
 
 target_link_libraries(discovery_client_lib PUBLIC
