@@ -8,12 +8,14 @@
 
 ![系统架构图](docs/images/system-arch.png)
 
-## 技术栈
+## 依赖列表
 
 | 类别 | 技术 | 版本 |
 |------|------|------|
-| 通信框架 | BRPC | |
-| 序列化 | Protocol Buffers | 4.25.5 |
+| 通信框架 | BRPC | 1.15.0 |
+| 序列化 | Protocol Buffers | v25.5 |
+| 命令行参数 | gflags | v2.2.2 |
+| KV 存储 | leveldb | 1.23 |
 | 服务发现 | etcd | v3.5 |
 | KVCache | 元戎 (openYuanrong Datasystem) | v0.7.0 |
 | 模型推理 | vLLM (Qwen3-0.6B) | v0.11.0 |
@@ -98,11 +100,12 @@ Content-Type: application/json
 |------|------|------|---------|
 | 系统包 | CMake | >= 3.14 | yum install cmake |
 | 系统包 | GCC | >= 12 | yum install gcc-c++ |
-| 系统包 | curl / openssl-devel | latest | yum install |
-| 手动编译 | BRPC | | 源码编译 → `make install` |
-| 手动编译 | Protobuf | | 源码编译 → `make install` |
-| 手动编译 | gflags | | 源码编译 → `make install` |
-| 手动编译 | leveldb | | 源码编译 → `make install` |
+| 系统包 | curl | latest | yum install curl |
+| 系统包 | OpenSSL | OpenSSL_1_1_1m | yum install openssl-devel |
+| 手动编译 | BRPC | 1.15.0 | 源码编译 → `make install` |
+| 手动编译 | Protobuf | v25.5 | 源码编译 → `make install` |
+| 手动编译 | gflags | v2.2.2 | 源码编译 → `make install` |
+| 手动编译 | leveldb | 1.23 | 源码编译 → `make install` |
 | 手动编译 | Abseil-cpp | latest | 源码编译 → `make install` |
 | Python whl | PyTorch | v2.8.0 | `pip install torch-2.8.0*.whl` |
 | Python whl | vLLM | v0.11.0 | `pip install vllm-0.11.0*.whl` |
@@ -115,10 +118,10 @@ Content-Type: application/json
 | 依赖 | 版本要求 | 备注 |
 |------|----------|------|
 | CMake | >= 3.14 | 编译工具链 |
-| BRPC | | 基础镜像 `linquickrec/base:latest` 已内置 |
-| Protobuf | | 同上 |
-| gflags | | 同上 |
-| leveldb | | 同上 |
+| BRPC | 1.15.0 | 基础镜像 `linquickrec/base:latest` 已内置 |
+| Protobuf | v25.5 | 同上 |
+| gflags | v2.2.2 | 同上 |
+| leveldb | 1.23 | 同上 |
 | Abseil-cpp | latest | 同上 |
 | RapidJSON | v1.1.0 | 项目 `3rdparty/rapidjson/` 内嵌 |
 
