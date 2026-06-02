@@ -73,7 +73,7 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
   --server_port=8005 \
   --kvworker_host=141.61.84.245 \
   --kvworker_port=31502 \
-  --scoring_delay_ms=100
+  --rank_sub_sleep_time_ms=30
 ```
 
 参数说明：
@@ -83,7 +83,7 @@ make rank_sub_server rank_sub_client rank_sub_test -j$(nproc)
 | `--server_port`             | int32  | 8005            | 服务监听端口                    |
 | `--kvworker_host`           | string | "141.61.84.245" | KVWorker 主机地址             |
 | `--kvworker_port`           | int32  | 31502           | KVWorker 端口               |
-| `--scoring_delay_ms`        | int32  | 100             | 模拟打分耗时（毫秒）                |
+| `--rank_sub_sleep_time_ms`  | int32  | 30              | RankSub 成功请求模拟耗时（毫秒）     |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
@@ -131,7 +131,7 @@ docker compose up -d --scale rank-sub-service=5
 | `SERVER_PORT`      | 8005          | 服务端口        |
 | `KVWORKER_HOST`    | 141.61.84.245 | KVWorker 主机 |
 | `KVWORKER_PORT`    | 31502         | KVWorker 端口 |
-| `SCORING_DELAY_MS` | 100           | 模拟打分延迟      |
+| `RANK_SUB_SLEEP_TIME_MS` | 30      | RankSub 成功请求模拟耗时 |
 
 ### 注意事项
 

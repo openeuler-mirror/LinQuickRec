@@ -38,7 +38,7 @@ RankServiceSub 是推荐系统精排层的工作节点，负责从元戎 KVWorke
 │  │  2. Read user_feat from KVWorker (Get)                     │  │
 │  │  3. Parse SKU IDs from skus_sub                            │  │
 │  │  4. Score each SKU (simulate_score)                        │  │
-│  │  5. Optional: simulate scoring delay                       │  │
+│  │  5. Optional: simulate rank_sub sleep time                  │  │
 │  │  6. Return skus_id[] + skus_score[]                        │  │
 │  └──────────────────────────┬────────────────────────────────┘  │
 │                              │                                   │
@@ -124,7 +124,7 @@ service RankSubService {
 3. 从 KVWorker 读取前置计算结果：`KVClient::Get(key, buffer)`
 4. 解析 SKU ID 列表
 5. 对每个 SKU 调用 `simulate_score()` 打分
-6. 可选：模拟打分耗时（`scoring_delay_ms`）
+6. 可选：RankSub 成功请求模拟耗时（`rank_sub_sleep_time_ms`）
 7. 返回 `skus_id[]` 和 `skus_score[]`
 8. 若启用 `enable_timing_stats`，记录 `kv_read_cost`、`scoring_cost`、`simulated_delay`、`server_process_total` 耗时
 
@@ -237,7 +237,7 @@ docker-compose up -d --scale rank-sub-service=5
 | `SERVER_PORT` | 8006 | 服务端口 |
 | `KVWORKER_HOST` | 141.61.84.245 | KVWorker 主机 |
 | `KVWORKER_PORT` | 31502 | KVWorker 端口 |
-| `SCORING_DELAY_MS` | 100 | 模拟打分延迟 |
+| `RANK_SUB_SLEEP_TIME_MS` | 30 | RankSub 成功请求模拟耗时 |
 
 ## 7. 配置参数总表
 
@@ -247,7 +247,7 @@ docker-compose up -d --scale rank-sub-service=5
 | `--kvworker_host` | string | "141.61.84.245" | KVWorker 主机地址 |
 | `--kvworker_port` | int32 | 31502 | KVWorker 端口 |
 | `--etcd_address` | string | "141.61.84.245:2379" | ETCD 地址 |
-| `--scoring_delay_ms` | int32 | 100 | 模拟打分耗时（毫秒） |
+| `--rank_sub_sleep_time_ms` | int32 | 30 | RankSub 成功请求模拟耗时（毫秒） |
 | `--enable_timing_stats` | bool | true | 是否启用详细时延统计 |
 
 ## 8. 端口分配
@@ -279,7 +279,7 @@ RankMaster              RankSub (:8006)               KVWorker
      │                       │        200789: 0.72, ...} │
      │                       │                           │
      │                       │  4. Optional: delay       │
-     │                       │     sleep(scoring_delay)  │
+     │                       │     sleep(rank_sub_sleep) │
      │                       │                           │
      │  RankSubResponse      │                           │
      │  (skus_id: [...],     │                           │

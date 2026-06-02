@@ -309,7 +309,7 @@ kubectl delete -f 00-namespace.yaml
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | Recall |
 | `SUB_WORKER_PARALLELISM` | 4 | RankMaster |
 | `TOP_K` | 100 | RankMaster |
-| `SCORING_DELAY_MS` | 100 | RankSub |
+| `RANK_SUB_SLEEP_TIME_MS` | 30 | RankSub |
 | `TTL_SECONDS` | 100 | Precalc |
 
 修改 ConfigMap 后需要重启相关服务才能生效。

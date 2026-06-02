@@ -1,7 +1,9 @@
 #include "feature_server.h"
 
+#include <chrono>
 #include <random>
 #include <sstream>
+#include <thread>
 
 #include "common/logger.h"
 
@@ -9,11 +11,13 @@ DEFINE_int32(server_port, 8001, "Feature service port");
 DEFINE_int32(user_log_count, 10, "Number of user logs per response");
 DEFINE_int32(user_log_vec_size, 30, "Vector size per user log");
 DEFINE_int32(sku_feat_length, 20, "SKU feature string length");
+DEFINE_int32(feature_sleep_time_ms, 30, "Feature service simulated sleep time (ms)");
 
 namespace feature {
 
 FeatureServiceImpl::FeatureServiceImpl() {
     LOG_INFO << "FeatureServiceImpl (mock) initialized";
+    LOG_INFO << "Feature sleep time: " << FLAGS_feature_sleep_time_ms << " ms";
 }
 
 FeatureServiceImpl::~FeatureServiceImpl() = default;
@@ -99,6 +103,11 @@ common::error::Status FeatureServiceImpl::process_user_features_request(
     kr_rsp->set_other("mock_feat_" + std::to_string(user_id));
     response->set_feature_type(KuaiRand);
 
+    if (FLAGS_feature_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
+    }
+
     return common::error::Status::OK();
 }
 
@@ -128,6 +137,11 @@ common::error::Status FeatureServiceImpl::process_sku_features_request(
             feat += static_cast<char>(char_dist(rng));
         }
         sku_feat->set_feat(feat);
+    }
+
+    if (FLAGS_feature_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
     }
 
     return common::error::Status::OK();

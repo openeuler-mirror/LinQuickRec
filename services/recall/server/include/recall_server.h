@@ -36,6 +36,7 @@ DECLARE_string(discovery_addr);
 DECLARE_string(etcd_endpoints);
 DECLARE_int32(kvcache_ttl_seconds);
 DECLARE_int32(kvcache_size_bytes);
+DECLARE_int32(recall_sleep_time_ms);
 
 DECLARE_string(vllm_connection_type);
 DECLARE_int32(vllm_max_retry);

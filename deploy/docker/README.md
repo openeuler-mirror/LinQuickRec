@@ -265,7 +265,7 @@ docker compose top                    # 容器内进程
 | `RANKSUB_KVWORKER_HOST` | — | 必须指定 | KVWorker 地址 |
 | `RANKSUB_KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
 | `RANKSUB_ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
-| `SCORING_DELAY_MS` | 100 | 允许调整 | 打分延迟 |
+| `RANK_SUB_SLEEP_TIME_MS` | 30 | 允许调整 | RankSub 成功请求模拟耗时 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### Feature

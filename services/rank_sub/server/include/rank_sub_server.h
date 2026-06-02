@@ -23,6 +23,7 @@ DECLARE_string(registry_backend);
 DECLARE_string(discovery_addr);
 DECLARE_string(etcd_endpoints);
 DECLARE_string(kv_worker_service);
+DECLARE_int32(rank_sub_sleep_time_ms);
 
 
 namespace rank {

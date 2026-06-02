@@ -35,7 +35,7 @@ DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
     "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_string(kv_worker_service, "kv_worker",
     "KV Worker service name to discover");
-DEFINE_int32(scoring_delay_ms, 100, "模拟打分耗时（毫秒）");
+DEFINE_int32(rank_sub_sleep_time_ms, 30, "RankSub service simulated sleep time (ms)");
 
 
 namespace rank {
@@ -71,7 +71,7 @@ RankSubServiceImpl::RankSubServiceImpl() {
     LOG_INFO << "RankSubServiceImpl initialized";
     LOG_INFO << "KV Worker ServiceDiscovery: etcd=" << FLAGS_etcd_endpoints
               << ", affinity=PREFERRED_SAME_NODE";
-    LOG_INFO << "Scoring delay: " << FLAGS_scoring_delay_ms << " ms";
+    LOG_INFO << "RankSub sleep time: " << FLAGS_rank_sub_sleep_time_ms << " ms";
 }
 
 void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
@@ -172,9 +172,9 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     int64_t scoring_end_us = butil::gettimeofday_us();
     int64_t scoring_cost_us = scoring_end_us - scoring_start_us;
 
-    if (FLAGS_scoring_delay_ms > 0) {
-        LOG_INFO << "Simulating scoring delay: " << FLAGS_scoring_delay_ms << " ms";
-        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_scoring_delay_ms));
+    if (FLAGS_rank_sub_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating rank_sub sleep: " << FLAGS_rank_sub_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_rank_sub_sleep_time_ms));
     }
 
     int64_t server_send_us = butil::gettimeofday_us();

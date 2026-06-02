@@ -25,6 +25,7 @@ DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
 
 DECLARE_int32(payload_size_kb);
+DECLARE_int32(precalc_sleep_time_ms);
 
 namespace precalc {
 

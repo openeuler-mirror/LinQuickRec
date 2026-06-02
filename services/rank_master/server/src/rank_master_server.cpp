@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <random>
+#include <thread>
 #include <vector>
 
 #include <brpc/channel.h>
@@ -43,6 +44,8 @@ DEFINE_string(sub_worker_lb_policy, "",
               "Sub-worker channel load balancer (rr/wrr/random/la), empty = brpc default");
 DEFINE_int32(sub_worker_parallelism, 4,
              "Number of concurrent buckets when fanning out to RankSub");
+DEFINE_int32(rank_master_sleep_time_ms, 30,
+             "RankMaster service simulated sleep time (ms)");
 
 namespace {
 
@@ -92,6 +95,7 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     LOG_INFO << "Top-K: " << FLAGS_top_k;
     LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
     LOG_INFO << "Sub-worker parallelism: " << FLAGS_sub_worker_parallelism;
+    LOG_INFO << "RankMaster sleep time: " << FLAGS_rank_master_sleep_time_ms << " ms";
 
     std::string backend_addr = (FLAGS_registry_backend == "etcd")
         ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
@@ -345,6 +349,13 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
 
     for (uint64_t candidate : candidates) {
         response->add_candidates(candidate);
+    }
+
+    if (FLAGS_rank_master_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating rank_master sleep: "
+                 << FLAGS_rank_master_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(FLAGS_rank_master_sleep_time_ms));
     }
 
     LOG_INFO << "RankMaster processing completed:"

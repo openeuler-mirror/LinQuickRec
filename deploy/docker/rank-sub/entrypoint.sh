@@ -32,7 +32,7 @@ cd /app/build
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     $DISCOVERY_FLAGS \
     --kv_worker_service=${KV_WORKER_SERVICE:-kv_worker} \
-    --scoring_delay_ms=${SCORING_DELAY_MS:-100} \
+    --rank_sub_sleep_time_ms=${RANK_SUB_SLEEP_TIME_MS:-30} \
     "$@" &
 SERVICE_PID=$!
 

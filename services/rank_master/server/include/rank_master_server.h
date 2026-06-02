@@ -34,6 +34,7 @@ DECLARE_int32(sub_worker_connect_timeout_ms);
 DECLARE_int32(sub_worker_backup_request_ms);
 DECLARE_string(sub_worker_lb_policy);
 DECLARE_int32(sub_worker_parallelism);
+DECLARE_int32(rank_master_sleep_time_ms);
 
 namespace rank {
 

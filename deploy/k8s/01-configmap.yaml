@@ -44,6 +44,10 @@ data:
   SERVER_NUM_THREADS: "0"
   SERVER_IDLE_TIMEOUT_SEC: "-1"
   SERVER_MAX_CONCURRENCY: "0"
+  FEATURE_SLEEP_TIME_MS: "30"
+  RECALL_SLEEP_TIME_MS: "30"
+  PRECALC_SLEEP_TIME_MS: "30"
+  RANK_MASTER_SLEEP_TIME_MS: "30"
 
   # ========================
   # 下游通道共享参数
@@ -116,4 +120,4 @@ data:
   # ========================
   # RankSub
   # ========================
-  SCORING_DELAY_MS: "100"
+  RANK_SUB_SLEEP_TIME_MS: "30"

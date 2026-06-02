@@ -1,5 +1,6 @@
 #include "recall_server.h"
 
+#include <chrono>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -46,6 +47,7 @@ DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
     "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_int32(kvcache_ttl_seconds, 3600, "KVCache TTL（秒，默认 1 小时）");
 DEFINE_int32(kvcache_size_bytes, 256, "KVCache 大小（字节，作为 RNG seed blob）");
+DEFINE_int32(recall_sleep_time_ms, 30, "Recall service simulated sleep time (ms)");
 
 DEFINE_string(vllm_connection_type, "pooled",
               "vLLM channel connection type (pooled/short)");
@@ -278,6 +280,7 @@ static void generate_skus_from_seed(const uint8_t* seed_data, size_t seed_size,
 RecallServiceImpl::RecallServiceImpl()
     : vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
     LOG_INFO << "RecallServiceImpl initialized, enable_vllm=" << FLAGS_enable_vllm;
+    LOG_INFO << "Recall sleep time: " << FLAGS_recall_sleep_time_ms << " ms";
 
     if (!FLAGS_enable_vllm) {
         datasystem::ServiceDiscoveryOptions sdOpts;
@@ -443,6 +446,11 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
                                 FLAGS_sku_count, &result.response);
     }
 
+    if (FLAGS_recall_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
+    }
+
     LOG_INFO << "KVCache recall completed, key=" << kv_key
               << ", sku_count=" << result.response.sku_ids_size()
               << ", total_cost=" << (butil::gettimeofday_us() - start_us) / 1000.0 << " ms";
@@ -495,6 +503,11 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         return result;
     }
     int64_t parse_end_us = butil::gettimeofday_us();
+
+    if (FLAGS_recall_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
+    }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
