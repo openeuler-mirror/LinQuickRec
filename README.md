@@ -10,19 +10,22 @@
 
 ## 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| 通信框架 | BRPC (可支持UB协议) |
-| 序列化 | Protocol Buffers |
-| KVCache | 元戎 (openYuanrong Datasystem) |
-| 容器化搭建 | Docker + Docker Compose |
-| 容器化部署 | Kubernetes |
-| 模型推理 | vLLM (Qwen3-0.6B) |
-| 服务发现 | ETCD |
-| JSON 处理 | RapidJSON/ |
-| 日志 | common::logger |
-| 线程池 | common::ThreadPool |
-| 错误码 | common::error::Status（0xMMTTCCCC）|
+| 类别 | 技术 | 版本 |
+|------|------|------|
+| 通信框架 | BRPC | |
+| 序列化 | Protocol Buffers | 4.25.5 |
+| 服务发现 | etcd | v3.5 |
+| KVCache | 元戎 (openYuanrong Datasystem) | v0.7.0 |
+| 模型推理 | vLLM (Qwen3-0.6B) | v0.11.0 |
+| 深度学习框架 | PyTorch | v2.8.0 |
+| JSON 处理 | RapidJSON | v1.1.0 |
+| 日志 | common::logger | 项目内 |
+| 线程池 | common::ThreadPool | 项目内 |
+| 错误码 | common::error::Status（0xMMTTCCCC） | 项目内 |
+| 基座 OS | openEuler | 24.03 SP3 LTS |
+| GPU | NVIDIA RTX 4090D | — |
+| 容器化搭建 | Docker + Docker Compose | — |
+| 容器化部署 | Kubernetes | — |
 
 ## 服务列表
 
@@ -87,15 +90,37 @@ Content-Type: application/json
 
 ## 编译命令
 
+### 基础镜像
+
+编译与运行依赖的基础镜像 `linquickrec/base:latest` 基于 `openeuler:24.03-sp3-lts`，包含以下组件：
+
+| 类别 | 组件 | 版本 | 集成方式 |
+|------|------|------|---------|
+| 系统包 | CMake | >= 3.14 | yum install cmake |
+| 系统包 | GCC | >= 12 | yum install gcc-c++ |
+| 系统包 | curl / openssl-devel | latest | yum install |
+| 手动编译 | BRPC | | 源码编译 → `make install` |
+| 手动编译 | Protobuf | | 源码编译 → `make install` |
+| 手动编译 | gflags | | 源码编译 → `make install` |
+| 手动编译 | leveldb | | 源码编译 → `make install` |
+| 手动编译 | Abseil-cpp | latest | 源码编译 → `make install` |
+| Python whl | PyTorch | v2.8.0 | `pip install torch-2.8.0*.whl` |
+| Python whl | vLLM | v0.11.0 | `pip install vllm-0.11.0*.whl` |
+| Python whl | 元戎 Datasystem | v0.7.0 | `pip install openyuanrong_datasystem-0.7.0*.whl` |
+| 模型参数 | Qwen3-0.6B | — | 模型文件，约 1.2GB |
+| 硬件 | NVIDIA RTX 4090D | — | 物理 GPU，需安装 NVIDIA 驱动 + CUDA |
+
 ### 前置依赖
 
 | 依赖 | 版本要求 | 备注 |
 |------|----------|------|
 | CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | 基础镜像 `linquickrec/base:latest` 已内置 |
-| protobuf | >= 3.0 | 同上 |
-| abseil-cpp | latest | 同上 |
-| gflags | latest | 同上 |
+| BRPC | | 基础镜像 `linquickrec/base:latest` 已内置 |
+| Protobuf | | 同上 |
+| gflags | | 同上 |
+| leveldb | | 同上 |
+| Abseil-cpp | latest | 同上 |
+| RapidJSON | v1.1.0 | 项目 `3rdparty/rapidjson/` 内嵌 |
 
 ### 脚本构建
 
