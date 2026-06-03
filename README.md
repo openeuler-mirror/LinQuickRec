@@ -8,26 +8,34 @@
 
 ![系统架构图](docs/images/system-arch.png)
 
-## 依赖列表
+## 环境依赖
 
-| 类别 | 技术 | 版本 |
+| 环境要求 | 版本 |
+|---------|------|
+| 基础镜像OS | openEuler-24.03-SP3-LTS |
+| GPU | NVIDIA RTX 4090D |
+| GPU驱动 | 575.57.08 |
+| CUDA | 12.9 |
+| Docker | - |
+| Kubernetes | v1.19.9 |
+
+## 业务依赖
+
+| 类目 | 技术 | 版本 |
 |------|------|------|
 | 通信框架 | BRPC | 1.15.0 |
-| 序列化 | Protocol Buffers | v25.5 |
-| 命令行参数 | gflags | v2.2.2 |
-| KV 存储 | leveldb | 1.23 |
+| 依赖组件 | Protocol Buffers | v25.5 |
+| 依赖组件 | gflags | v2.2.2 |
+| 依赖组件 | leveldb | 1.23 |
+| 依赖组件 | RapidJSON | v1.1.0 |
+| Recall实现 | vLLM | v0.11.0 |
+| Recall模型 | Qwen3-0.6B | - |
+| 依赖组件 | PyTorch | v2.8.0 |
+| KVCache | yuanrong-datasystem | v0.7.0 |
 | 服务发现 | etcd | v3.5 |
-| KVCache | 元戎 (openYuanrong Datasystem) | v0.7.0 |
-| 模型推理 | vLLM (Qwen3-0.6B) | v0.11.0 |
-| 深度学习框架 | PyTorch | v2.8.0 |
-| JSON 处理 | RapidJSON | v1.1.0 |
-| 日志 | common::logger | 项目内 |
+| 日志组件 | common::logger | 项目内 |
 | 线程池 | common::ThreadPool | 项目内 |
-| 错误码 | common::error::Status（0xMMTTCCCC） | 项目内 |
-| 基座 OS | openEuler | 24.03 SP3 LTS |
-| GPU | NVIDIA RTX 4090D | — |
-| 容器化搭建 | Docker + Docker Compose | — |
-| 容器化部署 | Kubernetes | — |
+| 错误码 | common::error::Status | 项目内 |
 
 ## 服务列表
 
@@ -38,7 +46,7 @@
 | Recall | 8002 | RecallService | ✅ 已完成 | vLLM, KVWorker |
 | Precalc | 8003 | PrecalcService | ✅ 已完成 | KVWorker |
 | RankMaster | 8004 | RankMasterService | ✅ 已完成 | Discovery, RankSub |
-| Feature | 8001 | FeatureService | ✅ 模拟实现 | — |
+| Feature | 8001 | FeatureService | ✅ 模拟实现 | Redis |
 | KVWorker | 31502 | — | 由元戎提供服务 | etcd (internal) |
 | vLLM | 8000 | — | 模型服务 | Qwen3-0.6B |
 
@@ -98,20 +106,18 @@ Content-Type: application/json
 
 | 类别 | 组件 | 版本 | 集成方式 |
 |------|------|------|---------|
-| 系统包 | CMake | >= 3.14 | yum install cmake |
-| 系统包 | GCC | >= 12 | yum install gcc-c++ |
-| 系统包 | curl | latest | yum install curl |
-| 系统包 | OpenSSL | OpenSSL_1_1_1m | yum install openssl-devel |
-| 手动编译 | BRPC | 1.15.0 | 源码编译 → `make install` |
-| 手动编译 | Protobuf | v25.5 | 源码编译 → `make install` |
-| 手动编译 | gflags | v2.2.2 | 源码编译 → `make install` |
-| 手动编译 | leveldb | 1.23 | 源码编译 → `make install` |
-| 手动编译 | Abseil-cpp | latest | 源码编译 → `make install` |
-| Python whl | PyTorch | v2.8.0 | `pip install torch-2.8.0*.whl` |
-| Python whl | vLLM | v0.11.0 | `pip install vllm-0.11.0*.whl` |
-| Python whl | 元戎 Datasystem | v0.7.0 | `pip install openyuanrong_datasystem-0.7.0*.whl` |
+| 系统包 | CMake | (ref) 3.27.9 | yum install cmake |
+| 系统包 | GCC | (ref) 12.3.1 | yum install gcc-c++ |
+| 手动编译  | OpenSSL | OpenSSL_1_1_1m | 源码编译 |
+| 手动编译 | BRPC | 1.15.0 | 源码编译 |
+| 手动编译 | Protobuf | v25.5 | 源码编译 |
+| 手动编译 | gflags | v2.2.2 | 源码编译 |
+| 手动编译 | leveldb | 1.23 | 源码编译 |
+| 手动编译 | Abseil-cpp | latest | 源码编译 |
+| Python whl | PyTorch | v2.8.0 | `torch-2.8.0*.whl` |
+| Python whl | vLLM | v0.11.0 | `vllm-0.11.0*.whl` |
+| Python whl | 元戎 Datasystem | v0.7.0 | `openyuanrong_datasystem-0.7.0*.whl` |
 | 模型参数 | Qwen3-0.6B | — | 模型文件，约 1.2GB |
-| 硬件 | NVIDIA RTX 4090D | — | 物理 GPU，需安装 NVIDIA 驱动 + CUDA |
 
 ### 前置依赖
 
