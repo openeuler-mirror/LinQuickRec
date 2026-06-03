@@ -43,7 +43,7 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 
 系统通过以下方式模拟真实推荐场景的负载特征：
 
-- **时延注入**：RankSub 通过 `--scoring_delay_ms` 参数模拟不同计算开销的商品打分时延
+- **时延注入**：Feature、Recall、Precalc、RankMaster、RankSub 通过各自的 `--<service>_sleep_time_ms` 参数模拟成功请求时延
 - **数据仿真**：测试客户端可指定 SKU 数量、tensor 大小、payload 大小等参数，模拟不同规模的数据传输
 - **并发仿真**：Proxy 全局线程池可配置并发度，模拟不同并发请求量下的系统行为
 - **副本扩缩**：Recall、Precalc、RankMaster、RankSub 均支持多副本部署，通过 docker-compose scale 模拟集群规模变化

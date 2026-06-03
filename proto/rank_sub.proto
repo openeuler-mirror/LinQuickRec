@@ -17,6 +17,7 @@ message RankSubRequest {
 message RankSubResponse {
     repeated uint32 skus_id = 1;
     repeated uint64 skus_score = 2;
+    string payload = 3;
     int32 error_code = 100;
     string error_message = 101;
 }

@@ -99,7 +99,7 @@ message KRUserLog {
 message RecallRequest {
     uint64 user_id = 1;
     repeated KRUserLog user_logs = 2;
-    string other = 3;
+    string payload = 3;
     string trace_id = 4;     // 分布式追踪 ID
 }
 
@@ -118,7 +118,7 @@ service RecallService {
 |------|------|------|
 | `user_id` | uint64 | 用户唯一标识 |
 | `user_logs` | KRUserLog[] | 用户行为日志，每条包含特征向量 |
-| `other` | string | 附加信息（JSON 格式） |
+| `payload` | string | 模拟负载 |
 | `trace_id` | string | 分布式追踪 ID，用于跨服务链路追踪 |
 | `sku_ids` | uint64[] | 召回的候选 SKU ID 列表 |
 
@@ -259,7 +259,7 @@ deploy:
 Client                   RecallService                    vLLM
   │                          │                              │
   │  RecallRequest           │                              │
-  │  (user_id, logs, other)  │                              │
+  │  (user_id, logs, payload)│                              │
   │─────────────────────────▶│                              │
   │                          │  proto_to_json()              │
   │                          │  build_vllm_request()         │

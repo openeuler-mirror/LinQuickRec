@@ -33,6 +33,7 @@ cd /app/build
     $DISCOVERY_FLAGS \
     --kv_worker_service=${KV_WORKER_SERVICE:-kv_worker} \
     --rank_sub_sleep_time_ms=${RANK_SUB_SLEEP_TIME_MS:-30} \
+    --rank_sub_payload_size_kb=${RANK_SUB_PAYLOAD_SIZE_KB:-0} \
     "$@" &
 SERVICE_PID=$!
 

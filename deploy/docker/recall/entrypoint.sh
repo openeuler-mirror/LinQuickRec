@@ -48,6 +48,7 @@ fi
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     --recall_sleep_time_ms=${RECALL_SLEEP_TIME_MS:-30} \
+    --recall_payload_size_kb=${RECALL_PAYLOAD_SIZE_KB:-0} \
     --enable_vllm=${ENABLE_VLLM} \
     --vllm_base_url=${VLLM_BASE_URL:-http://127.0.0.1:8000} \
     --vllm_endpoint=${VLLM_ENDPOINT:-/v1/chat/completions} \

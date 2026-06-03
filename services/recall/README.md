@@ -135,7 +135,7 @@ docker run -d --name recall-service \
 ```
        Client (Proxy)
             │
-            │ Recall(user_id, logs, other)
+            │ Recall(user_id, logs, payload)
             ▼
    ┌─────────────────────┐
    │   RecallService     │

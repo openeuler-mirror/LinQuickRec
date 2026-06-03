@@ -20,6 +20,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/random_utils.h"
 #include "common/sku_utils.h"
 
 using namespace datasystem;
@@ -36,6 +37,7 @@ DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
 DEFINE_string(kv_worker_service, "kv_worker",
     "KV Worker service name to discover");
 DEFINE_int32(rank_sub_sleep_time_ms, 30, "RankSub service simulated sleep time (ms)");
+DEFINE_int32(rank_sub_payload_size_kb, 0, "RankSub response payload size (KB)");
 
 
 namespace rank {
@@ -72,6 +74,7 @@ RankSubServiceImpl::RankSubServiceImpl() {
     LOG_INFO << "KV Worker ServiceDiscovery: etcd=" << FLAGS_etcd_endpoints
               << ", affinity=PREFERRED_SAME_NODE";
     LOG_INFO << "RankSub sleep time: " << FLAGS_rank_sub_sleep_time_ms << " ms";
+    LOG_INFO << "RankSub payload size: " << FLAGS_rank_sub_payload_size_kb << " KB";
 }
 
 void RankSubServiceImpl::Rank(google::protobuf::RpcController* controller,
@@ -99,7 +102,8 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     int64_t server_receive_us = butil::gettimeofday_us();
 
-    LOG_INFO << "Rank request received";
+    LOG_INFO << "Rank request received, payload_size="
+             << request->payload().size() << " bytes";
 
     if (request->user_feat_key().empty()) {
         auto status = common::error::Status(rank_sub_errors::EMPTY_USER_FEAT_KEY,
@@ -172,6 +176,10 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     int64_t scoring_end_us = butil::gettimeofday_us();
     int64_t scoring_cost_us = scoring_end_us - scoring_start_us;
 
+    int payload_size_kb = FLAGS_rank_sub_payload_size_kb > 0
+        ? FLAGS_rank_sub_payload_size_kb : 0;
+    response->set_payload(common::generate_random_string(payload_size_kb * 1024));
+
     if (FLAGS_rank_sub_sleep_time_ms > 0) {
         LOG_INFO << "Simulating rank_sub sleep: " << FLAGS_rank_sub_sleep_time_ms << " ms";
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_rank_sub_sleep_time_ms));
@@ -183,7 +191,8 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     LOG_INFO << "Rank processing completed:"
               << " sku_count=" << sku_ids.size()
               << ", response_skus_id_count=" << response->skus_id_size()
-              << ", response_skus_score_count=" << response->skus_score_size();
+              << ", response_skus_score_count=" << response->skus_score_size()
+              << ", payload_size=" << response->payload().size() << " bytes";
 
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;

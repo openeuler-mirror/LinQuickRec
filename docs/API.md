@@ -101,7 +101,7 @@ service FeatureService {
 | 字段 | 类型 | 编号 | 说明 |
 |------|------|------|------|
 | `user_logs` | `repeated KRUserLog` | 1 | 用户日志列表 |
-| `other` | `string` | 2 | 其他数据 |
+| `payload` | `string` | 2 | 模拟 payload 数据 |
 
 #### UserFeatureRequest
 
@@ -214,7 +214,7 @@ service RecallService {
 |------|------|------|------|
 | `user_id` | `uint64` | 1 | 用户 ID |
 | `user_logs` | `repeated KRUserLog` | 2 | 用户日志列表 |
-| `other` | `string` | 3 | 其他数据 |
+| `payload` | `string` | 3 | 模拟 payload 数据 |
 
 #### RecallResponse
 
@@ -223,6 +223,7 @@ service RecallService {
 | 字段 | 类型 | 编号 | 说明 |
 |------|------|------|------|
 | `sku_ids` | `repeated uint64` | 1 | 召回的 SKU ID 列表 |
+| `payload` | `string` | 2 | 模拟 payload 数据 |
 
 ### 配置参数
 
@@ -239,7 +240,7 @@ service RecallService {
 // 客户端调用示例
 recall::RecallRequest request;
 request.set_user_id(12345);
-request.set_other("test_request");
+request.set_payload("test_request");
 
 // 添加用户日志
 for (int i = 0; i < 3; ++i) {

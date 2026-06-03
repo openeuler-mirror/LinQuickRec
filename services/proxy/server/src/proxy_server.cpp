@@ -227,7 +227,7 @@ common::error::Status ProxyServiceImpl::call_recall_service(
 
     recall::RecallRequest recall_req;
     recall_req.set_user_id(user_id);
-    recall_req.set_other(user_feat.kr_feat_rsp().other());
+    recall_req.set_payload(user_feat.kr_feat_rsp().payload());
     recall_req.set_trace_id(tls_trace_id);
 
     for (const auto& log : user_feat.kr_feat_rsp().user_logs()) {
@@ -288,9 +288,9 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     }
 
     precalc::PrecalcRequest precalc_req;
-    precalc_req.set_user_feat(user_feat.kr_feat_rsp().other().empty()
+    precalc_req.set_user_feat(user_feat.kr_feat_rsp().payload().empty()
                               ? "user_feat_default"
-                              : user_feat.kr_feat_rsp().other());
+                              : user_feat.kr_feat_rsp().payload());
     precalc_req.set_trace_id(tls_trace_id);
 
     brpc::Controller cntl;

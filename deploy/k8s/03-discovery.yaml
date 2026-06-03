@@ -25,6 +25,9 @@ spec:
         envFrom:
         - configMapRef:
             name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8100"
         readinessProbe:
           tcpSocket:
             port: 8100

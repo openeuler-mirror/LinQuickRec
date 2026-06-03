@@ -104,6 +104,7 @@
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8001 | 允许调整 | 监听端口 |
 | `--feature_sleep_time_ms` | int32 | 30 | 允许调整 | Feature 成功请求模拟耗时 (ms) |
+| `--feature_payload_size_kb` | int32 | 0 | 允许调整 | Feature 响应模拟负载大小 (KB) |
 | `--user_log_count` | int32 | 10 | 允许调整 | 每次响应的用户日志数量 |
 | `--user_log_vec_size` | int32 | 30 | 允许调整 | 每条用户日志向量大小 |
 | `--sku_feat_length` | int32 | 20 | 允许调整 | SKU 特征字符串长度 |
@@ -124,6 +125,7 @@
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8002 | 允许调整 | 监听端口 |
 | `--recall_sleep_time_ms` | int32 | 30 | 允许调整 | Recall 成功请求模拟耗时 (ms) |
+| `--recall_payload_size_kb` | int32 | 0 | 允许调整 | Recall 响应模拟负载大小 (KB) |
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | 允许调整 | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | 允许调整 | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 允许调整 | 模型名称/路径 |
@@ -176,6 +178,7 @@
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8004 | 允许调整 | 监听端口 |
 | `--rank_master_sleep_time_ms` | int32 | 30 | 允许调整 | RankMaster 成功请求模拟耗时 (ms) |
+| `--rank_master_payload_size_kb` | int32 | 0 | 允许调整 | RankMaster 响应模拟负载大小 (KB) |
 | `--registry_backend` | string | "etcd" | 允许调整 | 服务发现后端：`etcd`（默认）或 `discovery_server` |
 | `--discovery_addr` | string | "" | 必须指定 | Discovery 地址（discovery_server 后端，取自全局 `DISCOVERY_ADDR`） |
 | `--etcd_endpoints` | string | "127.0.0.1:2379" | 允许调整 | etcd 节点地址，逗号分隔（etcd 后端，取自全局 `ETCD_ENDPOINTS`） |
@@ -211,6 +214,7 @@
 | `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
 | `--kv_worker_service` | string | "kv_worker" | 允许调整 | KV Worker 在 Discovery 中的注册服务类型名 |
 | `--rank_sub_sleep_time_ms` | int32 | 30 | 允许调整 | RankSub 成功请求模拟耗时 (ms) |
+| `--rank_sub_payload_size_kb` | int32 | 0 | 允许调整 | RankSub 响应模拟负载大小 (KB) |
 
 ### Server 端参数
 

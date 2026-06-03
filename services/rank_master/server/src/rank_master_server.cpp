@@ -20,6 +20,7 @@
 #include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/random_utils.h"
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
 
@@ -46,6 +47,8 @@ DEFINE_int32(sub_worker_parallelism, 4,
              "Number of concurrent buckets when fanning out to RankSub");
 DEFINE_int32(rank_master_sleep_time_ms, 30,
              "RankMaster service simulated sleep time (ms)");
+DEFINE_int32(rank_master_payload_size_kb, 0,
+             "RankMaster response payload size (KB)");
 
 namespace {
 
@@ -54,6 +57,7 @@ struct SubWorkerTask {
     int bucket_index;
     const std::string* user_feat_key;
     const std::vector<uint64_t>* sku_ids;
+    const std::string* payload;
     const std::string* trace_id;
     bool success = false;
     rank::RankSubResponse response;
@@ -96,6 +100,7 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     LOG_INFO << "Sub-worker service type: " << FLAGS_sub_worker_service_type;
     LOG_INFO << "Sub-worker parallelism: " << FLAGS_sub_worker_parallelism;
     LOG_INFO << "RankMaster sleep time: " << FLAGS_rank_master_sleep_time_ms << " ms";
+    LOG_INFO << "RankMaster payload size: " << FLAGS_rank_master_payload_size_kb << " KB";
 
     std::string backend_addr = (FLAGS_registry_backend == "etcd")
         ? FLAGS_etcd_endpoints : FLAGS_discovery_addr;
@@ -134,6 +139,7 @@ void RankMasterServiceImpl::Rank(google::protobuf::RpcController* controller,
 bool RankMasterServiceImpl::call_sub_worker(
     const std::string& user_feat_key,
     const std::vector<uint64_t>& sku_ids,
+    const std::string& payload,
     const std::string& trace_id,
     RankSubResponse* response) {
 
@@ -158,6 +164,7 @@ bool RankMasterServiceImpl::call_sub_worker(
     RankSubRequest request;
     request.set_user_feat_key(user_feat_key);
     request.set_skus_sub(skus_to_string(sku_ids));
+    request.set_payload(payload);
     request.set_trace_id(trace_id);
 
     brpc::Controller cntl;
@@ -176,6 +183,8 @@ bool RankMasterServiceImpl::call_sub_worker(
 
     service_discovery_->ReportSuccess(instance_id);
     LOG_INFO << "Sub-worker returned " << response->skus_score_size() << " scores"
+              << ", request_payload_size=" << payload.size() << " bytes"
+              << ", response_payload_size=" << response->payload().size() << " bytes"
               << ", cost=" << (end_us - start_us) / 1000.0 << " ms"
               << ", brpc_latency=" << cntl.latency_us() / 1000.0 << " ms"
               << ", instance=" << instance_id;
@@ -186,7 +195,11 @@ bool RankMasterServiceImpl::call_sub_worker(
 void* RankMasterServiceImpl::sub_worker_bthread_fn(void* arg) {
     auto* task = static_cast<SubWorkerTask*>(arg);
     task->success = task->self->call_sub_worker(
-        *task->user_feat_key, *task->sku_ids, *task->trace_id, &task->response);
+        *task->user_feat_key,
+        *task->sku_ids,
+        *task->payload,
+        *task->trace_id,
+        &task->response);
     return nullptr;
 }
 
@@ -276,7 +289,9 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             continue;
         }
 
-        tasks.push_back({this, i, &request->user_feat_key(), &distribution[i], &trace_id});
+        tasks.push_back({
+            this, i, &request->user_feat_key(), &distribution[i],
+            &request->payload(), &trace_id});
 
         bthread_t tid;
         if (bthread_start_background(&tid, nullptr, sub_worker_bthread_fn, &tasks.back()) == 0) {
@@ -328,7 +343,8 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
 
     int64_t server_receive_us = butil::gettimeofday_us();
 
-    LOG_INFO << "RankMaster request received";
+    LOG_INFO << "RankMaster request received, payload_size="
+             << request->payload().size() << " bytes";
 
     std::vector<uint64_t> all_sku_ids;
     auto status = validate_and_parse(request, all_sku_ids);
@@ -350,6 +366,9 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     for (uint64_t candidate : candidates) {
         response->add_candidates(candidate);
     }
+    int payload_size_kb = FLAGS_rank_master_payload_size_kb > 0
+        ? FLAGS_rank_master_payload_size_kb : 0;
+    response->set_payload(common::generate_random_string(payload_size_kb * 1024));
 
     if (FLAGS_rank_master_sleep_time_ms > 0) {
         LOG_INFO << "Simulating rank_master sleep: "
@@ -361,7 +380,8 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     LOG_INFO << "RankMaster processing completed:"
               << " input_skus=" << all_sku_ids.size()
               << " scored_skus=" << all_scores.size()
-              << " output_candidates=" << response->candidates_size();
+              << " output_candidates=" << response->candidates_size()
+              << " payload_size=" << response->payload().size() << " bytes";
 
     int64_t end_us = butil::gettimeofday_us();
     int64_t cost_us = end_us - server_receive_us;

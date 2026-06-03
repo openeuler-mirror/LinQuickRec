@@ -84,7 +84,7 @@ message KRUserLog {
 // 快推用户特征响应
 message KRUserFeatureResponse {
     repeated KRUserLog user_logs = 1;
-    string other = 2;
+    string payload = 2;
 }
 
 // 用户特征请求
@@ -131,7 +131,7 @@ service FeatureService {
 | `user_id` | uint64 | 用户唯一标识 |
 | `feature_type` | FeatureType | 特征类型（当前仅支持 KuaiRand） |
 | `user_logs` | KRUserLog[] | 用户行为日志，每条包含 uint32 特征向量 |
-| `other` | string | 附加信息 |
+| `payload` | string | 模拟负载 |
 | `sku_ids` | uint64[] | SKU ID 列表 |
 | `kr_sku_feats` | KRSKUFeature[] | SKU 特征列表 |
 
@@ -146,7 +146,7 @@ service FeatureService {
 1. 从 `kr_feat_req` 提取 `user_id`
 2. 随机生成 5~20 条 `KRUserLog`
 3. 每条日志包含 10~50 个随机 uint32 特征值（范围 0~10000）
-4. 设置 `other` 为 `"模拟特征_<user_id>"`
+4. 设置 `payload` 为模拟负载
 5. 设置 `feature_type` 为 `KuaiRand`
 
 **GetSKUFeatures 请求处理流程**：
@@ -205,7 +205,7 @@ Upstream                   FeatureService
      │                           │     (5~20 条, 每条 10~50 向量)
      │                           │
      │  UserFeatureResponse      │
-     │  (user_logs, other)       │
+     │  (user_logs, payload)     │
      │◀──────────────────────────│
 ```
 

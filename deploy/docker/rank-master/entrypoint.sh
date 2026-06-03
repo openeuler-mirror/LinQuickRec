@@ -23,6 +23,7 @@ cd /app/build
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     --rank_master_sleep_time_ms=${RANK_MASTER_SLEEP_TIME_MS:-30} \
+    --rank_master_payload_size_kb=${RANK_MASTER_PAYLOAD_SIZE_KB:-0} \
     --top_k=${TOP_K:-100} \
     $DISCOVERY_FLAGS \
     --sub_worker_service_type=${SUB_WORKER_SERVICE_TYPE:-rank_sub} \

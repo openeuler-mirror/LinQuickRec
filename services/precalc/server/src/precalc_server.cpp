@@ -220,7 +220,8 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
 
-    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
+    int payload_size_kb = FLAGS_payload_size_kb > 0 ? FLAGS_payload_size_kb : 0;
+    std::string payload = common::generate_random_string(payload_size_kb * 1024);
     response->set_payload(payload);
     response->set_user_feat_key(user_feat_key);
 

@@ -75,7 +75,7 @@ static int test_user_features(feature::FeatureService_Stub& stub) {
         std::cout << "    log[" << i << "] vec_size="
                   << kr_rsp.user_logs(i).vec_size() << std::endl;
     }
-    std::cout << "  other: " << kr_rsp.other() << std::endl;
+    std::cout << "  payload size: " << kr_rsp.payload().size() << " bytes" << std::endl;
     std::cout << "Latency: total=" << total_ms << " ms, network="
               << network_ms << " ms" << std::endl;
     std::cout << "PASSED" << std::endl;

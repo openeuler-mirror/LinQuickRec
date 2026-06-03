@@ -157,6 +157,20 @@ docker compose restart proxy-service  # 重启单个服务
 docker compose build recall-service   # 只构建 recall
 docker compose up -d recall-service   # 只启动 recall
 
+# ---- 构建并推送到私仓 ----
+./push-to-registry.sh                 # 构建并推送全部镜像
+./push-to-registry.sh etcd            # 只构建并推送 etcd
+./push-to-registry.sh discovery       # 只构建并推送 discovery
+./push-to-registry.sh kv-worker       # 只构建并推送 kv-worker
+./push-to-registry.sh feature         # 只构建并推送 feature
+./push-to-registry.sh recall          # 只构建并推送 recall
+./push-to-registry.sh precalc         # 只构建并推送 precalc
+./push-to-registry.sh rank-sub        # 只构建并推送 rank-sub
+./push-to-registry.sh rank-master     # 只构建并推送 rank-master
+./push-to-registry.sh proxy           # 只构建并推送 proxy
+./push-to-registry.sh --registry 10.0.0.1:5000 rank-sub
+./push-to-registry.sh --dry-run all   # 预览命令，不执行
+
 # ---- 查看日志 ----
 docker compose logs -f                        # 全部日志（实时跟踪）
 docker compose logs -f proxy-service          # 单个服务日志
@@ -220,6 +234,8 @@ docker compose top                    # 容器内进程
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | 允许调整 | 模型路径（容器内） |
 | `VLLM_TIMEOUT_MS` | 100000 | 允许调整 | vLLM 请求超时 |
 | `SKU_COUNT` | 1000 | 允许调整 | SKU 数量 |
+| `RECALL_SLEEP_TIME_MS` | 30 | 允许调整 | Recall 成功请求模拟耗时 |
+| `RECALL_PAYLOAD_SIZE_KB` | 0 | 允许调整 | Recall 响应模拟负载大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### Precalc
@@ -236,6 +252,7 @@ docker compose top                    # 容器内进程
 | `PRECALC_ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
 | `TTL_SECONDS` | 5 | 允许调整 | KV 缓存 TTL |
 | `PRECALC_RESULT_SIZE_MB` | 8.5 | 允许调整 | 预计算结果大小 (MB) |
+| `PRECALC_SLEEP_TIME_MS` | 30 | 允许调整 | Precalc 成功请求模拟耗时 |
 | `PAYLOAD_SIZE_KB` | 100 | 允许调整 | Payload 大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
@@ -251,6 +268,8 @@ docker compose top                    # 容器内进程
 | `SUB_WORKER_COUNT` | 3 | 允许调整 | RankSub 数量 |
 | `SUB_WORKER_ADDRESSES` | rank-sub-service:8005 | 允许调整 | RankSub 地址 |
 | `TOP_K` | 100 | 允许调整 | 返回 Top-K |
+| `RANK_MASTER_SLEEP_TIME_MS` | 30 | 允许调整 | RankMaster 成功请求模拟耗时 |
+| `RANK_MASTER_PAYLOAD_SIZE_KB` | 0 | 允许调整 | RankMaster 响应模拟负载大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### RankSub
@@ -266,6 +285,7 @@ docker compose top                    # 容器内进程
 | `RANKSUB_KVWORKER_PORT` | — | 必须指定 | KVWorker 端口 |
 | `RANKSUB_ETCD_ADDRESS` | — | 必须指定 | ETCD 地址 |
 | `RANK_SUB_SLEEP_TIME_MS` | 30 | 允许调整 | RankSub 成功请求模拟耗时 |
+| `RANK_SUB_PAYLOAD_SIZE_KB` | 0 | 允许调整 | RankSub 响应模拟负载大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### Feature
@@ -277,6 +297,8 @@ docker compose top                    # 容器内进程
 | 环境变量 | 默认值 | 配置级别 | 说明 |
 |---------|--------|---------|------|
 | `SERVER_PORT` | 8001 | 允许调整 | 监听端口 |
+| `FEATURE_SLEEP_TIME_MS` | 30 | 允许调整 | Feature 成功请求模拟耗时 |
+| `FEATURE_PAYLOAD_SIZE_KB` | 0 | 允许调整 | Feature 响应模拟负载大小 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### KVWorker
@@ -284,5 +306,7 @@ docker compose top                    # 容器内进程
 安装 `openyuanrong_datasystem` 包，运行 `start_datasystem.sh`。
 
 启动流程：执行 start_datasystem.sh。
+
+KVWorker、Precalc、RankSub 需要共享宿主机 IPC 和 `/dev/shm`，compose 中已为这三个容器配置 `ipc: host`、`privileged: true` 和 `/dev/shm:/dev/shm`。
 
 无环境变量配置。

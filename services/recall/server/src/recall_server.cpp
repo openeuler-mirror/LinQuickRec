@@ -31,6 +31,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/random_utils.h"
 
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
 DEFINE_string(vllm_endpoint, "/v1/chat/completions", "vLLM 聊天接口端点");
@@ -48,6 +49,7 @@ DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
 DEFINE_int32(kvcache_ttl_seconds, 3600, "KVCache TTL（秒，默认 1 小时）");
 DEFINE_int32(kvcache_size_bytes, 256, "KVCache 大小（字节，作为 RNG seed blob）");
 DEFINE_int32(recall_sleep_time_ms, 30, "Recall service simulated sleep time (ms)");
+DEFINE_int32(recall_payload_size_kb, 0, "Recall response payload size (KB)");
 
 DEFINE_string(vllm_connection_type, "pooled",
               "vLLM channel connection type (pooled/short)");
@@ -91,7 +93,7 @@ std::string proto_to_json(const RecallRequest* request) {
     }
     d.AddMember("user_logs", user_logs, allocator);
 
-    // d.AddMember("other", Value(request->other().c_str(), allocator).Move(), allocator);
+    d.AddMember("payload", Value(request->payload().c_str(), allocator).Move(), allocator);
 
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
@@ -281,6 +283,7 @@ RecallServiceImpl::RecallServiceImpl()
     : vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
     LOG_INFO << "RecallServiceImpl initialized, enable_vllm=" << FLAGS_enable_vllm;
     LOG_INFO << "Recall sleep time: " << FLAGS_recall_sleep_time_ms << " ms";
+    LOG_INFO << "Recall payload size: " << FLAGS_recall_payload_size_kb << " KB";
 
     if (!FLAGS_enable_vllm) {
         datasystem::ServiceDiscoveryOptions sdOpts;
@@ -321,7 +324,8 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
         response->CopyFrom(result.response);
         LOG_INFO << "Recall request processed successfully, user_id: "
                  << request->user_id()
-                 << ", sku_count: " << response->sku_ids_size();
+                 << ", sku_count: " << response->sku_ids_size()
+                 << ", payload_size: " << response->payload().size() << " bytes";
     } else {
         LOG_ERROR << result.error_message;
         response->set_error_code(static_cast<int32_t>(result.status.Code()));
@@ -446,6 +450,9 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
                                 FLAGS_sku_count, &result.response);
     }
 
+    int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
+    result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
+
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
@@ -503,6 +510,9 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         return result;
     }
     int64_t parse_end_us = butil::gettimeofday_us();
+
+    int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
+    result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
 
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
