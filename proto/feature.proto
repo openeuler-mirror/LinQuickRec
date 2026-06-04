@@ -25,7 +25,7 @@ message KRUserLog {
 // 快推用户特征响应
 message KRUserFeatureResponse {
     repeated KRUserLog user_logs = 1;
-    string other = 2;
+    string payload = 2;
 }
 
 // 用户特征请求

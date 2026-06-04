@@ -14,13 +14,14 @@ message KRUserLog {
 message RecallRequest {
     uint64 user_id = 1;
     repeated KRUserLog user_logs = 2;
-    string other = 3;
+    string payload = 3;
     string trace_id = 4;
 }
 
 // 召回服务 - 响应
 message RecallResponse {
     repeated uint64 sku_ids = 1;
+    string payload = 2;
     int32 error_code = 100;
     string error_message = 101;
 }

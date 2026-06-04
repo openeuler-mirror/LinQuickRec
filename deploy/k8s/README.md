@@ -259,9 +259,28 @@ kubectl scale deployment rank-sub-service --replicas=10 -n linquickrec
 # 调整其他服务（支持多副本的服务）
 kubectl scale deployment feature-service --replicas=3 -n linquickrec
 kubectl scale deployment precalc-service --replicas=3 -n linquickrec
+
+# 如需压测 Proxy Service 入口的负载均衡，先扩容 Proxy
+kubectl scale deployment proxy-service --replicas=3 -n linquickrec
 ```
 
 > 服务通过 etcd 服务发现动态感知副本变化，无需额外配置修改。
+
+### Proxy 并发压测
+
+```bash
+# 从本机通过 Kubernetes API service proxy 访问 proxy-service
+# 请求进入 K8s Service，由 Service 转发到后端 Proxy Pod
+bash scripts/send_proxy_request.sh --k8s -n 1000 -c 50
+
+# 指定命名空间、Service 名或 Service 端口
+bash scripts/send_proxy_request.sh --k8s --namespace=linquickrec --service=proxy-service --service-port=8080 -n 1000 -c 50
+
+# 如果直接暴露了 NodePort/LoadBalancer，也可以用直连模式
+bash scripts/send_proxy_request.sh --url=http://<node-or-lb>:8080/Proxy/Recommend -n 1000 -c 50
+```
+
+`kubectl port-forward` 更适合临时调试，通常会固定转发到某一个 Pod；多副本压测建议使用上面的 `--k8s` 模式或直接访问 NodePort/LoadBalancer 的 Service 入口。
 
 ### 更新与回滚
 
@@ -309,8 +328,17 @@ kubectl delete -f 00-namespace.yaml
 | `MODEL_NAME` | /app/models/Qwen3-0.6B/ | Recall |
 | `SUB_WORKER_PARALLELISM` | 4 | RankMaster |
 | `TOP_K` | 100 | RankMaster |
-| `SCORING_DELAY_MS` | 100 | RankSub |
-| `TTL_SECONDS` | 100 | Precalc |
+| `FEATURE_SLEEP_TIME_MS` | 30 | Feature |
+| `RECALL_SLEEP_TIME_MS` | 30 | Recall |
+| `PRECALC_SLEEP_TIME_MS` | 30 | Precalc |
+| `RANK_MASTER_SLEEP_TIME_MS` | 30 | RankMaster |
+| `RANK_SUB_SLEEP_TIME_MS` | 30 | RankSub |
+| `FEATURE_PAYLOAD_SIZE_KB` | 0 | Feature |
+| `RECALL_PAYLOAD_SIZE_KB` | 0 | Recall |
+| `PAYLOAD_SIZE_KB` | 100 | Precalc |
+| `RANK_MASTER_PAYLOAD_SIZE_KB` | 0 | RankMaster |
+| `RANK_SUB_PAYLOAD_SIZE_KB` | 0 | RankSub |
+| `TTL_SECONDS` | 5 | Precalc |
 
 修改 ConfigMap 后需要重启相关服务才能生效。
 

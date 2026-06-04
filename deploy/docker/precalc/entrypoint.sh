@@ -32,6 +32,7 @@ cd /app/build
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
     $DISCOVERY_FLAGS \
     --kv_worker_service=${KV_WORKER_SERVICE:-kv_worker} \
+    --precalc_sleep_time_ms=${PRECALC_SLEEP_TIME_MS:-30} \
     --ttl_seconds=${TTL_SECONDS:-5} \
     --precalc_result_size_mb=${PRECALC_RESULT_SIZE_MB:-8.5} \
     --payload_size_kb=${PAYLOAD_SIZE_KB:-100} \

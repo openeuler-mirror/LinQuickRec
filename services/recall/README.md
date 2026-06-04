@@ -88,7 +88,7 @@ make recall_server recall_test_client recall_test -j$(nproc)
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
+| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
@@ -135,7 +135,7 @@ docker run -d --name recall-service \
 ```
        Client (Proxy)
             │
-            │ Recall(user_id, logs, other)
+            │ Recall(user_id, logs, payload)
             ▼
    ┌─────────────────────┐
    │   RecallService     │

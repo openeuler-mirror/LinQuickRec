@@ -1,0 +1,2 @@
+# novllm 构建不需要模型文件和 Python wheel，排除后构建上下文从 ~37GB 降至几十 MB
+share/

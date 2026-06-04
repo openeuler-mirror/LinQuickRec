@@ -14,6 +14,14 @@ data:
   HOST_ID: "default-host"
 
   # ========================
+  # Discovery Server
+  # ========================
+  HEARTBEAT_CHECK_INTERVAL_MS: "1000"
+  HEARTBEAT_GRACE_FACTOR: "2.0"
+  CLEANUP_FACTOR: "5.0"
+  DEFAULT_HEARTBEAT_INTERVAL_SEC: "5"
+
+  # ========================
   # 各服务在 etcd 中的注册名
   # ========================
   FEATURE_SERVICE_NAME: "feature_service"
@@ -22,6 +30,13 @@ data:
   RANK_SERVICE_NAME: "rank_service"
   SUB_WORKER_SERVICE_TYPE: "rank_sub"
   KV_WORKER_SERVICE: "kv_worker"
+
+  # ========================
+  # KV Worker (datasystem)
+  # ========================
+  # Worker 共享内存大小(MB)；必须 < 宿主机 /dev/shm，且 < 容器内存 limit
+  SHM_SIZE_MB: "2048"
+  CPU_AFFINITY: "0-64"
 
   # ========================
   # Discovery Client (sidecar) 心跳与健康检查
@@ -39,9 +54,35 @@ data:
   SERVER_MAX_CONCURRENCY: "0"
 
   # ========================
+  # 各服务成功请求模拟耗时
+  # ========================
+  FEATURE_SLEEP_TIME_MS: "30"
+  RECALL_SLEEP_TIME_MS: "30"
+  PRECALC_SLEEP_TIME_MS: "30"
+  RANK_MASTER_SLEEP_TIME_MS: "30"
+  RANK_SUB_SLEEP_TIME_MS: "30"
+
+  # ========================
+  # Payload size per service (KB)
+  # ========================
+  FEATURE_PAYLOAD_SIZE_KB: "0"
+  RECALL_PAYLOAD_SIZE_KB: "0"
+  PAYLOAD_SIZE_KB: "100"
+  RANK_MASTER_PAYLOAD_SIZE_KB: "0"
+  RANK_SUB_PAYLOAD_SIZE_KB: "0"
+
+  # ========================
+  # Feature
+  # ========================
+  USER_LOG_COUNT: "10"
+  USER_LOG_VEC_SIZE: "30"
+  SKU_FEAT_LENGTH: "20"
+
+  # ========================
   # 下游通道共享参数
   # ========================
   DOWNSTREAM_CONNECTION_TYPE: "pooled"
+  DOWNSTREAM_MAX_RETRIES: "2"
   DOWNSTREAM_MAX_RETRY: "3"
   DOWNSTREAM_CONNECT_TIMEOUT_MS: "-1"
 
@@ -83,14 +124,16 @@ data:
   VLLM_MAX_RETRY: "3"
   VLLM_CONNECT_TIMEOUT_MS: "-1"
   VLLM_BACKUP_REQUEST_MS: "-1"
-  SKU_COUNT: "100"
+  ENABLE_VLLM: "false"
+  SKU_COUNT: "1000"
+  KVCACHE_TTL_SECONDS: "3600"
+  KVCACHE_SIZE_BYTES: "256"
 
   # ========================
   # Precalc
   # ========================
-  TTL_SECONDS: "100"
+  TTL_SECONDS: "5"
   PRECALC_RESULT_SIZE_MB: "8.5"
-  PAYLOAD_SIZE_KB: "100"
 
   # ========================
   # RankMaster
@@ -102,8 +145,9 @@ data:
   SUB_WORKER_MAX_RETRY: "3"
   SUB_WORKER_CONNECT_TIMEOUT_MS: "-1"
   SUB_WORKER_BACKUP_REQUEST_MS: "-1"
+  SUB_WORKER_LB_POLICY: ""
 
   # ========================
   # RankSub
   # ========================
-  SCORING_DELAY_MS: "100"
+  # RankSub 当前除通用 sleep_time 与 KV_WORKER_SERVICE 外无额外业务参数。

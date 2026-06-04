@@ -6,6 +6,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <brpc/controller.h>
@@ -36,6 +37,7 @@ DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），�
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
 
 DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
+DEFINE_int32(precalc_sleep_time_ms, 30, "Precalc service simulated sleep time (ms)");
 
 namespace precalc {
 
@@ -45,6 +47,7 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG_INFO << "PrecalcServiceImpl initialized";
     LOG_INFO << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
     LOG_INFO << "TTL: " << FLAGS_ttl_seconds << " seconds";
+    LOG_INFO << "Precalc sleep time: " << FLAGS_precalc_sleep_time_ms << " ms";
 
     datasystem::ServiceDiscoveryOptions sdOpts;
     sdOpts.etcdAddress = FLAGS_etcd_endpoints;
@@ -217,9 +220,15 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
 
-    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
+    int payload_size_kb = FLAGS_payload_size_kb > 0 ? FLAGS_payload_size_kb : 0;
+    std::string payload = common::generate_random_string(payload_size_kb * 1024);
     response->set_payload(payload);
     response->set_user_feat_key(user_feat_key);
+
+    if (FLAGS_precalc_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating precalc sleep: " << FLAGS_precalc_sleep_time_ms << " ms";
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_precalc_sleep_time_ms));
+    }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 

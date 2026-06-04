@@ -18,7 +18,7 @@ using namespace recall;
 
 RecallRequest make_request(uint64_t user_id,
                            const std::vector<std::vector<uint32_t>>& logs = {},
-                           const std::string& other = "") {
+                           const std::string& payload = "") {
     RecallRequest req;
     req.set_user_id(user_id);
     for (const auto& vec : logs) {
@@ -27,7 +27,7 @@ RecallRequest make_request(uint64_t user_id,
             log->add_vec(v);
         }
     }
-    req.set_other(other);
+    req.set_payload(payload);
     return req;
 }
 
@@ -48,7 +48,7 @@ void test_proto_to_json_empty_request() {
 
 void test_proto_to_json_with_logs() {
     std::vector<std::vector<uint32_t>> logs = {{1, 2, 3}, {4, 5}};
-    RecallRequest req = make_request(99, logs, "test_other");
+    RecallRequest req = make_request(99, logs, "test_payload");
     std::string json = proto_to_json(&req);
 
     rapidjson::Document d;
@@ -60,10 +60,10 @@ void test_proto_to_json_with_logs() {
     assert(d["user_logs"][0]["vec"][0].GetUint() == 1);
     assert(d["user_logs"][0]["vec"][2].GetUint() == 3);
     assert(d["user_logs"][1]["vec"].Size() == 2);
-    assert(d.HasMember("other"));
-    assert(std::string(d["other"].GetString()) == "test_other");
+    assert(d.HasMember("payload"));
+    assert(std::string(d["payload"].GetString()) == "test_payload");
 
-    std::cout << "[PASS] proto_to_json: with user_logs and other" << std::endl;
+    std::cout << "[PASS] proto_to_json: with user_logs and payload" << std::endl;
 }
 
 void test_proto_to_json_large_user_id() {

@@ -16,9 +16,14 @@ spec:
       labels:
         app: precalc-service
     spec:
+      # datasystem KVClient 通过同节点共享内存与本地 kv-worker 通信，
+      # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
+      hostIPC: true
       containers:
       - name: precalc
         image: 192.168.84.245:5000/linquickrec/precalc:latest
+        securityContext:
+          privileged: true
         ports:
         - containerPort: 8003
           name: rpc
@@ -52,9 +57,14 @@ spec:
         volumeMounts:
         - name: log
           mountPath: /var/log/linquickrec
+        - name: shm
+          mountPath: /dev/shm
       volumes:
       - name: log
         emptyDir: {}
+      - name: shm
+        hostPath:
+          path: /dev/shm
 ---
 apiVersion: v1
 kind: Service

@@ -3,7 +3,8 @@
 # ===================== Environment Variables =====================
 # worker_address: Datasystem worker address (IP:port), eg: 141.61.84.245:31501
 # etcd_address:   Etcd server address (IP:port), eg: 141.61.84.245:2379
-# cpu_affinity:   CPU core binding range, eg: "0-64"
+# cpu_affinity:   CPU core binding range, eg: "0-64" (env, default 0-64)
+# shared_memory_size_mb: Worker shared memory size in MB (env, default 2048)
 # =================================================================
 
 # Unset proxy to avoid network interference
@@ -38,7 +39,7 @@ if ! [[ "${ETCD_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 # Default configuration
-cpu_affinity="0-64"
+cpu_affinity="${cpu_affinity:-0-64}"
 
 echo "=== System Info ==="
 echo "Worker Address:   ${worker_address}"
@@ -52,7 +53,7 @@ dscli start --worker_args \
     --worker_address "${worker_address}" \
     --etcd_address "${etcd_address}" \
     --host_id_env_name HOST_ID \
-    --shared_memory_size_mb 2048 \
+    --shared_memory_size_mb ${shared_memory_size_mb:-2048} \
     --log_dir "./datasystem_log/log_${worker_port}" \
     --arena_per_tenant 1 \
     --skip_authenticate 1 \

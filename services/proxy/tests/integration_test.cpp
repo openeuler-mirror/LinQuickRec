@@ -107,7 +107,7 @@ public:
         brpc::ClosureGuard guard(done);
         response->set_feature_type(feature::KuaiRand);
         auto* kr_rsp = response->mutable_kr_feat_rsp();
-        kr_rsp->set_other("mock_feat_other");
+        kr_rsp->set_payload("mock_feat_payload");
         auto* log = kr_rsp->add_user_logs();
         log->add_vec(10);
         log->add_vec(20);

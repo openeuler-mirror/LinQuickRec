@@ -1,13 +1,15 @@
 # KV Worker（元戎 Datasystem）
+# 改为 DaemonSet：datasystem 客户端（precalc/rank-sub）通过同节点共享内存
+# （/dev/shm + hostIPC）与本地 worker 通信，且 KVClient 使用
+# PREFERRED_SAME_NODE 亲和策略，因此每个调度了客户端的节点都必须有一个本地 worker。
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: kv-worker
   namespace: linquickrec
   labels:
     app: kv-worker
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: kv-worker
@@ -37,7 +39,15 @@ spec:
         - name: enable_urma
           value: "0"
         - name: cpu_affinity
-          value: "0-64"
+          valueFrom:
+            configMapKeyRef:
+              name: linquickrec-config
+              key: CPU_AFFINITY
+        - name: shared_memory_size_mb
+          valueFrom:
+            configMapKeyRef:
+              name: linquickrec-config
+              key: SHM_SIZE_MB
         - name: HOST_ID
           valueFrom:
             fieldRef:
@@ -51,6 +61,7 @@ spec:
             memory: "2Gi"
           limits:
             cpu: "4"
+            # 容器内存上限：需 >= SHM_SIZE_MB 再留余量（纯manifest无变量替换，在此处改）
             memory: "8Gi"
         securityContext:
           privileged: true

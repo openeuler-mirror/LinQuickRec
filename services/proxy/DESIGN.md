@@ -616,9 +616,9 @@ Proxy 调用各下游服务时的消息映射：
 |-----------|---------|------|
 | `request.user_id` → | FeatureService `UserFeatureRequest.kr_feat_req.user_id` | 用户 ID |
 | `request.payload` → | FeatureService `UserFeatureRequest.kr_feat_req.req_data` | 附加数据 |
-| Feature `kr_feat_rsp.other` → | RecallService `RecallRequest.other` | 用户特征字符串 |
+| Feature `kr_feat_rsp.payload` → | RecallService `RecallRequest.payload` | 模拟负载 |
 | Feature `kr_feat_rsp.user_logs` → | RecallService `RecallRequest.user_logs` | 用户行为日志 |
-| Feature `kr_feat_rsp.other` → | PrecalcService `PrecalcRequest.user_feat` | 用户特征 |
+| Feature `kr_feat_rsp.payload` → | PrecalcService `PrecalcRequest.user_feat` | 用户特征 |
 | Recall `sku_ids` → | RankService `RankMasterRequest.skus` | 候选 SKU ID (6 位定长格式) |
 | Precalc `user_feat_key` → | RankService `RankMasterRequest.user_feat_key` | 预计算结果索引 |
 | Precalc `payload` → | RankService `RankMasterRequest.payload` | 附加数据 |

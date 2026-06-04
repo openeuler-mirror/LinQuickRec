@@ -2,129 +2,241 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REGISTRY="192.168.84.245:5000"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
-IMAGES=(
-    "linquickrec/etcd:latest"
-    "linquickrec/discovery:latest"
-    "linquickrec/kv-worker:latest"
-    "linquickrec/feature:latest"
-    "linquickrec/recall:latest"
-    "linquickrec/precalc:latest"
-    "linquickrec/rank-sub:latest"
-    "linquickrec/rank-master:latest"
-    "linquickrec/proxy:latest"
-)
-
+REGISTRY="${REGISTRY:-192.168.84.245:5000}"
 DRY_RUN=false
+BUILD_ONLY=false
+PUSH_ONLY=false
 TARGET=""
 
-log()  { echo "[$(date +%H:%M:%S)] $*"; }
-err()  { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
+SERVICES=(
+    "etcd:etcd:linquickrec/etcd:latest"
+    "discovery:discovery-server:linquickrec/discovery:latest"
+    "kv-worker:kv-worker:linquickrec/kv-worker:latest"
+    "feature:feature-service:linquickrec/feature:latest"
+    "recall:recall-service:linquickrec/recall:latest"
+    "precalc:precalc-service:linquickrec/precalc:latest"
+    "rank-sub:rank-sub-service:linquickrec/rank-sub:latest"
+    "rank-master:rank-master-service:linquickrec/rank-master:latest"
+    "proxy:proxy-service:linquickrec/proxy:latest"
+)
+
+ALIASES=(
+    "discovery-server:discovery"
+    "kv_worker:kv-worker"
+    "kv:kv-worker"
+    "feature-service:feature"
+    "recall-service:recall"
+    "precalc-service:precalc"
+    "rank_sub:rank-sub"
+    "rank-sub-service:rank-sub"
+    "rank_master:rank-master"
+    "rank-master-service:rank-master"
+    "proxy-service:proxy"
+)
+
+log() { echo "[$(date +%H:%M:%S)] $*"; }
+err() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
 
 usage() {
     cat <<EOF
-用法: $0 [选项] [镜像名]
+Usage: $(basename "$0") [options] [image]
 
-将本地已有镜像推送到私仓 ${REGISTRY}
-请先用 docker compose build 构建镜像。
+Build Docker image(s), tag them with the private registry, and push them.
 
-选项:
-  -n, --dry-run    仅预览，不执行推送
-  -h, --help       显示帮助
+Options:
+  -r, --registry REGISTRY  Private registry, default: ${REGISTRY}
+  -n, --dry-run            Print commands without running them
+      --build-only         Build images but do not push
+      --push-only          Push existing local images without building
+  -h, --help               Show this help
 
-镜像名（可选，不指定则处理全部）:
-  etcd, discovery, kv-worker, feature, recall,
+Images:
+  all, etcd, discovery, kv-worker, feature, recall,
   precalc, rank-sub, rank-master, proxy
 
-示例:
-  $0                          # 推送全部已有镜像
-  $0 recall                   # 仅推送 recall
-  $0 --dry-run                # 预览全部操作
+Examples:
+  $(basename "$0")                    # build and push all images
+  $(basename "$0") recall             # build and push recall only
+  $(basename "$0") --registry 10.0.0.1:5000 rank-sub
+  $(basename "$0") --dry-run all
 EOF
-    exit 1
+}
+
+run_cmd() {
+    if $DRY_RUN; then
+        log "[dry-run] $*"
+        return 0
+    fi
+    "$@"
 }
 
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -n|--dry-run) DRY_RUN=true; shift ;;
-            -h|--help)    usage ;;
-            -*)           echo "未知选项: $1"; usage ;;
-            *)            TARGET="$1"; shift ;;
+            -r|--registry)
+                if [[ $# -lt 2 ]]; then
+                    err "Missing value for $1"
+                    usage
+                    exit 1
+                fi
+                REGISTRY="$2"
+                shift 2
+                ;;
+            -n|--dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            --build-only)
+                BUILD_ONLY=true
+                shift
+                ;;
+            --push-only)
+                PUSH_ONLY=true
+                shift
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -*)
+                err "Unknown option: $1"
+                usage
+                exit 1
+                ;;
+            *)
+                if [[ -n "$TARGET" ]]; then
+                    err "Only one image target is supported; got '${TARGET}' and '$1'"
+                    usage
+                    exit 1
+                fi
+                TARGET="$1"
+                shift
+                ;;
         esac
     done
+
+    if $BUILD_ONLY && $PUSH_ONLY; then
+        err "--build-only and --push-only cannot be used together"
+        exit 1
+    fi
 }
 
-filter_images() {
-    if [[ -z "$TARGET" ]]; then
-        return
+canonical_target() {
+    local target="$1"
+
+    if [[ -z "$target" || "$target" == "all" ]]; then
+        echo "all"
+        return 0
     fi
 
-    local filtered=()
-    for img in "${IMAGES[@]}"; do
-        local name="${img%%:*}"
-        name="${name#linquickrec/}"
-        if [[ "$name" == "$TARGET" ]]; then
-            filtered+=("$img")
+    for row in "${SERVICES[@]}"; do
+        IFS=: read -r name _ _ _ <<<"$row"
+        if [[ "$target" == "$name" ]]; then
+            echo "$name"
+            return 0
         fi
     done
 
-    if [[ ${#filtered[@]} -eq 0 ]]; then
-        err "未找到镜像: ${TARGET}"
-        echo "可用镜像: etcd discovery kv-worker feature recall precalc rank-sub rank-master proxy" >&2
-        exit 1
-    fi
+    for alias_row in "${ALIASES[@]}"; do
+        IFS=: read -r alias canonical <<<"$alias_row"
+        if [[ "$target" == "$alias" ]]; then
+            echo "$canonical"
+            return 0
+        fi
+    done
 
-    IMAGES=("${filtered[@]}")
+    err "Unknown image target: ${target}"
+    echo "Available images: etcd discovery kv-worker feature recall precalc rank-sub rank-master proxy" >&2
+    exit 1
+}
+
+selected_services() {
+    local target
+    target="$(canonical_target "$TARGET")"
+
+    for row in "${SERVICES[@]}"; do
+        IFS=: read -r name _ _ _ <<<"$row"
+        if [[ "$target" == "all" || "$target" == "$name" ]]; then
+            echo "$row"
+        fi
+    done
+}
+
+build_image() {
+    local service="$1"
+
+    log "Building compose service: ${service}"
+    run_cmd docker compose -f "$COMPOSE_FILE" build "$service"
 }
 
 push_image() {
     local image="$1"
     local tagged="${REGISTRY}/${image}"
 
-    log "--- ${image} ---"
-
-    if ! docker image inspect "$image" >/dev/null 2>&1; then
-        err "镜像不存在: ${image}，请先 docker compose build"
+    if ! $DRY_RUN && ! docker image inspect "$image" >/dev/null 2>&1; then
+        err "Local image not found after build: ${image}"
         return 1
     fi
 
-    if $DRY_RUN; then
-        log "[dry-run] docker tag ${image} ${tagged}"
-        log "[dry-run] docker push ${tagged}"
-        return
+    log "Tagging ${image} -> ${tagged}"
+    run_cmd docker tag "$image" "$tagged"
+
+    log "Pushing ${tagged}"
+    run_cmd docker push "$tagged"
+}
+
+process_one() {
+    local row="$1"
+    local name service image_tag image_version image
+
+    IFS=: read -r name service image_tag image_version <<<"$row"
+    image="${image_tag}:${image_version}"
+
+    log "===== ${name} ====="
+
+    if ! $PUSH_ONLY; then
+        build_image "$service" || return 1
     fi
 
-    log "标记 ${tagged} ..."
-    docker tag "${image}" "${tagged}"
-
-    log "推送 ${tagged} ..."
-    docker push "${tagged}"
-
-    log "完成 ${tagged}"
+    if ! $BUILD_ONLY; then
+        push_image "$image" || return 1
+    fi
 }
 
 main() {
     parse_args "$@"
-    filter_images
 
-    log "===== 推送到 ${REGISTRY} ====="
-    $DRY_RUN && log "(dry-run 模式)"
-    log "镜像数量: ${#IMAGES[@]}"
-    log ""
+    log "Repository root: ${REPO_ROOT}"
+    log "Compose file: ${COMPOSE_FILE}"
+    log "Registry: ${REGISTRY}"
+    $DRY_RUN && log "Mode: dry-run"
+    $BUILD_ONLY && log "Mode: build-only"
+    $PUSH_ONLY && log "Mode: push-only"
 
     local failed=0
-    for img in "${IMAGES[@]}"; do
-        push_image "$img" || ((failed++))
-    done
+    local count=0
+    while IFS= read -r row; do
+        [[ -z "$row" ]] && continue
+        ((count+=1))
+        if ! process_one "$row"; then
+            ((failed+=1))
+        fi
+    done < <(selected_services)
 
-    if [[ $failed -gt 0 ]]; then
-        err "${failed} 个镜像推送失败"
+    if [[ $count -eq 0 ]]; then
+        err "No image selected"
         exit 1
     fi
 
-    log "===== 全部完成 ====="
+    if [[ $failed -gt 0 ]]; then
+        err "${failed} image(s) failed"
+        exit 1
+    fi
+
+    log "All done (${count} image(s))"
 }
 
 main "$@"
