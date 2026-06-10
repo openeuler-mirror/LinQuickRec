@@ -145,6 +145,7 @@ void test_parse_vllm_response_normal() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 5);
     assert(ok);
+    (void)ok;
     assert(response.sku_ids_size() == 5);
     assert(response.sku_ids(0) == 12345);
     assert(response.sku_ids(1) == 67890);
@@ -167,6 +168,7 @@ void test_parse_vllm_response_with_whitespace() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 4);
     assert(ok);
+    (void)ok;
     assert(response.sku_ids_size() == 4);
     assert(response.sku_ids(0) == 12345);
     assert(response.sku_ids(1) == 67890);
@@ -181,6 +183,7 @@ void test_parse_vllm_response_empty_string() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 10);
     assert(!ok);
+    (void)ok;
 
     std::cout << "[PASS] parse_vllm_response: empty string returns false" << std::endl;
 }
@@ -190,6 +193,7 @@ void test_parse_vllm_response_malformed_json() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 10);
     assert(!ok);
+    (void)ok;
 
     std::cout << "[PASS] parse_vllm_response: malformed JSON returns false" << std::endl;
 }
@@ -199,6 +203,7 @@ void test_parse_vllm_response_no_choices() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 10);
     assert(!ok);
+    (void)ok;
 
     std::cout << "[PASS] parse_vllm_response: empty choices returns false" << std::endl;
 }
@@ -208,6 +213,7 @@ void test_parse_vllm_response_no_message() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 10);
     assert(!ok);
+    (void)ok;
 
     std::cout << "[PASS] parse_vllm_response: no message field returns false" << std::endl;
 }
@@ -217,6 +223,7 @@ void test_parse_vllm_response_no_content() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 10);
     assert(!ok);
+    (void)ok;
 
     std::cout << "[PASS] parse_vllm_response: no content field returns false" << std::endl;
 }
@@ -233,6 +240,7 @@ void test_parse_vllm_response_non_numeric_tokens() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 5);
     assert(ok);
+    (void)ok;
     assert(response.sku_ids_size() == 3);
     assert(response.sku_ids(0) == 12345);
     assert(response.sku_ids(1) == 67890);
@@ -253,6 +261,7 @@ void test_parse_vllm_response_only_non_numeric() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 5);
     assert(!ok);
+    (void)ok;
     assert(response.sku_ids_size() == 0);
 
     std::cout << "[PASS] parse_vllm_response: all non-numeric returns false" << std::endl;
@@ -270,6 +279,7 @@ void test_parse_vllm_response_single_sku() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 1);
     assert(ok);
+    (void)ok;
     assert(response.sku_ids_size() == 1);
     assert(response.sku_ids(0) == 99999);
 
@@ -289,6 +299,7 @@ void test_parse_vllm_response_dedup_and_fill() {
     RecallResponse response;
     bool ok = parse_vllm_response(body, &response, 5);
     assert(ok);
+    (void)ok;
     // Should have exactly 5 unique SKU IDs after filling
     assert(response.sku_ids_size() == 5);
 
@@ -307,7 +318,9 @@ void test_parse_vllm_response_dedup_and_fill() {
         if (id == 345678) has_345678 = true;
         assert(id >= 100000 && id <= 999999);
     }
-    assert(has_123456 && has_234567 && has_345678);
+    bool has_original_uniques = has_123456 && has_234567 && has_345678;
+    assert(has_original_uniques);
+    (void)has_original_uniques;
 
     std::cout << "[PASS] parse_vllm_response: dedup and fill to target" << std::endl;
 }

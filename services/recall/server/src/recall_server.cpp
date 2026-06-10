@@ -1,7 +1,9 @@
 #include "recall_server.h"
 
+#include <algorithm>
 #include <chrono>
 #include <atomic>
+#include <cctype>
 #include <condition_variable>
 #include <cstdint>
 #include <cstring>
@@ -407,7 +409,7 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
         }
 
         // 写入 KVWorker
-        datasystem::WriteParam param;
+        datasystem::SetParam param;
         param.ttlSecond = FLAGS_kvcache_ttl_seconds;
         param.writeMode = datasystem::WriteMode::NONE_L2_CACHE;
         param.existence = datasystem::ExistenceOpt::NONE;
@@ -491,6 +493,7 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     int64_t vllm_start_us = butil::gettimeofday_us();
     auto vllm_resp = vllm_client_.SendRequest(vllm_json);
     int64_t vllm_end_us = butil::gettimeofday_us();
+    int64_t vllm_cost_us = vllm_end_us - vllm_start_us;
 
     if (!vllm_resp.success) {
         result.success = false;
@@ -500,6 +503,7 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     }
 
     LOG_DEBUG << "vLLM response size: " << vllm_resp.body.size() << " bytes";
+    LOG_INFO << "vLLM request completed, cost=" << vllm_cost_us / 1000.0 << " ms";
 
     int64_t parse_start_us = butil::gettimeofday_us();
     if (!parse_vllm_response(vllm_resp.body, &result.response, FLAGS_sku_count)) {
@@ -510,6 +514,7 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
         return result;
     }
     int64_t parse_end_us = butil::gettimeofday_us();
+    int64_t parse_cost_us = parse_end_us - parse_start_us;
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
@@ -521,7 +526,9 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
-    LOG_INFO << "Recall completed, cost=" << server_process_us / 1000.0 << " ms";
+    LOG_INFO << "Recall completed, cost=" << server_process_us / 1000.0 << " ms"
+              << ", vllm_cost=" << vllm_cost_us / 1000.0 << " ms"
+              << ", parse_cost=" << parse_cost_us / 1000.0 << " ms";
 
     result.success = true;
     return result;
