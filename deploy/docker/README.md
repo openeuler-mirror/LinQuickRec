@@ -1,42 +1,5 @@
 # Docker 部署指南
 
-## 架构总览
-
-```
-                          ┌────────────────────────────────────────────────────┐
-                          │                 linquickrec-net                   │
-                          │                 (Docker bridge)                    │
-                          │                                                    │
- Client :8080 ──► ┌────────────┐                                               │
-                  │   Proxy    │──── Discovery (8100)                          │
-                  │  (gateway) │                                               │
-                  └─────┬──────┘                                               │
-                        │ discover downstream instances                        │
-                        ▼                                                      │
-         ┌──────────────┼──────────────┐                                       │
-         ▼              ▼              ▼                                       │
-  Feature (x1)    Recall (xN)    Precalc (xN)                                  │
-  :8001             :8002           :8003                                      │
-  [pending]         + vLLM                                                     │
-                    :8000          KVWorker                                    │
-         │              │            :31502                                    │
-         │              ▼                                                      │
-         │         KVWorker                                                    │
-         │         :31501                                                      │
-         └──────────────┬──────────────┘                                       │
-                        ▼                                                      │
-                 RankMaster (xN)                                               │
-                 :8004                                                         │
-                        │                                                      │
-                        ▼                                                      │
-                 RankSub (xN)  ◄──── KVWorker :31502                           │
-                 :8005                                                         │
-                          │                                                    │
-                          │                                                    │
-                  Discovery Server :8100                                       │
-                          └────────────────────────────────────────────────────┘
-```
-
 ## 目录结构
 
 ```
