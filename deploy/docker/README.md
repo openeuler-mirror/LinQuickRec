@@ -38,13 +38,22 @@ deploy/docker/
 
 ## 快速开始
 
-### 1. 一键启动
+### 1. 一键构建
 
 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译任何二进制：
 
+前置依赖：
++ 基础镜像已完成编译
++ 在LinQuickRec的目录下创建share目录，并将必要的两个whl文件+Qwen3-0.6B的模型文件放入share目录中
+
 ```bash
 cd deploy/docker
-docker compose up --build -d
+
+# 容器构建命令
+docker compose build
+
+# 查看容器
+docker images linquickrec*
 ```
 
 ### 2. 验证
