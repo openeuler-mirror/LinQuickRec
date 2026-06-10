@@ -21,21 +21,21 @@
 
 ## 业务依赖
 
-| 类目 | 技术 | 版本 |
-|------|------|------|
-| 通信框架 | BRPC | 1.15.0 |
-| 依赖组件 | Protocol Buffers | v25.5 |
-| 依赖组件 | gflags | v2.2.2 |
-| 依赖组件 | leveldb | 1.23 |
-| 依赖组件 | RapidJSON | v1.1.0 |
-| Recall实现 | vLLM | v0.11.0 |
-| Recall模型 | Qwen3-0.6B | - |
-| 依赖组件 | PyTorch | v2.8.0 |
-| KVCache | yuanrong-datasystem | v0.7.0 |
-| 服务发现 | etcd | v3.5 |
-| 日志组件 | common::logger | 项目内 |
-| 线程池 | common::ThreadPool | 项目内 |
-| 错误码 | common::error::Status | 项目内 |
+| 类目 | 技术 | 版本 | 备注 |
+|------|------|-----| ---- |
+| 通信框架 | BRPC | 1.15.0 | |
+| 依赖组件 | Protocol Buffers | v25.5 | |
+| 依赖组件 | gflags | v2.2.2 | |
+| 依赖组件 | leveldb | 1.23 | |
+| 依赖组件 | RapidJSON | v1.1.0 | |
+| Recall实现 | vLLM | v0.11.0 | |
+| Recall模型 | Qwen3-0.6B | - | |
+| 依赖组件 | PyTorch | v2.8.0-gpu | 需获取安装包 
+| KVCache | yuanrong-datasystem | v0.7.0 | 需获取安装包 |
+| 服务发现 | etcd | v3.5 | |
+| 日志组件 | common::logger | 项目内 | |
+| 线程池 | common::ThreadPool | 项目内 | |
+| 错误码 | common::error::Status | 项目内 | |
 
 ## 服务列表
 
