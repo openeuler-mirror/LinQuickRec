@@ -58,11 +58,7 @@ apply_mode() {
 
     for f in "${COMMON_FILES[@]}"; do
         # 在 discovery 模式下插入专属文件（排在 namespace/configmap 之后、服务之前）
-<<<<<<< HEAD
-        if [ "$f" = "03-kv-worker.yaml" ] && [ -n "$mode_file" ]; then
-=======
         if [ "$f" = "04-kv-worker.yaml" ] && [ -n "$mode_file" ]; then
->>>>>>> yh/master
             log "apply ${mode_file}"
             kubectl apply -f "${SCRIPT_DIR}/${mode_file}"
         fi
@@ -90,11 +86,7 @@ usage() {
     cat <<EOF
 用法: $0 <etcd|discovery|delete>
 
-<<<<<<< HEAD
-  etcd          etcd 模式：部署 etcd + 所有服务
-=======
   etcd          etcd 模式：部署集群内 etcd (5 副本) + 所有服务
->>>>>>> yh/master
   discovery     discovery_server 模式：部署 discovery-server + 所有服务
   delete        逆序删除全部资源
 EOF

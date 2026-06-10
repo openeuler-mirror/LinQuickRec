@@ -44,12 +44,7 @@ else
     WORKER_PORT="31501"
 fi
 
-<<<<<<< HEAD
-# 覆盖 worker_address 使 datasystem 监听所有接口，确保 127.0.0.1 健康检查可达
-export worker_address="0.0.0.0:${WORKER_PORT}"
-=======
 # Keep worker_address as the client-reachable datasystem address.
->>>>>>> yh/master
 /workerspace/start_datasystem.sh &
 WORKER_PID=$!
 

@@ -41,12 +41,8 @@ metadata:
     app: etcd
 spec:
   serviceName: etcd
-<<<<<<< HEAD
-  replicas: 1
-=======
   podManagementPolicy: Parallel
   replicas: 5
->>>>>>> yh/master
   selector:
     matchLabels:
       app: etcd
@@ -57,27 +53,13 @@ spec:
     spec:
       containers:
       - name: etcd
-<<<<<<< HEAD
         image: linquickrec/etcd:latest
-=======
-        image: 192.168.84.245:5000/linquickrec/etcd:latest
->>>>>>> yh/master
         ports:
         - containerPort: 2379
           name: client
         - containerPort: 2380
           name: peer
         env:
-<<<<<<< HEAD
-        - name: ETCD_DATA_DIR
-          value: /var/lib/etcd
-        - name: ETCD_HOST_IP
-          value: "0.0.0.0"
-        - name: ETCD_NAME
-          value: etcd-node1
-        - name: ETCD_INITIAL_CLUSTER_TOKEN
-          value: etcd-cluster-1
-=======
         - name: DATA_DIR
           value: /var/lib/etcd
         - name: CLUSTER_SIZE
@@ -86,18 +68,13 @@ spec:
           value: "etcd"
         - name: CLUSTER_NS
           value: "linquickrec"
->>>>>>> yh/master
         readinessProbe:
           exec:
             command:
             - etcdctl
             - endpoint
             - health
-<<<<<<< HEAD
-          initialDelaySeconds: 5
-=======
           initialDelaySeconds: 10
->>>>>>> yh/master
           periodSeconds: 10
         livenessProbe:
           exec:
@@ -105,11 +82,7 @@ spec:
             - etcdctl
             - endpoint
             - health
-<<<<<<< HEAD
-          initialDelaySeconds: 10
-=======
           initialDelaySeconds: 15
->>>>>>> yh/master
           periodSeconds: 15
         volumeMounts:
         - name: etcd-data
@@ -118,31 +91,8 @@ spec:
   - metadata:
       name: etcd-data
     spec:
-<<<<<<< HEAD
-=======
       storageClassName: local-storage
->>>>>>> yh/master
       accessModes: ["ReadWriteOnce"]
       resources:
         requests:
           storage: 1Gi
-<<<<<<< HEAD
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: etcd
-  namespace: linquickrec
-spec:
-  selector:
-    app: etcd
-  ports:
-  - name: client
-    port: 2379
-    targetPort: 2379
-  - name: peer
-    port: 2380
-    targetPort: 2380
-  type: ClusterIP
-=======
->>>>>>> yh/master
