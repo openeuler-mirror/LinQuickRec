@@ -56,11 +56,11 @@ docker compose build
 docker images | grep linquickrec
 ```
 
-**构建过程到此结束！！！**
-**构建过程到此结束！！！**
-**构建过程到此结束！！！**
+**注意：构建过程到此结束！！！**
 
 若您不希望使用docker-compose拉起服务容器，而计划使用k8s，那么此时请参阅 [容器化部署（k8s）文档](../k8s/README.md)。
+
+若您需要使用docker-compose进行功能验证，继续查看本文档的后续章节。
 
 ---
 
