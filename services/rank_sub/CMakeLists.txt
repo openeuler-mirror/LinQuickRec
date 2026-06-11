@@ -72,9 +72,12 @@ endif()
 
 # 设置元戎ds的头文件和库文件目录
 set(YR_INCLUDE_DIR ${YR_SDK_PATH}/include)
-set(YR_LIBRARY ${YR_SDK_PATH}/lib)
+find_library(YR_DATASYSTEM_LIB datasystem PATHS ${YR_SDK_PATH}/lib NO_DEFAULT_PATH)
+if(NOT YR_DATASYSTEM_LIB)
+    message(FATAL_ERROR "YR SDK library (datasystem) not found in ${YR_SDK_PATH}/lib")
+endif()
 message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+message(STATUS "Yuanrong SDK library: ${YR_DATASYSTEM_LIB}")
 
 # 生成 rank_sub protobuf 文件
 add_custom_command(
@@ -127,7 +130,7 @@ target_link_libraries(rank_sub_server PRIVATE
     leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
-    ${YR_LIBRARY}
+    ${YR_DATASYSTEM_LIB}
     
     # Abseil 库 - 使用 --no-as-needed 避免 DSO missing 问题
     -Wl,--no-as-needed
@@ -179,7 +182,7 @@ message(STATUS "  - rank_sub_client")
 message(STATUS "  - rank_sub_test (unit tests)")
 message(STATUS "Yuanrong SDK Path: ${YR_SDK_PATH}")
 message(STATUS "Yuanrong SDK Include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK Library: ${YR_LIBRARY}")
+message(STATUS "Yuanrong SDK Library: ${YR_DATASYSTEM_LIB}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
 
@@ -212,7 +215,7 @@ target_link_libraries(rank_sub_test PRIVATE
     leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
-    ${YR_LIBRARY}
+    ${YR_DATASYSTEM_LIB}
     -Wl,--no-as-needed
     ${ABSL_LIBS}
     -Wl,--as-needed

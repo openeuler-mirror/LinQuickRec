@@ -72,9 +72,12 @@ endif()
 
 # 设置元戎ds的头文件和库文件目录
 set(YR_INCLUDE_DIR ${YR_SDK_PATH}/include)
-set(YR_LIBRARY ${YR_SDK_PATH}/lib)
+find_library(YR_DATASYSTEM_LIB datasystem PATHS ${YR_SDK_PATH}/lib NO_DEFAULT_PATH)
+if(NOT YR_DATASYSTEM_LIB)
+    message(FATAL_ERROR "YR SDK library (datasystem) not found in ${YR_SDK_PATH}/lib")
+endif()
 message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+message(STATUS "Yuanrong SDK library: ${YR_DATASYSTEM_LIB}")
 
 # 生成 precalc protobuf 文件
 add_custom_command(
@@ -127,7 +130,7 @@ target_link_libraries(precalc_server PRIVATE
     leveldb
     ${Protobuf_LIBRARIES}
     Threads::Threads
-    ${YR_LIBRARY}
+    ${YR_DATASYSTEM_LIB}
     ${ABSL_LIBS}
 )
 
@@ -176,7 +179,7 @@ message(STATUS "  - precalc_server (with Yuanrong SDK)")
 message(STATUS "  - precalc_test_client")
 message(STATUS "  - precalc_test (unit tests)")
 message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+message(STATUS "Yuanrong SDK library: ${YR_DATASYSTEM_LIB}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
 
