@@ -62,7 +62,7 @@ spec:
           path: /usr/local/cuda-12.9
       - name: model-name
         hostPath:
-          path: share/Qwen3-0.6B
+          path: ../../share/Qwen3-0.6B
 ---
 apiVersion: v1
 kind: Service

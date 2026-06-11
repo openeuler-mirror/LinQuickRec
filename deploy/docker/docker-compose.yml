@@ -158,7 +158,7 @@ services:
     image: linquickrec/recall:latest
     volumes:
       - /usr/local/cuda-12.9:/usr/local/cuda
-      - share/Qwen3-0.6B:"${MODEL_NAME:-/app/models/Qwen3-0.6B/}"
+      - ../../share/Qwen3-0.6B:"${MODEL_NAME:-/app/models/Qwen3-0.6B}"
     container_name: recall-service
     depends_on:
       etcd:
@@ -173,7 +173,7 @@ services:
       VLLM_PORT: "${VLLM_PORT:-8000}"
       VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
       VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
-      MODEL_NAME: "${MODEL_NAME:-/app/models/Qwen3-0.6B/}"
+      MODEL_NAME: "${MODEL_NAME:-/app/models/Qwen3-0.6B}"
       VLLM_TIMEOUT_MS: "${VLLM_TIMEOUT_MS:-100000}"
       VLLM_STARTUP_TIMEOUT: "${VLLM_STARTUP_TIMEOUT:-120}"
       VLLM_CONNECTION_TYPE: "${VLLM_CONNECTION_TYPE:-pooled}"
