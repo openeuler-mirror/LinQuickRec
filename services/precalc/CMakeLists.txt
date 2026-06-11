@@ -73,10 +73,7 @@ else()
 endif()
 
 # 查找元戎 SDK
-find_path(YR_INCLUDE_DIR datasystem/kv_client.h
-    PATHS ${YR_SDK_PATH}
-    PATH_SUFFIXES include
-)
+set(YR_INCLUDE_DIR ${YR_SDK_PATH}/include)
 
 find_library(YR_LIBRARY
     NAMES yr-api datasystem
