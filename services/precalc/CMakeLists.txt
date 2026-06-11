@@ -62,32 +62,19 @@ set(PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 # 元戎 SDK 配置
-# 方法 1: 通过环境变量指定元戎 SDK 路径
 if(DEFINED ENV{YR_SDK_PATH})
     set(YR_SDK_PATH $ENV{YR_SDK_PATH})
     message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
 else()
-    # 方法 2: 默认安装路径
     set(YR_SDK_PATH "/usr/local/lib64/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
     message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
 endif()
 
-# 查找元戎 SDK
+# 设置元戎ds的头文件和库文件目录
 set(YR_INCLUDE_DIR ${YR_SDK_PATH}/include)
-
-find_library(YR_LIBRARY
-    NAMES yr-api datasystem
-    PATHS ${YR_SDK_PATH}
-    PATH_SUFFIXES lib lib64
-)
-
-if(NOT YR_INCLUDE_DIR OR NOT YR_LIBRARY)
-    message(WARNING "Yuanrong SDK not found. Please set YR_SDK_PATH environment variable.")
-    message(WARNING "Example: export YR_SDK_PATH=/path/to/yuanrong")
-else()
-    message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-    message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
-endif()
+set(YR_LIBRARY ${YR_SDK_PATH}/lib)
+message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
 
 # 生成 precalc protobuf 文件
 add_custom_command(
