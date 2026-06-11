@@ -42,18 +42,6 @@ static std::string stringify(const Document& d) {
     return buf.GetString();
 }
 
-static bool hasError(const std::string& json_resp) {
-    if (json_resp.empty()) return true;
-    Document d;
-    d.Parse(json_resp.c_str());
-    if (d.HasParseError()) return true;
-    if (d.HasMember("error")) {
-        LOG_ERROR << "etcd error: " << d["error"].GetString();
-        return true;
-    }
-    return false;
-}
-
 } // namespace
 
 EtcdClient::EtcdClient(const std::string& endpoints) {
@@ -70,6 +58,18 @@ EtcdClient::EtcdClient(const std::string& endpoints) {
 }
 
 EtcdClient::~EtcdClient() = default;
+
+bool EtcdClient::hasError(const std::string& json_resp) {
+    if (json_resp.empty()) return true;
+    Document d;
+    d.Parse(json_resp.c_str());
+    if (d.HasParseError()) return true;
+    if (d.HasMember("error")) {
+        LOG_ERROR << "etcd error: " << d["error"].GetString();
+        return true;
+    }
+    return false;
+}
 
 std::string EtcdClient::post(const std::string& path,
                               const std::string& json_body) {
