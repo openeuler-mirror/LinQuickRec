@@ -38,13 +38,13 @@ deploy/docker/
 
 ## 快速开始
 
-### 1. 一键构建
+### 容器构建
 
 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译任何二进制：
 
 前置依赖：
 + 基础镜像已完成编译
-+ 在LinQuickRec的目录下创建share目录，并将必要的两个whl文件+Qwen3-0.6B的模型文件放入share目录中
++ 在LinQuickRec的目录下的share目录，并将必要的两个whl文件+Qwen3-0.6B的模型文件放入share目录中
 
 ```bash
 cd deploy/docker
@@ -53,10 +53,26 @@ cd deploy/docker
 docker compose build
 
 # 查看容器
-docker images linquickrec*
+docker images | grep linquickrec
 ```
 
-### 2. 验证
+构建过程到此结束。若您不希望使用docker-compose拉起服务容器，而计划使用k8s，那么此时请参阅 [容器化部署（k8s）文档](../k8s/README.md)。
+
+### 容器化部署（docker-compose）
+
+本章节提供在单节点上部署一套LinQuickRec系统进行功能验证。
+
+**启动容器：**
+
+```bash
+# 容器构建并启动
+docker compose up --build -d
+
+# 若容器已经构建完成，可直接启动
+docker compose up -d
+```
+
+**验证容器启动成功：**
 
 ```bash
 # 查看所有容器状态
@@ -67,6 +83,16 @@ curl http://localhost:8080  # 或根据实际接口测试
 
 # 查看 discovery 注册的服务
 docker compose logs discovery-server
+```
+
+**构建请求进行简单测试：**
+
+LinQuickRec 根目录下的 `scripts/send_proxy_request.sh` 提供一个简单的请求，您可以查看该脚本，更改参数，并运行脚本来模拟单个请求进行测试。
+
+```bash
+# 从LinQuickRec项目根目录
+cd scripts/
+bash send_proxy_request.sh
 ```
 
 ## docker-compose 服务清单

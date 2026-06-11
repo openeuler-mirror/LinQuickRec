@@ -1,4 +1,4 @@
-# LingQuickRec — 搜推广时延模拟系统
+# LinQuickRec — 搜推广时延模拟系统
 
 ## 项目简介
 
