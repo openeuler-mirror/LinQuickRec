@@ -52,12 +52,17 @@ spec:
           mountPath: /var/log/linquickrec
         - name: cuda
           mountPath: /usr/local/cuda
+        - name: model-name
+          mountPath: /app/models/Qwen3-0.6B
       volumes:
       - name: log
         emptyDir: {}
       - name: cuda
         hostPath:
           path: /usr/local/cuda-12.9
+      - name: model-name
+        hostPath:
+          path: share/Qwen3-0.6B
 ---
 apiVersion: v1
 kind: Service

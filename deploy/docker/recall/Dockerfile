@@ -12,10 +12,8 @@ ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
 # === 可配置的路径参数 ===
 # vLLM 相关
 ARG VLLM_WHL=share/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
-ARG START_VLLM_BACK=share/vllm/start_vllm_back.sh
-ARG START_VLLM=share/vllm/start_vllm.sh
-ARG MODEL_QWEN_06B=share/Qwen3-0.6B/
-ARG MODEL_QWEN_8B=share/Qwen3-8B/
+ARG START_VLLM_BACK=deploy/docker/recall/start_vllm_back.sh
+ARG START_VLLM=deploy/docker/recall/start_vllm.sh
 ARG TORCH_WHL=share/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
 # 服务代码
 ARG PROTO_DIR=proto/
@@ -46,9 +44,6 @@ RUN chmod +x /app/start_vllm_back.sh
 
 COPY ${START_VLLM} /app/start_vllm.sh
 RUN chmod +x /app/start_vllm.sh
-
-COPY ${MODEL_QWEN_06B} /app/models/Qwen3-0.6B/
-COPY ${MODEL_QWEN_8B} /app/models/Qwen3-8B/
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/

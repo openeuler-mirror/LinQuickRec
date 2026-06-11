@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# 必须存在MODEL_NAME环境变量
+if [ -z "$MODEL_NAME" ]; then
+    echo "Error: Environment variable MODEL_NAME is not defined or empty." >&2
+    exit 1
+else
+    echo "MODEL_NAME is set to: $MODEL_NAME"
+fi
+
+# 检查MODEL_NAME的路径是否真实存在
+if [ ! -e "$MODEL_NAME" ]; then
+    echo "Error: The path specified by MODEL_NAME does not exist: $VLLM_MODEL_PATH" >&2
+    exit 1
+fi
+
 REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
 ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"

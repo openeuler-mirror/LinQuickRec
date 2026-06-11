@@ -158,6 +158,7 @@ services:
     image: linquickrec/recall:latest
     volumes:
       - /usr/local/cuda-12.9:/usr/local/cuda
+      - share/Qwen3-0.6B:"${MODEL_NAME:-/app/models/Qwen3-0.6B/}"
     container_name: recall-service
     depends_on:
       etcd:
