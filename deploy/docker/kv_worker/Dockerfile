@@ -2,7 +2,7 @@ FROM linquickrec/base:latest
 
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/kv_worker/
+ARG DATASYSTEM_START_SCRIPT=deploy/docker/kv_worker/start_datasystem.sh
 ARG DISCOVERY_DIR=services/discovery/
 ARG ENTRYPOINT_FILE=deploy/docker/kv_worker/entrypoint.sh
 
@@ -19,7 +19,7 @@ RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
     rm -rf /tmp/build_discovery
 RUN chmod +x /app/discovery_client
 
-COPY ${SERVICE_DIR} /workerspace/
+COPY ${DATASYSTEM_START_SCRIPT} /workerspace/start_datasystem.sh
 RUN chmod +x /workerspace/start_datasystem.sh
 COPY ${ENTRYPOINT_FILE} /entrypoint.sh
 RUN chmod +x /entrypoint.sh
