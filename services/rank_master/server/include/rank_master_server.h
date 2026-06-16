@@ -95,6 +95,7 @@ private:
                         const std::vector<uint64_t>& sku_ids,
                         const std::string& payload,
                         const std::string& trace_id,
+                        int bucket_index,
                         RankSubResponse* response);
 
     static void* sub_worker_bthread_fn(void* arg);

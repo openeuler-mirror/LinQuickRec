@@ -67,7 +67,8 @@ private:
                                                     std::string& user_feat_key);
 
     common::error::Status write_to_kvworker(const std::string& user_feat_key,
-                                             const std::string& precalc_result);
+                                             const std::string& precalc_result,
+                                             const std::string& trace_id);
 
     std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
 };

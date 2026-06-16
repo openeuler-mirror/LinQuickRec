@@ -20,6 +20,7 @@
 #include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/perf_logger.h"
 #include "common/random_utils.h"
 #include "common/sku_utils.h"
 #include "rank_sub.pb.h"
@@ -141,6 +142,7 @@ bool RankMasterServiceImpl::call_sub_worker(
     const std::vector<uint64_t>& sku_ids,
     const std::string& payload,
     const std::string& trace_id,
+    int bucket_index,
     RankSubResponse* response) {
 
     std::string host;
@@ -173,15 +175,25 @@ bool RankMasterServiceImpl::call_sub_worker(
     int64_t start_us = butil::gettimeofday_us();
     stub.Rank(&cntl, &request, response, nullptr);
     int64_t end_us = butil::gettimeofday_us();
+    std::string extra = "bucket_index=" + std::to_string(bucket_index)
+        + " instance=" + instance_id;
 
     if (cntl.Failed()) {
         service_discovery_->ReportFailure(instance_id);
+        common::perf::Log("rank_master", "sub_worker_rpc", "processing", trace_id,
+                          common::perf::UsToMs(end_us - start_us), "error", extra);
+        common::perf::Log("rank_master", "rank_master_to_rank_sub_brpc", "brpc", trace_id,
+                          cntl.latency_us() / 1000.0, "error", extra);
         LOG_ERROR << common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
             "Sub-worker call failed: " + cntl.ErrorText()).ToString();
         return false;
     }
 
     service_discovery_->ReportSuccess(instance_id);
+    common::perf::Log("rank_master", "sub_worker_rpc", "processing", trace_id,
+                      common::perf::UsToMs(end_us - start_us), "ok", extra);
+    common::perf::Log("rank_master", "rank_master_to_rank_sub_brpc", "brpc", trace_id,
+                      cntl.latency_us() / 1000.0, "ok", extra);
     LOG_INFO << "Sub-worker returned " << response->skus_score_size() << " scores"
               << ", request_payload_size=" << payload.size() << " bytes"
               << ", response_payload_size=" << response->payload().size() << " bytes"
@@ -199,6 +211,7 @@ void* RankMasterServiceImpl::sub_worker_bthread_fn(void* arg) {
         *task->sku_ids,
         *task->payload,
         *task->trace_id,
+        task->bucket_index,
         &task->response);
     return nullptr;
 }
@@ -284,6 +297,7 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     tasks.reserve(bucket_count);
     tids.reserve(bucket_count);
 
+    int64_t fanout_start_us = butil::gettimeofday_us();
     for (int i = 0; i < bucket_count; ++i) {
         if (distribution[i].empty()) {
             continue;
@@ -305,8 +319,12 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     for (bthread_t tid : tids) {
         bthread_join(tid, nullptr);
     }
+    common::perf::Log("rank_master", "sub_worker_fanout_wait", "processing", trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - fanout_start_us),
+                      "ok", "bucket_count=" + std::to_string(bucket_count));
 
     int failed_workers = 0;
+    int64_t aggregate_start_us = butil::gettimeofday_us();
 
     for (const auto& task : tasks) {
         if (!task.success) {
@@ -323,6 +341,10 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
             all_scores[sku_id] = score;
         }
     }
+    common::perf::Log("rank_master", "aggregate_scores", "processing", trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - aggregate_start_us),
+                      failed_workers == 0 ? "ok" : "partial",
+                      "failed_workers=" + std::to_string(failed_workers));
 
     if (failed_workers > 0 && all_scores.empty()) {
         auto status = common::error::Status(rank_master_errors::SUB_WORKER_CALL_FAILED,
@@ -347,7 +369,11 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
              << request->payload().size() << " bytes";
 
     std::vector<uint64_t> all_sku_ids;
+    int64_t parse_start_us = butil::gettimeofday_us();
     auto status = validate_and_parse(request, all_sku_ids);
+    common::perf::Log("rank_master", "parse_skus", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - parse_start_us),
+                      status.IsOk() ? "ok" : "error");
     if (status.IsError()) {
         return status;
     }
@@ -361,20 +387,31 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     LOG_INFO << "Collected scores for " << all_scores.size() << " SKUs";
 
     std::vector<uint64_t> candidates;
+    int64_t select_start_us = butil::gettimeofday_us();
     select_top_k(all_scores, FLAGS_top_k, candidates);
+    common::perf::Log("rank_master", "select_top_k", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - select_start_us),
+                      "ok", "scored_skus=" + std::to_string(all_scores.size()));
 
     for (uint64_t candidate : candidates) {
         response->add_candidates(candidate);
     }
     int payload_size_kb = FLAGS_rank_master_payload_size_kb > 0
         ? FLAGS_rank_master_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
     response->set_payload(common::generate_random_string(payload_size_kb * 1024));
+    common::perf::Log("rank_master", "generate_payload", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(response->payload().size()));
 
     if (FLAGS_rank_master_sleep_time_ms > 0) {
         LOG_INFO << "Simulating rank_master sleep: "
                  << FLAGS_rank_master_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(
             std::chrono::milliseconds(FLAGS_rank_master_sleep_time_ms));
+        common::perf::Log("rank_master", "sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     LOG_INFO << "RankMaster processing completed:"
@@ -387,6 +424,9 @@ common::error::Status RankMasterServiceImpl::process_rank_request(const RankMast
     int64_t cost_us = end_us - server_receive_us;
 
     LOG_INFO << "RankMaster completed, cost=" << cost_us / 1000.0 << " ms";
+    common::perf::Log("rank_master", "rank_master_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(cost_us), "ok",
+                      "input_skus=" + std::to_string(all_sku_ids.size()));
 
     return common::error::Status::OK();
 }

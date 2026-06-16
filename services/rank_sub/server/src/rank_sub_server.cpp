@@ -20,6 +20,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/perf_logger.h"
 #include "common/random_utils.h"
 #include "common/sku_utils.h"
 
@@ -126,7 +127,13 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     KVClient kv_client(connectOptions);
 
+    int64_t kv_init_start_us = butil::gettimeofday_us();
     datasystem::Status kv_status = kv_client.Init();
+    int64_t kv_init_cost_us = butil::gettimeofday_us() - kv_init_start_us;
+    common::perf::Log("rank_sub", "kv_init", "processing", request->trace_id(),
+                      common::perf::UsToMs(kv_init_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + request->user_feat_key());
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(rank_sub_errors::KVCLIENT_INIT_FAILED,
             "KVClient init failed: " + kv_status.ToString());
@@ -141,6 +148,10 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     int64_t kv_read_end_us = butil::gettimeofday_us();
     int64_t kv_read_cost_us = kv_read_end_us - kv_read_start_us;
+    common::perf::Log("rank_sub", "kv_get", "processing", request->trace_id(),
+                      common::perf::UsToMs(kv_read_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + request->user_feat_key());
 
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(rank_sub_errors::KVCLIENT_GET_FAILED,
@@ -155,7 +166,13 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
               << request->user_feat_key()
               << ", size=" << user_feat.size() << " bytes";
 
+    int64_t parse_start_us = butil::gettimeofday_us();
     std::vector<uint64_t> sku_ids = parse_skus_from_string(request->skus_sub());
+    int64_t parse_cost_us = butil::gettimeofday_us() - parse_start_us;
+    common::perf::Log("rank_sub", "parse_skus", "processing", request->trace_id(),
+                      common::perf::UsToMs(parse_cost_us),
+                      sku_ids.empty() ? "error" : "ok",
+                      "key=" + request->user_feat_key());
 
     if (sku_ids.empty()) {
         auto status = common::error::Status(rank_sub_errors::NO_SKU_PARSED,
@@ -175,14 +192,24 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
 
     int64_t scoring_end_us = butil::gettimeofday_us();
     int64_t scoring_cost_us = scoring_end_us - scoring_start_us;
+    common::perf::Log("rank_sub", "score_skus", "processing", request->trace_id(),
+                      common::perf::UsToMs(scoring_cost_us), "ok",
+                      "sku_count=" + std::to_string(sku_ids.size()));
 
     int payload_size_kb = FLAGS_rank_sub_payload_size_kb > 0
         ? FLAGS_rank_sub_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
     response->set_payload(common::generate_random_string(payload_size_kb * 1024));
+    common::perf::Log("rank_sub", "generate_payload", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(response->payload().size()));
 
     if (FLAGS_rank_sub_sleep_time_ms > 0) {
         LOG_INFO << "Simulating rank_sub sleep: " << FLAGS_rank_sub_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_rank_sub_sleep_time_ms));
+        common::perf::Log("rank_sub", "sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     int64_t server_send_us = butil::gettimeofday_us();
@@ -198,6 +225,9 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     int64_t cost_us = end_us - server_receive_us;
 
     LOG_INFO << "Rank completed, cost=" << cost_us / 1000.0 << " ms";
+    common::perf::Log("rank_sub", "rank_sub_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(cost_us), "ok",
+                      "sku_count=" + std::to_string(sku_ids.size()));
 
     return common::error::Status::OK();
 }
