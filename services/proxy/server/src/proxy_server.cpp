@@ -13,7 +13,9 @@
 #include <brpc/channel.h>
 #include <brpc/controller.h>
 #include <brpc/server.h>
+#include <butil/time.h>
 
+#include "common/perf_logger.h"
 #include "common/service_discovery.h"
 
 #include "common/logger.h"
@@ -133,7 +135,9 @@ void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
     (void)controller;
     tls_trace_id = generate_trace_id();
 
+    int64_t start_us = butil::gettimeofday_us();
     auto status = process_recommend_request(request, response);
+    int64_t cost_us = butil::gettimeofday_us() - start_us;
 
     if (!status.IsOk()) {
         response->set_error_code(static_cast<int32_t>(status.Code()));
@@ -141,6 +145,10 @@ void ProxyServiceImpl::Recommend(google::protobuf::RpcController* controller,
         LOG_ERROR << "Request failed: trace_id=" << tls_trace_id
                          << " error=" << status.ToString();
     }
+    common::perf::Log("proxy", "proxy_e2e", "e2e", tls_trace_id,
+                      common::perf::UsToMs(cost_us),
+                      status.IsOk() ? "ok" : "error",
+                      "user_id=" + std::to_string(request->user_id()));
 }
 
 common::error::Status ProxyServiceImpl::call_feature_service(
@@ -181,10 +189,18 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     }
 
     feature::FeatureService_Stub stub(channel.get());
+    int64_t start_us = butil::gettimeofday_us();
     stub.GetUserFeatures(&cntl, &feat_req, response, nullptr);
+    int64_t cost_us = butil::gettimeofday_us() - start_us;
 
     if (cntl.Failed()) {
         service_discovery_->ReportFailure(instance_id);
+        common::perf::Log("proxy", "feature_rpc", "processing", tls_trace_id,
+                          common::perf::UsToMs(cost_us), "error",
+                          "instance=" + instance_id);
+        common::perf::Log("proxy", "proxy_to_feature_brpc", "brpc", tls_trace_id,
+                          cntl.latency_us() / 1000.0, "error",
+                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0001,
@@ -192,6 +208,12 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     }
 
     service_discovery_->ReportSuccess(instance_id);
+    common::perf::Log("proxy", "feature_rpc", "processing", tls_trace_id,
+                      common::perf::UsToMs(cost_us), "ok",
+                      "instance=" + instance_id);
+    common::perf::Log("proxy", "proxy_to_feature_brpc", "brpc", tls_trace_id,
+                      cntl.latency_us() / 1000.0, "ok",
+                      "instance=" + instance_id);
     LOG_INFO << "FeatureService success: user_id=" << request->user_id()
              << " user_logs=" << response->kr_feat_rsp().user_logs_size()
              << " instance=" << instance_id;
@@ -244,10 +266,18 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     }
 
     recall::RecallService_Stub stub(channel.get());
+    int64_t start_us = butil::gettimeofday_us();
     stub.Recall(&cntl, &recall_req, response, nullptr);
+    int64_t cost_us = butil::gettimeofday_us() - start_us;
 
     if (cntl.Failed()) {
         service_discovery_->ReportFailure(instance_id);
+        common::perf::Log("proxy", "recall_rpc", "processing", tls_trace_id,
+                          common::perf::UsToMs(cost_us), "error",
+                          "instance=" + instance_id);
+        common::perf::Log("proxy", "proxy_to_recall_brpc", "brpc", tls_trace_id,
+                          cntl.latency_us() / 1000.0, "error",
+                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0002,
@@ -255,6 +285,12 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     }
 
     service_discovery_->ReportSuccess(instance_id);
+    common::perf::Log("proxy", "recall_rpc", "processing", tls_trace_id,
+                      common::perf::UsToMs(cost_us), "ok",
+                      "instance=" + instance_id);
+    common::perf::Log("proxy", "proxy_to_recall_brpc", "brpc", tls_trace_id,
+                      cntl.latency_us() / 1000.0, "ok",
+                      "instance=" + instance_id);
     LOG_INFO << "RecallService success: sku_ids=" << response->sku_ids_size()
              << " instance=" << instance_id;
     return common::error::Status::OK();
@@ -300,10 +336,18 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     }
 
     precalc::PrecalcService_Stub stub(channel.get());
+    int64_t start_us = butil::gettimeofday_us();
     stub.Precalculate(&cntl, &precalc_req, response, nullptr);
+    int64_t cost_us = butil::gettimeofday_us() - start_us;
 
     if (cntl.Failed()) {
         service_discovery_->ReportFailure(instance_id);
+        common::perf::Log("proxy", "precalc_rpc", "processing", tls_trace_id,
+                          common::perf::UsToMs(cost_us), "error",
+                          "instance=" + instance_id);
+        common::perf::Log("proxy", "proxy_to_precalc_brpc", "brpc", tls_trace_id,
+                          cntl.latency_us() / 1000.0, "error",
+                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0003,
@@ -311,6 +355,12 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     }
 
     service_discovery_->ReportSuccess(instance_id);
+    common::perf::Log("proxy", "precalc_rpc", "processing", tls_trace_id,
+                      common::perf::UsToMs(cost_us), "ok",
+                      "instance=" + instance_id);
+    common::perf::Log("proxy", "proxy_to_precalc_brpc", "brpc", tls_trace_id,
+                      cntl.latency_us() / 1000.0, "ok",
+                      "instance=" + instance_id);
     LOG_INFO << "PrecalcService success: user_feat_key=" << response->user_feat_key()
              << " instance=" << instance_id;
     return common::error::Status::OK();
@@ -362,10 +412,18 @@ common::error::Status ProxyServiceImpl::call_rank_service(
 
     rank::RankMasterService_Stub stub(channel.get());
     rank::RankMasterResponse rank_rsp;
+    int64_t start_us = butil::gettimeofday_us();
     stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
+    int64_t cost_us = butil::gettimeofday_us() - start_us;
 
     if (cntl.Failed()) {
         service_discovery_->ReportFailure(instance_id);
+        common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
+                          common::perf::UsToMs(cost_us), "error",
+                          "instance=" + instance_id);
+        common::perf::Log("proxy", "proxy_to_rank_master_brpc", "brpc", tls_trace_id,
+                          cntl.latency_us() / 1000.0, "error",
+                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0004,
@@ -373,6 +431,12 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     }
 
     service_discovery_->ReportSuccess(instance_id);
+    common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
+                      common::perf::UsToMs(cost_us), "ok",
+                      "instance=" + instance_id);
+    common::perf::Log("proxy", "proxy_to_rank_master_brpc", "brpc", tls_trace_id,
+                      cntl.latency_us() / 1000.0, "ok",
+                      "instance=" + instance_id);
     for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
         response->add_candidates(rank_rsp.candidates(i));
     }
@@ -415,8 +479,13 @@ common::error::Status ProxyServiceImpl::process_recommend_request(
         return std::make_pair(st, std::move(rsp));
     });
 
+    int64_t parallel_wait_start_us = butil::gettimeofday_us();
     auto [recall_st, recall_rsp] = recall_future.get();
     auto [precalc_st, precalc_rsp] = precalc_future.get();
+    common::perf::Log("proxy", "recall_precalc_parallel_wait", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - parallel_wait_start_us),
+                      (recall_st.IsOk() && precalc_st.IsOk()) ? "ok" : "error",
+                      "user_id=" + std::to_string(request->user_id()));
     if (!recall_st.IsOk() || !precalc_st.IsOk()) {
         LOG_ERROR << "Stage 2 failed: recall="
                   << (recall_st.IsOk() ? "ok" : recall_st.ToString())

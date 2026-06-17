@@ -5,7 +5,11 @@
 #include <sstream>
 #include <thread>
 
+#include <brpc/controller.h>
+#include <butil/time.h>
+
 #include "common/logger.h"
+#include "common/perf_logger.h"
 #include "common/random_utils.h"
 
 DEFINE_int32(server_port, 8001, "Feature service port");
@@ -14,6 +18,12 @@ DEFINE_int32(user_log_vec_size, 30, "Vector size per user log");
 DEFINE_int32(sku_feat_length, 20, "SKU feature string length");
 DEFINE_int32(feature_sleep_time_ms, 30, "Feature service simulated sleep time (ms)");
 DEFINE_int32(feature_payload_size_kb, 0, "Feature response payload size (KB)");
+
+namespace {
+
+thread_local std::string tls_trace_id;
+
+} // namespace
 
 namespace feature {
 
@@ -26,12 +36,15 @@ FeatureServiceImpl::FeatureServiceImpl() {
 FeatureServiceImpl::~FeatureServiceImpl() = default;
 
 void FeatureServiceImpl::GetUserFeatures(
-    google::protobuf::RpcController* /*controller*/,
+    google::protobuf::RpcController* controller,
     const UserFeatureRequest* request,
     UserFeatureResponse* response,
     google::protobuf::Closure* done) {
 
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    tls_trace_id = cntl ? std::to_string(cntl->log_id()) : "-";
+    int64_t start_us = butil::gettimeofday_us();
 
     uint64_t user_id = 0;
     if (request->has_kr_feat_req()) {
@@ -51,15 +64,22 @@ void FeatureServiceImpl::GetUserFeatures(
         response->set_error_message(status.ToString());
         LOG_ERROR << "GetUserFeatures failed: " << status.ToString();
     }
+    common::perf::Log("feature", "feature_total", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - start_us),
+                      status.IsOk() ? "ok" : "error",
+                      "user_id=" + std::to_string(user_id));
 }
 
 void FeatureServiceImpl::GetSKUFeatures(
-    google::protobuf::RpcController* /*controller*/,
+    google::protobuf::RpcController* controller,
     const SKUFeatureRequest* request,
     SKUFeatureResponse* response,
     google::protobuf::Closure* done) {
 
     brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    tls_trace_id = cntl ? std::to_string(cntl->log_id()) : "-";
+    int64_t start_us = butil::gettimeofday_us();
 
     LOG_INFO << "GetSKUFeatures (mock): sku_count="
               << request->sku_ids_size();
@@ -73,6 +93,10 @@ void FeatureServiceImpl::GetSKUFeatures(
         response->set_error_message(status.ToString());
         LOG_ERROR << "GetSKUFeatures failed: " << status.ToString();
     }
+    common::perf::Log("feature", "feature_total", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - start_us),
+                      status.IsOk() ? "ok" : "error",
+                      "sku_count=" + std::to_string(request->sku_ids_size()));
 }
 
 common::error::Status FeatureServiceImpl::process_user_features_request(
@@ -97,21 +121,32 @@ common::error::Status FeatureServiceImpl::process_user_features_request(
     int log_count = FLAGS_user_log_count;
     auto* kr_rsp = response->mutable_kr_feat_rsp();
 
+    int64_t logs_start_us = butil::gettimeofday_us();
     for (int i = 0; i < log_count; ++i) {
         auto* log = kr_rsp->add_user_logs();
         for (int j = 0; j < FLAGS_user_log_vec_size; ++j) {
             log->add_vec(val_dist(rng));
         }
     }
+    common::perf::Log("feature", "generate_user_logs", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - logs_start_us),
+                      "ok", "user_id=" + std::to_string(user_id));
 
     int payload_size_kb = FLAGS_feature_payload_size_kb > 0 ? FLAGS_feature_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
     std::string payload = common::generate_random_string(payload_size_kb * 1024);
+    common::perf::Log("feature", "generate_payload", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(payload.size()));
     kr_rsp->set_payload(payload);
     response->set_feature_type(KuaiRand);
 
     if (FLAGS_feature_sleep_time_ms > 0) {
         LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
+        common::perf::Log("feature", "sleep", "processing", tls_trace_id,
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     return common::error::Status::OK();
@@ -133,6 +168,7 @@ common::error::Status FeatureServiceImpl::process_sku_features_request(
 
     response->set_feature_type(KuaiRand);
 
+    int64_t logs_start_us = butil::gettimeofday_us();
     for (int i = 0; i < request->sku_ids_size(); ++i) {
         auto* sku_feat = response->add_kr_sku_feats();
         sku_feat->set_sku_id(request->sku_ids(i));
@@ -144,10 +180,16 @@ common::error::Status FeatureServiceImpl::process_sku_features_request(
         }
         sku_feat->set_feat(feat);
     }
+    common::perf::Log("feature", "generate_user_logs", "processing", tls_trace_id,
+                      common::perf::UsToMs(butil::gettimeofday_us() - logs_start_us),
+                      "ok", "sku_count=" + std::to_string(request->sku_ids_size()));
 
     if (FLAGS_feature_sleep_time_ms > 0) {
         LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
+        common::perf::Log("feature", "sleep", "processing", tls_trace_id,
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     return common::error::Status::OK();

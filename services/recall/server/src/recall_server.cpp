@@ -33,6 +33,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/perf_logger.h"
 #include "common/random_utils.h"
 
 DEFINE_string(vllm_base_url, "http://127.0.0.1:8000", "vLLM 服务基础 URL");
@@ -366,7 +367,11 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
     connectOptions.serviceDiscovery = service_discovery_;
 
     datasystem::KVClient kv_client(connectOptions);
+    int64_t init_start_us = butil::gettimeofday_us();
     datasystem::Status kv_status = kv_client.Init();
+    common::perf::Log("recall", "kv_init", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - init_start_us),
+                      kv_status.IsOk() ? "ok" : "error");
     if (!kv_status.IsOk()) {
         result.success = false;
         result.status = common::error::Status(recall_errors::KVCLIENT_INIT_FAILED,
@@ -380,6 +385,10 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
     int64_t kv_get_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Get(kv_key, buffer);
     int64_t kv_get_cost_us = butil::gettimeofday_us() - kv_get_start_us;
+    common::perf::Log("recall", "kvcache_get", "processing", request->trace_id(),
+                      common::perf::UsToMs(kv_get_cost_us),
+                      kv_status.IsOk() ? "ok" : "miss",
+                      "key=" + kv_key);
 
     if (kv_status.IsOk()) {
         // Cache HIT：用已有 kvcache 生成 SKU
@@ -419,6 +428,10 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
         int64_t create_start_us = butil::gettimeofday_us();
         kv_status = kv_client.Create(kv_key, cache_size, param, write_buffer);
         int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
+        common::perf::Log("recall", "kvcache_create", "processing", request->trace_id(),
+                          common::perf::UsToMs(create_cost_us),
+                          kv_status.IsOk() ? "ok" : "error",
+                          "key=" + kv_key);
 
         if (!kv_status.IsOk()) {
             result.success = false;
@@ -433,6 +446,10 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
         int64_t set_start_us = butil::gettimeofday_us();
         kv_status = kv_client.Set(write_buffer);
         int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
+        common::perf::Log("recall", "kvcache_set", "processing", request->trace_id(),
+                          common::perf::UsToMs(set_cost_us),
+                          kv_status.IsOk() ? "ok" : "error",
+                          "key=" + kv_key);
 
         if (!kv_status.IsOk()) {
             result.success = false;
@@ -453,16 +470,26 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
     }
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
+    common::perf::Log("recall", "generate_payload", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(result.response.payload().size()));
 
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
+        common::perf::Log("recall", "sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
+    int64_t total_cost_us = butil::gettimeofday_us() - start_us;
     LOG_INFO << "KVCache recall completed, key=" << kv_key
               << ", sku_count=" << result.response.sku_ids_size()
-              << ", total_cost=" << (butil::gettimeofday_us() - start_us) / 1000.0 << " ms";
+              << ", total_cost=" << total_cost_us / 1000.0 << " ms";
+    common::perf::Log("recall", "recall_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(total_cost_us), "ok", "mode=kvcache");
 
     result.success = true;
     return result;
@@ -494,6 +521,12 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     auto vllm_resp = vllm_client_.SendRequest(vllm_json);
     int64_t vllm_end_us = butil::gettimeofday_us();
     int64_t vllm_cost_us = vllm_end_us - vllm_start_us;
+    common::perf::Log("recall", "vllm_rpc", "processing", request->trace_id(),
+                      common::perf::UsToMs(vllm_cost_us),
+                      vllm_resp.success ? "ok" : "error");
+    common::perf::Log("recall", "recall_to_vllm_brpc", "brpc", request->trace_id(),
+                      vllm_resp.brpc_latency_ms,
+                      vllm_resp.success ? "ok" : "error");
 
     if (!vllm_resp.success) {
         result.success = false;
@@ -515,13 +548,22 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     }
     int64_t parse_end_us = butil::gettimeofday_us();
     int64_t parse_cost_us = parse_end_us - parse_start_us;
+    common::perf::Log("recall", "vllm_parse", "processing", request->trace_id(),
+                      common::perf::UsToMs(parse_cost_us), "ok");
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
+    common::perf::Log("recall", "generate_payload", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(result.response.payload().size()));
 
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
+        common::perf::Log("recall", "sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
@@ -529,6 +571,8 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     LOG_INFO << "Recall completed, cost=" << server_process_us / 1000.0 << " ms"
               << ", vllm_cost=" << vllm_cost_us / 1000.0 << " ms"
               << ", parse_cost=" << parse_cost_us / 1000.0 << " ms";
+    common::perf::Log("recall", "recall_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(server_process_us), "ok", "mode=vllm");
 
     result.success = true;
     return result;

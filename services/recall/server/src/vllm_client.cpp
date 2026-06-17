@@ -53,6 +53,8 @@ VllmResponse VllmClient::SendRequest(const std::string& json_body) {
 
     int64_t end_us = butil::gettimeofday_us();
     double cost_ms = (end_us - start_us) / 1000.0;
+    result.total_cost_ms = cost_ms;
+    result.brpc_latency_ms = cntl.latency_us() / 1000.0;
 
     if (cntl.Failed()) {
         LOG_ERROR << "vLLM call failed: cost=" << cost_ms << " ms"
