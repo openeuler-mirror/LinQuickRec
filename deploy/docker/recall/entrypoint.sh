@@ -18,7 +18,7 @@ if [ "$ENABLE_VLLM" = "true" ]; then
 
     echo "Waiting for vLLM to be ready..."
     for i in $(seq 1 ${VLLM_STARTUP_TIMEOUT:-120}); do
-        if curl -s http://127.0.0.1:${VLLM_PORT:-8000}/health > /dev/null 2>&1; then
+        if curl -fsS http://127.0.0.1:${VLLM_PORT:-8000}/health > /dev/null 2>&1; then
             echo "vLLM is ready!"
             break
         fi

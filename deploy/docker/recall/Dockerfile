@@ -37,6 +37,10 @@ RUN --mount=type=bind,source=.,target=/ctx \
     if [ "$ENABLE_VLLM" = "true" ]; then \
         pip3 install /ctx/${TORCH_WHL} && \
         pip3 install /ctx/${VLLM_WHL} && \
+        pip3 install --force-reinstall \
+            "fastapi==0.115.14" \
+            "starlette==0.46.2" \
+            "prometheus-fastapi-instrumentator==7.1.0" && \
         pip3 install /ctx/${TORCH_WHL} && \
         pip3 install pytorch-triton==3.3.0+gitab727c40 \
             --index-url https://download.pytorch.org/whl/nightly/cu129 \
