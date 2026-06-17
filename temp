@@ -1,0 +1,461 @@
+[+] build 1/3
+ ? Image linquickrec/etcd:latest      Building                                                                                                                                                                                                          17.6s
+ ? Image linquickrec/discovery:latest Building                                                                                                                                                                                                          17.6s
+ ? Image linquickrec/feature:latest   Built                                                                                                                                                                                                             17.6s
+[22:11:33] Tagging linquickrec/feature:latest -> 192.168.84.245:5000/linquickrec/feature:latest
+[22:11:33] Pushing 192.168.84.245:5000/linquickrec/feature:latest
+The push refers to repository [192.168.84.245:5000/linquickrec/feature]
+b56623bd139d: Pushed 
+2019d1b3b964: Pushed 
+23712e5f5bb5: Pushed 
+774ffb464d9a: Pushed 
+05933f057f9e: Pushed 
+76beb68b992a: Pushed 
+9e133ba4c105: Pushed 
+c50a14d4b59e: Mounted from linquickrec/kv-worker 
+91adc9b8d7f7: Mounted from linquickrec/kv-worker 
+d067435c6d05: Layer already exists 
+b15f3569c0ba: Layer already exists 
+bc36999c0a27: Layer already exists 
+ec309f773f0e: Layer already exists 
+latest: digest: sha256:b9155b7b65c397824452c0ce99114a8f991ee46ad5e9e97620c832ac535f224a size: 3046
+[22:11:37] ===== recall =====
+[22:11:37] Building compose service: recall-service
+[+] Building 301.8s (8/17)                                                                                                                                                                                                                                   
+ => [internal] load local bake definitions                                                                                                                                                                                                              0.0s
+ => => reading from stdin 1.55kB                                                                                                                                                                                                                        0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                    0.0s
+ => => transferring dockerfile: 2.99kB                                                                                                                                                                                                                  0.0s
+ => [internal] load metadata for docker.io/linquickrec/base:latest                                                                                                                                                                                      0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                       0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                         0.0s
+ => [internal] load build context                                                                                                                                                                                                                      95.6s
+ => => transferring context: 39.51GB                                                                                                                                                                                                                   95.6s
+ => [stage-0  1/12] FROM docker.io/linquickrec/base:latest                                                                                                                                                                                              0.0s
+ => CACHED [stage-0  2/12] WORKDIR /app                                                                                                                                                                                                                 0.0s
+ => ERROR [stage-0  3/12] RUN --mount=type=bind,source=.,target=/ctx     if [ "true" = "true" ]; then         pip3 install /ctx/share/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl &&         pip3 install /ctx/share/vllm-0.11.0rc6+cu129  206.1s
+------                                                                                                                                                                                                                                                       
+ > [stage-0  3/12] RUN --mount=type=bind,source=.,target=/ctx     if [ "true" = "true" ]; then         pip3 install /ctx/share/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl &&         pip3 install /ctx/share/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl &&         pip3 install pytorch-triton==3.3.0+gitab727c40             --index-url https://download.pytorch.org/whl/nightly/cu129             --trusted-host download.pytorch.org             --trusted-host download-r2.pytorch.org &&         pip uninstall -y transformers && pip install "transformers>=4.51.1,<5" &&         mkdir -p /app/models &&         cp -r /ctx/share/Qwen3-0.6B/ /app/models/Qwen3-0.6B/ &&         cp -r /ctx/share/Qwen3-8B/ /app/models/Qwen3-8B/ &&         cp /ctx/share/vllm/start_vllm_back.sh /app/start_vllm_back.sh &&         chmod +x /app/start_vllm_back.sh &&         cp /ctx/share/vllm/start_vllm.sh /app/start_vllm.sh &&         chmod +x /app/start_vllm.sh;     fi:                                                   
+10.69 Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple, https://mirrors.aliyun.com/nvidia-cuda/                                                                                                                                                  
+10.70 Processing /ctx/share/torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+25.91 WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb9905950>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /simple/filelock/
+41.42 WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb99064d0>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /simple/filelock/
+57.43 WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb9906b50>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /simple/filelock/
+74.44 WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb9907150>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /simple/filelock/
+93.45 WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb9907790>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /simple/filelock/
+123.5 WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb990cc10>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /nvidia-cuda/filelock/
+139.0 WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb990d550>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /nvidia-cuda/filelock/
+155.0 WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb990db50>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /nvidia-cuda/filelock/
+172.0 WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb990e150>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /nvidia-cuda/filelock/
+191.0 WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<HTTPSConnection(host='141.1.95.55', port=3128) at 0xffffb990e790>, 'Connection to 141.1.95.55 timed out. (connect timeout=15)')': /nvidia-cuda/filelock/
+206.0 INFO: pip is looking at multiple versions of torch to determine which version is compatible with other requirements. This could take a while.
+206.0 ERROR: Could not find a version that satisfies the requirement filelock (from torch) (from versions: none)
+206.0 ERROR: No matching distribution found for filelock
+------
+[+] build 0/3
+ ? Image linquickrec/recall:latest    Building                                                                                                                                                                                                         301.9s
+ ? Image linquickrec/discovery:latest Building                                                                                                                                                                                                         301.9s
+ ? Image linquickrec/etcd:latest      Building                                                                                                                                                                                                         301.9s
+Dockerfile:35
+
+--------------------
+
+  34 |     # 不产生任何镜像层内容，避免将大文件写入镜像。
+
+  35 | >>> RUN --mount=type=bind,source=.,target=/ctx \
+
+  36 | >>>     if [ "$ENABLE_VLLM" = "true" ]; then \
+
+  37 | >>>         pip3 install /ctx/${TORCH_WHL} && \
+
+  38 | >>>         pip3 install /ctx/${VLLM_WHL} && \
+
+  39 | >>>         pip3 install pytorch-triton==3.3.0+gitab727c40 \
+
+  40 | >>>             --index-url https://download.pytorch.org/whl/nightly/cu129 \
+
+  41 | >>>             --trusted-host download.pytorch.org \
+
+  42 | >>>             --trusted-host download-r2.pytorch.org && \
+
+  43 | >>>         pip uninstall -y transformers && pip install "transformers>=4.51.1,<5" && \
+
+  44 | >>>         mkdir -p /app/models && \
+
+  45 | >>>         cp -r /ctx/${MODEL_QWEN_06B} /app/models/Qwen3-0.6B/ && \
+
+  46 | >>>         cp -r /ctx/${MODEL_QWEN_8B} /app/models/Qwen3-8B/ && \
+
+  47 | >>>         cp /ctx/${START_VLLM_BACK} /app/start_vllm_back.sh && \
+
+  48 | >>>         chmod +x /app/start_vllm_back.sh && \
+
+  49 | >>>         cp /ctx/${START_VLLM} /app/start_vllm.sh && \
+
+  50 | >>>         chmod +x /app/start_vllm.sh; \
+
+  51 | >>>     fi
+
+  52 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c if [ \"$ENABLE_VLLM\" = \"true\" ]; then         pip3 install /ctx/${TORCH_WHL} &&         pip3 install /ctx/${VLLM_WHL} &&         pip3 install pytorch-triton==3.3.0+gitab727c40             --index-url https://download.pytorch.org/whl/nightly/cu129             --trusted-host download.pytorch.org             --trusted-host download-r2.pytorch.org &&         pip uninstall -y transformers && pip install \"transformers>=4.51.1,<5\" &&         mkdir -p /app/models &&         cp -r /ctx/${MODEL_QWEN_06B} /app/models/Qwen3-0.6B/ &&         cp -r /ctx/${MODEL_QWEN_8B} /app/models/Qwen3-8B/ &&         cp /ctx/${START_VLLM_BACK} /app/start_vllm_back.sh &&         chmod +x /app/start_vllm_back.sh &&         cp /ctx/${START_VLLM} /app/start_vllm.sh &&         chmod +x /app/start_vllm.sh;     fi" did not complete successfully: exit code: 1
+
+[22:16:39] ===== precalc =====
+[22:16:39] Building compose service: precalc-service
+[+] Building 2.2s (12/16)                                                                                                                                                                                                                                    
+ => [internal] load local bake definitions                                                                                                                                                                                                              0.0s
+ => => reading from stdin 1.96kB                                                                                                                                                                                                                        0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                    0.0s
+ => => transferring dockerfile: 1.12kB                                                                                                                                                                                                                  0.0s
+ => [internal] load metadata for docker.io/linquickrec/base:latest                                                                                                                                                                                      0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                       0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                         0.0s
+ => [ 1/11] FROM docker.io/linquickrec/base:latest                                                                                                                                                                                                      0.0s
+ => [internal] load build context                                                                                                                                                                                                                       0.9s
+ => => transferring context: 32.99kB                                                                                                                                                                                                                    0.9s
+ => CACHED [ 2/11] WORKDIR /app                                                                                                                                                                                                                         0.0s
+ => CACHED [ 3/11] COPY proto/ /app/proto/                                                                                                                                                                                                              0.0s
+ => CACHED [ 4/11] COPY common/ /app/common/                                                                                                                                                                                                            0.0s
+ => [ 5/11] COPY services/precalc/ /app/services/precalc/                                                                                                                                                                                               0.0s
+ => [ 6/11] COPY services/discovery/ /app/services/discovery/                                                                                                                                                                                           0.0s
+ => ERROR [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)                                                                                                           1.2s
+------                                                                                                                                                                                                                                                       
+ > [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc):                                                                                                                      
+0.483 -- The C compiler identification is GNU 12.3.1                                                                                                                                                                                                         
+0.594 -- The CXX compiler identification is GNU 12.3.1                                                                                                                                                                                                       
+0.650 -- Detecting C compiler ABI info                                                                                                                                                                                                                       
+0.800 -- Detecting C compiler ABI info - done                                                                                                                                                                                                                
+0.808 -- Check for working C compiler: /usr/bin/cc - skipped
+0.808 -- Detecting C compile features
+0.809 -- Detecting C compile features - done
+0.837 -- Detecting CXX compiler ABI info
+1.015 -- Detecting CXX compiler ABI info - done
+1.023 -- Check for working CXX compiler: /usr/bin/c++ - skipped
+1.023 -- Detecting CXX compile features
+1.024 -- Detecting CXX compile features - done
+1.026 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+1.149 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+1.150 -- Found Threads: TRUE  
+1.154 -- fmt library not found, formatted logging macros will be disabled
+1.154 -- 
+1.154 -- === Common Library Configuration ===
+1.154 -- Include directory: /app/common/include
+1.154 -- Source files: thread_pool.cpp, global_thread_pool.cpp, error/error_code.cpp, logger/*.cpp
+1.154 -- =====================================
+1.154 -- 
+1.154 -- 
+1.154 -- === PrecalcService Build Configuration ===
+1.154 -- Build Type: Release
+1.154 -- 
+1.172 -- Found Protobuf: /usr/local/lib64/libprotobuf.so (found version "4.25.5") 
+1.174 -- Using Yuanrong SDK path: /usr/local/lib/python3.11/site-packages/yr/datasystem
+1.176 CMake Warning at CMakeLists.txt:88 (message):
+1.176   Yuanrong SDK not found.  Please set YR_SDK_PATH environment variable.
+1.176 
+1.176 
+1.176 CMake Warning at CMakeLists.txt:89 (message):
+1.176   Example: export YR_SDK_PATH=/path/to/yuanrong
+1.176 
+1.176 
+1.177 -- ===========================================
+1.177 -- Precalc Service Build Configuration
+1.177 -- ===========================================
+1.177 -- Build targets:
+1.177 --   - precalc_server (with Yuanrong SDK)
+1.177 --   - precalc_test_client
+1.177 --   - precalc_test (unit tests)
+1.177 -- Yuanrong SDK include: YR_INCLUDE_DIR-NOTFOUND
+1.177 -- Yuanrong SDK library: /usr/local/lib64/python3.11/site-packages/yr/datasystem/lib/libdatasystem.so
+1.177 -- ThreadPool location: /app/services/precalc/../../common/include
+1.177 -- ===========================================
+1.177 -- Configuring done (0.8s)
+1.178 CMake Error: The following variables are used in this project, but they are set to NOTFOUND.
+1.178 Please set them or make sure they are set and tested correctly in the CMake files:
+1.178 /app/services/precalc/YR_INCLUDE_DIR
+1.178    used as include directory in directory /app/services/precalc
+1.178 
+1.190 -- Generating done (0.0s)
+1.191 CMake Generate step failed.  Build files cannot be regenerated correctly.
+------
+[+] build 0/4
+ ? Image linquickrec/etcd:latest      Building                                                                                                                                                                                                           2.3s
+ ? Image linquickrec/kv-worker:latest Building                                                                                                                                                                                                           2.3s
+ ? Image linquickrec/precalc:latest   Building                                                                                                                                                                                                           2.3s
+ ? Image linquickrec/discovery:latest Building                                                                                                                                                                                                           2.3s
+Dockerfile:17
+
+--------------------
+
+  16 |     
+
+  17 | >>> RUN mkdir -p /app/build && cd /app/build && \
+
+  18 | >>>     cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release && \
+
+  19 | >>>     make -j$(nproc)
+
+  20 |     RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
+
+--------------------
+
+failed to solve: process "/bin/sh -c mkdir -p /app/build && cd /app/build &&     cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)" did not complete successfully: exit code: 1
+
+[22:16:41] ===== rank-sub =====
+[22:16:41] Building compose service: rank-sub-service
+[+] Building 1.4s (12/16)                                                                                                                                                                                                                                    
+ => [internal] load local bake definitions                                                                                                                                                                                                              0.0s
+ => => reading from stdin 1.97kB                                                                                                                                                                                                                        0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                    0.0s
+ => => transferring dockerfile: 1.12kB                                                                                                                                                                                                                  0.0s
+ => [internal] load metadata for docker.io/linquickrec/base:latest                                                                                                                                                                                      0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                       0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                         0.0s
+ => [ 1/11] FROM docker.io/linquickrec/base:latest                                                                                                                                                                                                      0.0s
+ => [internal] load build context                                                                                                                                                                                                                       0.0s
+ => => transferring context: 91.75kB                                                                                                                                                                                                                    0.0s
+ => CACHED [ 2/11] WORKDIR /app                                                                                                                                                                                                                         0.0s
+ => CACHED [ 3/11] COPY proto/ /app/proto/                                                                                                                                                                                                              0.0s
+ => CACHED [ 4/11] COPY common/ /app/common/                                                                                                                                                                                                            0.0s
+ => [ 5/11] COPY services/rank_sub/ /app/services/rank_sub/                                                                                                                                                                                             0.0s
+ => [ 6/11] COPY services/discovery/ /app/services/discovery/                                                                                                                                                                                           0.0s
+ => ERROR [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_sub -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)                                                                                                          1.2s
+------                                                                                                                                                                                                                                                       
+ > [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_sub -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc):                                                                                                                     
+0.487 -- The C compiler identification is GNU 12.3.1                                                                                                                                                                                                         
+0.597 -- The CXX compiler identification is GNU 12.3.1                                                                                                                                                                                                       
+0.649 -- Detecting C compiler ABI info                                                                                                                                                                                                                       
+0.800 -- Detecting C compiler ABI info - done                                                                                                                                                                                                                
+0.807 -- Check for working C compiler: /usr/bin/cc - skipped
+0.808 -- Detecting C compile features
+0.808 -- Detecting C compile features - done
+0.836 -- Detecting CXX compiler ABI info
+1.006 -- Detecting CXX compiler ABI info - done
+1.013 -- Check for working CXX compiler: /usr/bin/c++ - skipped
+1.013 -- Detecting CXX compile features
+1.014 -- Detecting CXX compile features - done
+1.015 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+1.144 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+1.145 -- Found Threads: TRUE  
+1.149 -- fmt library not found, formatted logging macros will be disabled
+1.149 -- 
+1.149 -- === Common Library Configuration ===
+1.149 -- Include directory: /app/common/include
+1.149 -- Source files: thread_pool.cpp, global_thread_pool.cpp, error/error_code.cpp, logger/*.cpp
+1.149 -- =====================================
+1.149 -- 
+1.149 -- 
+1.149 -- === RankServiceSub Build Configuration ===
+1.149 -- Build Type: Release
+1.149 -- 
+1.169 -- Found Protobuf: /usr/local/lib64/libprotobuf.so (found version "4.25.5") 
+1.170 -- Using Yuanrong SDK path: /usr/local/lib/python3.11/site-packages/yr/datasystem
+1.172 CMake Warning at CMakeLists.txt:88 (message):
+1.172   Yuanrong SDK not found.  Please set YR_SDK_PATH environment variable.
+1.172 
+1.172 
+1.172 CMake Warning at CMakeLists.txt:89 (message):
+1.172   Example: export YR_SDK_PATH=/path/to/yuanrong
+1.172 
+1.172 
+1.173 -- ===========================================
+1.173 -- RankServiceSub Build Configuration
+1.173 -- ===========================================
+1.173 -- Build targets:
+1.173 --   - rank_sub_server (with Yuanrong SDK)
+1.173 --   - rank_sub_client
+1.173 --   - rank_sub_test (unit tests)
+1.173 -- Yuanrong SDK Path: /usr/local/lib/python3.11/site-packages/yr/datasystem
+1.173 -- Yuanrong SDK Include: YR_INCLUDE_DIR-NOTFOUND
+1.173 -- Yuanrong SDK Library: /usr/local/lib64/python3.11/site-packages/yr/datasystem/lib/libdatasystem.so
+1.173 -- ThreadPool location: /app/services/rank_sub/../../common/include
+1.173 -- ===========================================
+1.174 -- Configuring done (0.8s)
+1.175 CMake Error: The following variables are used in this project, but they are set to NOTFOUND.
+1.175 Please set them or make sure they are set and tested correctly in the CMake files:
+1.175 /app/services/rank_sub/YR_INCLUDE_DIR
+1.175    used as include directory in directory /app/services/rank_sub
+1.175    used as include directory in directory /app/services/rank_sub
+1.175 
+1.187 -- Generating done (0.0s)
+1.187 CMake Generate step failed.  Build files cannot be regenerated correctly.
+------
+[+] build 0/4
+ ? Image linquickrec/rank-sub:latest  Building                                                                                                                                                                                                           1.4s
+ ? Image linquickrec/discovery:latest Building                                                                                                                                                                                                           1.4s
+ ? Image linquickrec/etcd:latest      Building                                                                                                                                                                                                           1.4s
+ ? Image linquickrec/kv-worker:latest Building                                                                                                                                                                                                           1.4s
+Dockerfile:17
+
+--------------------
+
+  16 |     
+
+  17 | >>> RUN mkdir -p /app/build && cd /app/build && \
+
+  18 | >>>     cmake ../services/rank_sub -DCMAKE_BUILD_TYPE=Release && \
+
+  19 | >>>     make -j$(nproc)
+
+  20 |     RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
+
+--------------------
+
+failed to solve: process "/bin/sh -c mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_sub -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)" did not complete successfully: exit code: 1
+
+[22:16:43] ===== rank-master =====
+[22:16:43] Building compose service: rank-master-service
+[+] Building 1.4s (12/16)                                                                                                                                                                                                                                    
+ => [internal] load local bake definitions                                                                                                                                                                                                              0.0s
+ => => reading from stdin 2.46kB                                                                                                                                                                                                                        0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                    0.0s
+ => => transferring dockerfile: 1.14kB                                                                                                                                                                                                                  0.0s
+ => [internal] load metadata for docker.io/linquickrec/base:latest                                                                                                                                                                                      0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                       0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                         0.0s
+ => [ 1/11] FROM docker.io/linquickrec/base:latest                                                                                                                                                                                                      0.0s
+ => [internal] load build context                                                                                                                                                                                                                       0.0s
+ => => transferring context: 114.02kB                                                                                                                                                                                                                   0.0s
+ => CACHED [ 2/11] WORKDIR /app                                                                                                                                                                                                                         0.0s
+ => CACHED [ 3/11] COPY proto/ /app/proto/                                                                                                                                                                                                              0.0s
+ => CACHED [ 4/11] COPY common/ /app/common/                                                                                                                                                                                                            0.0s
+ => [ 5/11] COPY services/rank_master/ /app/services/rank_master/                                                                                                                                                                                       0.0s
+ => [ 6/11] COPY services/discovery/ /app/services/discovery/                                                                                                                                                                                           0.0s
+ => ERROR [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_master -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)                                                                                                       1.2s
+------                                                                                                                                                                                                                                                       
+ > [ 7/11] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_master -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc):                                                                                                                  
+0.520 -- The C compiler identification is GNU 12.3.1                                                                                                                                                                                                         
+0.627 -- The CXX compiler identification is GNU 12.3.1                                                                                                                                                                                                       
+0.680 -- Detecting C compiler ABI info                                                                                                                                                                                                                       
+0.822 -- Detecting C compiler ABI info - done                                                                                                                                                                                                                
+0.829 -- Check for working C compiler: /usr/bin/cc - skipped
+0.830 -- Detecting C compile features
+0.830 -- Detecting C compile features - done
+0.857 -- Detecting CXX compiler ABI info
+1.022 -- Detecting CXX compiler ABI info - done
+1.029 -- Check for working CXX compiler: /usr/bin/c++ - skipped
+1.029 -- Detecting CXX compile features
+1.030 -- Detecting CXX compile features - done
+1.031 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+1.152 -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+1.153 -- Found Threads: TRUE  
+1.157 -- fmt library not found, formatted logging macros will be disabled
+1.157 -- 
+1.157 -- === Common Library Configuration ===
+1.157 -- Include directory: /app/common/include
+1.157 -- Source files: thread_pool.cpp, global_thread_pool.cpp, error/error_code.cpp, logger/*.cpp
+1.157 -- =====================================
+1.157 -- 
+1.157 -- 
+1.157 -- === RankServiceMaster Build Configuration ===
+1.157 -- Build Type: Release
+1.157 -- 
+1.174 -- Found Protobuf: /usr/local/lib64/libprotobuf.so (found version "4.25.5") 
+1.176 -- Using Yuanrong SDK path: /usr/local/lib/python3.11/site-packages/yr/datasystem
+1.178 CMake Warning at CMakeLists.txt:85 (message):
+1.178   Yuanrong SDK not found.  Please set YR_SDK_PATH environment variable.
+1.178 
+1.178 
+1.178 CMake Warning at CMakeLists.txt:86 (message):
+1.178   Example: export YR_SDK_PATH=/path/to/yuanrong
+1.178 
+1.178 
+1.179 -- ===========================================
+1.179 -- RankServiceMaster Build Configuration
+1.179 -- ===========================================
+1.179 -- Build targets:
+1.179 --   - rank_master_server
+1.179 --   - rank_master_test_client (with Yuanrong SDK)
+1.179 --   - rank_master_test (unit tests)
+1.179 -- Yuanrong SDK include: YR_INCLUDE_DIR-NOTFOUND
+1.179 -- Yuanrong SDK library: /usr/local/lib64/python3.11/site-packages/yr/datasystem/lib/libdatasystem.so
+1.179 -- ThreadPool location: /app/services/rank_master/../../common/include
+1.179 -- ===========================================
+1.179 -- Configuring done (0.7s)
+1.180 CMake Error: The following variables are used in this project, but they are set to NOTFOUND.
+1.180 Please set them or make sure they are set and tested correctly in the CMake files:
+1.180 /app/services/rank_master/YR_INCLUDE_DIR
+1.180    used as include directory in directory /app/services/rank_master
+1.180 
+1.192 -- Generating done (0.0s)
+1.193 CMake Generate step failed.  Build files cannot be regenerated correctly.
+------
+[+] build 0/5
+ ? Image linquickrec/rank-master:latest Building                                                                                                                                                                                                         1.4s
+ ? Image linquickrec/kv-worker:latest   Building                                                                                                                                                                                                         1.4s
+ ? Image linquickrec/rank-sub:latest    Building                                                                                                                                                                                                         1.4s
+ ? Image linquickrec/etcd:latest        Building                                                                                                                                                                                                         1.4s
+ ? Image linquickrec/discovery:latest   Building                                                                                                                                                                                                         1.4s
+Dockerfile:17
+
+--------------------
+
+  16 |     
+
+  17 | >>> RUN mkdir -p /app/build && cd /app/build && \
+
+  18 | >>>     cmake ../services/rank_master -DCMAKE_BUILD_TYPE=Release && \
+
+  19 | >>>     make -j$(nproc)
+
+  20 |     RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
+
+--------------------
+
+failed to solve: process "/bin/sh -c mkdir -p /app/build && cd /app/build &&     cmake ../services/rank_master -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc)" did not complete successfully: exit code: 1
+
+[22:16:45] ===== proxy =====
+[22:16:45] Building compose service: proxy-service
+[+] Building 31.6s (17/17) FINISHED                                                                                                                                                                                                                          
+ => [internal] load local bake definitions                                                                                                                                                                                                              0.0s
+ => => reading from stdin 4.38kB                                                                                                                                                                                                                        0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                                                                                    0.0s
+ => => transferring dockerfile: 1.01kB                                                                                                                                                                                                                  0.0s
+ => [internal] load metadata for docker.io/linquickrec/base:latest                                                                                                                                                                                      0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                       0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                         0.0s
+ => [internal] load build context                                                                                                                                                                                                                       0.0s
+ => => transferring context: 138.27kB                                                                                                                                                                                                                   0.0s
+ => [ 1/10] FROM docker.io/linquickrec/base:latest                                                                                                                                                                                                      0.0s
+ => CACHED [ 2/10] WORKDIR /app                                                                                                                                                                                                                         0.0s
+ => CACHED [ 3/10] COPY proto/ /app/proto/                                                                                                                                                                                                              0.0s
+ => CACHED [ 4/10] COPY common/ /app/common/                                                                                                                                                                                                            0.0s
+ => [ 5/10] COPY services/proxy/ /app/services/proxy/                                                                                                                                                                                                   0.0s
+ => [ 6/10] COPY services/discovery/ /app/services/discovery/                                                                                                                                                                                           0.0s
+ => [ 7/10] RUN mkdir -p /app/build && cd /app/build &&     cmake ../services/proxy -DCMAKE_BUILD_TYPE=Release &&     make -j$(nproc) proxy_server proxy_test_client proxy_integration_test                                                            20.8s
+ => [ 8/10] RUN mkdir -p /app/build/discovery && cd /app/build/discovery &&     cmake ../../services/discovery -DCMAKE_BUILD_TYPE=Release &&     make discovery_client -j$(nproc)                                                                       9.3s
+ => [ 9/10] COPY deploy/docker/proxy/entrypoint.sh /app/entrypoint.sh                                                                                                                                                                                   0.0s 
+ => [10/10] RUN chmod +x /app/entrypoint.sh                                                                                                                                                                                                             0.6s 
+ => exporting to image                                                                                                                                                                                                                                  0.7s 
+ => => exporting layers                                                                                                                                                                                                                                 0.7s 
+ => => writing image sha256:fa4c277acf041fd8824366bfc757dd51b201ae74f1fa8a7c95f637759e619677                                                                                                                                                            0.0s 
+ => => naming to docker.io/linquickrec/proxy:latest                                                                                                                                                                                                     0.0s 
+ => resolving provenance for metadata file                                                                                                                                                                                                              0.0s
+[+] build 1/9
+ ? Image linquickrec/kv-worker:latest   Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/rank-sub:latest    Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/rank-master:latest Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/feature:latest     Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/recall:latest      Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/discovery:latest   Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/precalc:latest     Building                                                                                                                                                                                                        31.7s
+ ? Image linquickrec/proxy:latest       Built                                                                                                                                                                                                           31.7s
+ ? Image linquickrec/etcd:latest        Building                                                                                                                                                                                                        31.7s
+[22:17:16] Tagging linquickrec/proxy:latest -> 192.168.84.245:5000/linquickrec/proxy:latest
+[22:17:16] Pushing 192.168.84.245:5000/linquickrec/proxy:latest
+The push refers to repository [192.168.84.245:5000/linquickrec/proxy]
+f4a02f5bbc15: Pushed 
+d89d143e42bf: Pushed 
+758f9560429b: Pushed 
+c815de04d7ff: Pushed 
+002047409770: Pushed 
+a1fa4bf9f89d: Pushed 
+c50a14d4b59e: Mounted from linquickrec/feature 
+91adc9b8d7f7: Mounted from linquickrec/feature 
+d067435c6d05: Layer already exists 
+b15f3569c0ba: Layer already exists 
+bc36999c0a27: Layer already exists 
+ec309f773f0e: Layer already exists 
+latest: digest: sha256:10a7f92679c15dc6b8f9cfbe87759b4392240f6873c666b5b3f907ed57372902 size: 2838
+[22:17:29] ERROR: 4 image(s) failed
