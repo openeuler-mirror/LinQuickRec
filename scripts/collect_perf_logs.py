@@ -1,5 +1,44 @@
 #!/usr/bin/env python3
-"""Collect LinQuickRec PERF logs from Kubernetes pods and build an HTML report."""
+"""Collect LinQuickRec PERF logs from Kubernetes pods and build an HTML report.
+
+Usage:
+  # 1. Default: pull logs from all LinQuickRec service pods in namespace
+  #    "linquickrec", then generate perf_report/data.json and
+  #    perf_report/index.html.
+  python3 scripts/collect_perf_logs.py
+
+  # 2. Specify namespace and output directory.
+  python3 scripts/collect_perf_logs.py \
+      --namespace linquickrec \
+      --out-dir perf_report
+
+  # 3. Collect only selected services. Service names must match the script's
+  #    service keys: proxy, feature, recall, precalc, rank-master, rank-sub.
+  python3 scripts/collect_perf_logs.py \
+      --services proxy,recall,rank-master,rank-sub
+
+  # 4. Parse existing copied logs without calling kubectl. The input directory
+  #    should contain pod subdirectories, for example:
+  #    perf_report/raw/<pod-name>/*.log
+  python3 scripts/collect_perf_logs.py \
+      --no-collect \
+      --input-dir perf_report/raw \
+      --out-dir perf_report
+
+  # 5. If container logs are stored somewhere else, override the pod path.
+  python3 scripts/collect_perf_logs.py \
+      --remote-log-dir /var/log/linquickrec
+
+Output:
+  - data.json: parsed PERF events and aggregate statistics.
+  - index.html: self-contained report with latency curves and ave/p99/p999/
+    p9999/min/max tables, including BRPC communication metrics.
+
+Requirements:
+  - kubectl must be available when not using --no-collect.
+  - Logs must contain lines like:
+    PERF service=proxy stage=proxy_e2e metric=e2e trace_id=... duration_ms=...
+"""
 
 from __future__ import annotations
 
