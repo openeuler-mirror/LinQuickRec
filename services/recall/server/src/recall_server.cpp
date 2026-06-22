@@ -17,7 +17,9 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <brpc/controller.h>
@@ -51,6 +53,9 @@ DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
     "etcd endpoints, comma-separated (for etcd backend)");
 DEFINE_int32(kvcache_ttl_seconds, 3600, "KVCache TTL（秒，默认 1 小时）");
 DEFINE_int32(kvcache_size_bytes, 256, "KVCache 大小（字节，作为 RNG seed blob）");
+DEFINE_double(kvcache_hit_rate, 0.5, "KVCache simulated hit rate in novllm mode [0.0, 1.0]");
+DEFINE_int32(kvcache_hit_sleep_time_ms, 10, "KVCache hit simulated sleep time (ms) in novllm mode");
+DEFINE_int32(kvcache_miss_sleep_time_ms, 100, "KVCache miss simulated sleep time (ms) in novllm mode");
 DEFINE_int32(recall_sleep_time_ms, 30, "Recall service simulated sleep time (ms)");
 DEFINE_int32(recall_payload_size_kb, 0, "Recall response payload size (KB)");
 
@@ -71,6 +76,86 @@ using namespace common::error;
 constexpr int VLLM_MAX_TOKENS = 1024;
 constexpr double VLLM_TEMPERATURE = 0.7;
 constexpr double VLLM_TOP_P = 0.9;
+constexpr const char* KVCACHE_GLOBAL_KEY = "rc:novllm:global_seed";
+
+template <typename T, typename = void>
+struct HasIsOk : std::false_type {};
+
+template <typename T>
+struct HasIsOk<T, std::void_t<decltype(std::declval<T&>().IsOk())>> : std::true_type {};
+
+template <typename T, typename = void>
+struct HasToString : std::false_type {};
+
+template <typename T>
+struct HasToString<T, std::void_t<decltype(std::declval<T&>().ToString())>> : std::true_type {};
+
+template <typename Client, typename = void>
+struct HasExistKeyOnly : std::false_type {};
+
+template <typename Client>
+struct HasExistKeyOnly<Client,
+    std::void_t<decltype(std::declval<Client&>().Exist(std::declval<const std::string&>()))>>
+    : std::true_type {};
+
+template <typename Client, typename = void>
+struct HasExistBoolRef : std::false_type {};
+
+template <typename Client>
+struct HasExistBoolRef<Client,
+    std::void_t<decltype(std::declval<Client&>().Exist(std::declval<const std::string&>(),
+                                                       std::declval<bool&>()))>>
+    : std::true_type {};
+
+struct KvExistResult {
+    bool ok = true;
+    bool exists = false;
+    std::string message;
+};
+
+template <typename T>
+std::string status_to_string(const T& status) {
+    if constexpr (HasToString<T>::value) {
+        return status.ToString();
+    } else {
+        return "";
+    }
+}
+
+template <typename Client>
+KvExistResult kv_client_exist(Client& kv_client, const std::string& key) {
+    if constexpr (HasExistKeyOnly<Client>::value) {
+        auto ret = kv_client.Exist(key);
+        using Ret = decltype(ret);
+        if constexpr (std::is_same_v<Ret, bool>) {
+            return {true, ret, ""};
+        } else if constexpr (HasIsOk<Ret>::value) {
+            return {true, ret.IsOk(), status_to_string(ret)};
+        } else {
+            static_assert(HasIsOk<Ret>::value || std::is_same_v<Ret, bool>,
+                          "Unsupported KVClient::Exist(key) return type");
+        }
+    } else if constexpr (HasExistBoolRef<Client>::value) {
+        bool exists = false;
+        auto ret = kv_client.Exist(key, exists);
+        using Ret = decltype(ret);
+        if constexpr (std::is_same_v<Ret, bool>) {
+            return {ret, exists, ""};
+        } else if constexpr (HasIsOk<Ret>::value) {
+            return {ret.IsOk() || !exists, exists, status_to_string(ret)};
+        } else {
+            static_assert(HasIsOk<Ret>::value || std::is_same_v<Ret, bool>,
+                          "Unsupported KVClient::Exist(key, bool&) return type");
+        }
+    } else {
+        static_assert(HasExistKeyOnly<Client>::value || HasExistBoolRef<Client>::value,
+                      "Unsupported KVClient::Exist signature");
+    }
+}
+
+static double normalized_kvcache_hit_rate() {
+    return std::max(0.0, std::min(1.0, FLAGS_kvcache_hit_rate));
+}
 
 std::string proto_to_json(const RecallRequest* request) {
     using namespace rapidjson;
@@ -260,16 +345,8 @@ bool parse_vllm_response(const std::string& response_body,
     return true;
 }
 
-// 从 kvcache blob 派生 RNG seed，生成 sku_count 个不重复 SKU ID
-static void generate_skus_from_seed(const uint8_t* seed_data, size_t seed_size,
-                                    int sku_count, RecallResponse* response) {
-    // 将 seed blob 折叠为一个 64-bit seed
-    uint64_t seed = 0;
-    for (size_t i = 0; i < seed_size; ++i) {
-        seed ^= static_cast<uint64_t>(seed_data[i]) << ((i % 8) * 8);
-    }
-
-    std::mt19937_64 rng(seed);
+static void generate_random_skus(int sku_count, RecallResponse* response) {
+    std::mt19937_64 rng(std::random_device{}());
     std::uniform_int_distribution<uint64_t> dist(100000, 999999);
 
     std::unordered_set<uint64_t> seen;
@@ -302,6 +379,9 @@ RecallServiceImpl::RecallServiceImpl()
 
         LOG_INFO << "KVCache mode: KV Worker ServiceDiscovery initialized"
                   << ", etcd=" << FLAGS_etcd_endpoints;
+        LOG_INFO << "KVCache simulation: hit_rate=" << normalized_kvcache_hit_rate()
+                 << ", hit_sleep=" << FLAGS_kvcache_hit_sleep_time_ms << " ms"
+                 << ", miss_sleep=" << FLAGS_kvcache_miss_sleep_time_ms << " ms";
     }
 }
 
@@ -336,22 +416,82 @@ void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
     }
 }
 
-std::string RecallServiceImpl::derive_kvcache_key(const RecallRequest* request) {
-    // 哈希 user_id + 所有 user_logs vec 值
-    std::hash<std::string> hasher;
-    std::ostringstream oss;
-    oss << request->user_id();
-    for (int i = 0; i < request->user_logs_size(); ++i) {
-        const auto& log = request->user_logs(i);
-        for (int j = 0; j < log.vec_size(); ++j) {
-            oss << "," << log.vec(j);
-        }
-    }
-    size_t hash_value = hasher(oss.str());
+common::error::Status RecallServiceImpl::write_global_kvcache(
+    datasystem::KVClient& kv_client,
+    const std::vector<uint8_t>& value,
+    const std::string& trace_id,
+    const std::string& op_tag) {
 
-    char buf[17];
-    std::snprintf(buf, sizeof(buf), "%016zx", hash_value);
-    return "rc:" + std::string(buf, 16);
+    datasystem::SetParam param;
+    param.ttlSecond = FLAGS_kvcache_ttl_seconds;
+    param.writeMode = datasystem::WriteMode::NONE_L2_CACHE;
+    param.existence = datasystem::ExistenceOpt::NONE;
+    param.cacheType = datasystem::CacheType::MEMORY;
+
+    std::shared_ptr<datasystem::Buffer> write_buffer;
+    int64_t create_start_us = butil::gettimeofday_us();
+    datasystem::Status kv_status = kv_client.Create(
+        KVCACHE_GLOBAL_KEY, value.size(), param, write_buffer);
+    int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
+    common::perf::Log("recall", "kvcache_create", "processing", trace_id,
+                      common::perf::UsToMs(create_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",op=" + op_tag);
+    if (!kv_status.IsOk()) {
+        return common::error::Status(recall_errors::KVCLIENT_CREATE_FAILED,
+            "KVClient Create failed: " + kv_status.ToString());
+    }
+
+    std::memcpy(write_buffer->MutableData(), value.data(), value.size());
+
+    int64_t set_start_us = butil::gettimeofday_us();
+    kv_status = kv_client.Set(write_buffer);
+    int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
+    common::perf::Log("recall", "kvcache_set", "processing", trace_id,
+                      common::perf::UsToMs(set_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",op=" + op_tag);
+    if (!kv_status.IsOk()) {
+        return common::error::Status(recall_errors::KVCLIENT_SET_FAILED,
+            "KVClient Set failed: " + kv_status.ToString());
+    }
+
+    LOG_INFO << "KVCache global key written: key=" << KVCACHE_GLOBAL_KEY
+             << ", size=" << value.size() << " bytes"
+             << ", ttl=" << FLAGS_kvcache_ttl_seconds << "s"
+             << ", op=" << op_tag
+             << ", create_cost=" << create_cost_us / 1000.0 << " ms"
+             << ", set_cost=" << set_cost_us / 1000.0 << " ms";
+    return common::error::Status::OK();
+}
+
+common::error::Status RecallServiceImpl::ensure_global_kvcache(
+    datasystem::KVClient& kv_client,
+    const std::string& trace_id) {
+
+    std::lock_guard<std::mutex> lock(global_kvcache_mutex_);
+    if (global_kvcache_initialized_) {
+        return common::error::Status::OK();
+    }
+
+    int cache_size = std::max(1, FLAGS_kvcache_size_bytes);
+    std::vector<uint8_t> value(cache_size);
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> byte_dist(0, 255);
+    for (auto& b : value) {
+        b = static_cast<uint8_t>(byte_dist(rng));
+    }
+
+    auto status = write_global_kvcache(kv_client, value, trace_id, "init");
+    if (status.IsError()) {
+        LOG_ERROR << "KVCache global init failed: " << status.ToString();
+        return status;
+    }
+
+    global_kvcache_value_ = std::move(value);
+    global_kvcache_initialized_ = true;
+    LOG_INFO << "KVCache global init success: key=" << KVCACHE_GLOBAL_KEY;
+    return common::error::Status::OK();
 }
 
 RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
@@ -359,9 +499,6 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
 
     RecallServiceImpl::RecallResult result;
     int64_t start_us = butil::gettimeofday_us();
-
-    std::string kv_key = derive_kvcache_key(request);
-    LOG_DEBUG << "KVCache key: " << kv_key;
 
     datasystem::ConnectOptions connectOptions;
     connectOptions.serviceDiscovery = service_discovery_;
@@ -380,94 +517,101 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
         return result;
     }
 
-    // 尝试 Get
-    datasystem::Optional<datasystem::Buffer> buffer;
-    int64_t kv_get_start_us = butil::gettimeofday_us();
-    kv_status = kv_client.Get(kv_key, buffer);
-    int64_t kv_get_cost_us = butil::gettimeofday_us() - kv_get_start_us;
-    common::perf::Log("recall", "kvcache_get", "processing", request->trace_id(),
-                      common::perf::UsToMs(kv_get_cost_us),
-                      kv_status.IsOk() ? "ok" : "miss",
-                      "key=" + kv_key);
-
-    if (kv_status.IsOk()) {
-        // Cache HIT：用已有 kvcache 生成 SKU
-        LOG_INFO << "KVCache HIT: key=" << kv_key
-                  << ", size=" << buffer->GetSize() << " bytes"
-                  << ", get_cost=" << kv_get_cost_us / 1000.0 << " ms";
-
-        generate_skus_from_seed(
-            reinterpret_cast<const uint8_t*>(buffer->ImmutableData()),
-            buffer->GetSize(),
-            FLAGS_sku_count,
-            &result.response);
-    } else {
-        // Cache MISS：生成随机 kvcache，写入 KVWorker，再生成 SKU
-        LOG_INFO << "KVCache MISS: key=" << kv_key
-                  << ", get_cost=" << kv_get_cost_us / 1000.0 << " ms"
-                  << ", generating new kvcache";
-
-        int cache_size = FLAGS_kvcache_size_bytes;
-        std::vector<uint8_t> seed_blob(cache_size);
-        {
-            std::mt19937 rng(std::random_device{}());
-            std::uniform_int_distribution<int> byte_dist(0, 255);
-            for (auto& b : seed_blob) {
-                b = static_cast<uint8_t>(byte_dist(rng));
-            }
-        }
-
-        // 写入 KVWorker
-        datasystem::SetParam param;
-        param.ttlSecond = FLAGS_kvcache_ttl_seconds;
-        param.writeMode = datasystem::WriteMode::NONE_L2_CACHE;
-        param.existence = datasystem::ExistenceOpt::NONE;
-        param.cacheType = datasystem::CacheType::MEMORY;
-
-        std::shared_ptr<datasystem::Buffer> write_buffer;
-        int64_t create_start_us = butil::gettimeofday_us();
-        kv_status = kv_client.Create(kv_key, cache_size, param, write_buffer);
-        int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
-        common::perf::Log("recall", "kvcache_create", "processing", request->trace_id(),
-                          common::perf::UsToMs(create_cost_us),
-                          kv_status.IsOk() ? "ok" : "error",
-                          "key=" + kv_key);
-
-        if (!kv_status.IsOk()) {
-            result.success = false;
-            result.status = common::error::Status(recall_errors::KVCLIENT_CREATE_FAILED,
-                "KVClient Create failed: " + kv_status.ToString());
-            result.error_message = result.status.ToString();
-            return result;
-        }
-
-        std::memcpy(write_buffer->MutableData(), seed_blob.data(), cache_size);
-
-        int64_t set_start_us = butil::gettimeofday_us();
-        kv_status = kv_client.Set(write_buffer);
-        int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
-        common::perf::Log("recall", "kvcache_set", "processing", request->trace_id(),
-                          common::perf::UsToMs(set_cost_us),
-                          kv_status.IsOk() ? "ok" : "error",
-                          "key=" + kv_key);
-
-        if (!kv_status.IsOk()) {
-            result.success = false;
-            result.status = common::error::Status(recall_errors::KVCLIENT_SET_FAILED,
-                "KVClient Set failed: " + kv_status.ToString());
-            result.error_message = result.status.ToString();
-            return result;
-        }
-
-        LOG_INFO << "KVCache written: key=" << kv_key
-                  << ", size=" << cache_size << " bytes"
-                  << ", ttl=" << FLAGS_kvcache_ttl_seconds << "s"
-                  << ", create_cost=" << create_cost_us / 1000.0 << " ms"
-                  << ", set_cost=" << set_cost_us / 1000.0 << " ms";
-
-        generate_skus_from_seed(seed_blob.data(), seed_blob.size(),
-                                FLAGS_sku_count, &result.response);
+    auto init_status = ensure_global_kvcache(kv_client, request->trace_id());
+    if (init_status.IsError()) {
+        result.success = false;
+        result.status = init_status;
+        result.error_message = result.status.ToString();
+        return result;
     }
+
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<double> hit_dist(0.0, 1.0);
+    bool cache_hit = hit_dist(rng) < normalized_kvcache_hit_rate();
+    int sleep_time_ms = cache_hit ? FLAGS_kvcache_hit_sleep_time_ms
+                                  : FLAGS_kvcache_miss_sleep_time_ms;
+
+    if (cache_hit) {
+        int64_t exist_start_us = butil::gettimeofday_us();
+        auto exist_result = kv_client_exist(kv_client, KVCACHE_GLOBAL_KEY);
+        int64_t exist_cost_us = butil::gettimeofday_us() - exist_start_us;
+        common::perf::Log("recall", "kvcache_exist", "processing", request->trace_id(),
+                          common::perf::UsToMs(exist_cost_us),
+                          exist_result.exists ? "hit" : "miss",
+                          "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",cache_hit=true");
+
+        if (!exist_result.ok || !exist_result.exists) {
+            result.success = false;
+            result.status = common::error::Status(recall_errors::INTERNAL_ERROR,
+                "KVClient Exist failed or global key missing: " + exist_result.message);
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        datasystem::Optional<datasystem::Buffer> buffer;
+        int64_t kv_get_start_us = butil::gettimeofday_us();
+        kv_status = kv_client.Get(KVCACHE_GLOBAL_KEY, buffer);
+        int64_t kv_get_cost_us = butil::gettimeofday_us() - kv_get_start_us;
+        common::perf::Log("recall", "kvcache_get", "processing", request->trace_id(),
+                          common::perf::UsToMs(kv_get_cost_us),
+                          kv_status.IsOk() ? "ok" : "error",
+                          "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",cache_hit=true");
+
+        if (!kv_status.IsOk()) {
+            result.success = false;
+            result.status = common::error::Status(recall_errors::INTERNAL_ERROR,
+                "KVClient Get failed: " + kv_status.ToString());
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        LOG_INFO << "KVCache simulated HIT: key=" << KVCACHE_GLOBAL_KEY
+                 << ", size=" << buffer->GetSize() << " bytes"
+                 << ", exist_cost=" << exist_cost_us / 1000.0 << " ms"
+                 << ", get_cost=" << kv_get_cost_us / 1000.0 << " ms";
+    } else {
+        std::ostringstream miss_key_ss;
+        miss_key_ss << "rc:novllm:miss:" << request->user_id() << ":"
+                    << butil::gettimeofday_us() << ":" << rng();
+        std::string miss_key = miss_key_ss.str();
+
+        int64_t exist_start_us = butil::gettimeofday_us();
+        auto exist_result = kv_client_exist(kv_client, miss_key);
+        int64_t exist_cost_us = butil::gettimeofday_us() - exist_start_us;
+        common::perf::Log("recall", "kvcache_exist", "processing", request->trace_id(),
+                          common::perf::UsToMs(exist_cost_us),
+                          exist_result.exists ? "hit" : "miss",
+                          "key=" + miss_key + ",cache_hit=false");
+
+        if (!exist_result.ok) {
+            result.success = false;
+            result.status = common::error::Status(recall_errors::INTERNAL_ERROR,
+                "KVClient Exist failed for miss probe: " + exist_result.message);
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        std::vector<uint8_t> value;
+        {
+            std::lock_guard<std::mutex> lock(global_kvcache_mutex_);
+            value = global_kvcache_value_;
+        }
+        auto write_status = write_global_kvcache(
+            kv_client, value, request->trace_id(), "miss_rewrite");
+        if (write_status.IsError()) {
+            result.success = false;
+            result.status = write_status;
+            result.error_message = result.status.ToString();
+            return result;
+        }
+
+        LOG_INFO << "KVCache simulated MISS: probe_key=" << miss_key
+                 << ", probe_exists=" << (exist_result.exists ? "true" : "false")
+                 << ", exist_cost=" << exist_cost_us / 1000.0 << " ms"
+                 << ", rewritten_key=" << KVCACHE_GLOBAL_KEY;
+    }
+
+    generate_random_skus(FLAGS_sku_count, &result.response);
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
@@ -476,20 +620,24 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
                       common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
                       "ok", "payload_size=" + std::to_string(result.response.payload().size()));
 
-    if (FLAGS_recall_sleep_time_ms > 0) {
-        LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
+    if (sleep_time_ms > 0) {
+        LOG_INFO << "Simulating KVCache recall sleep: " << sleep_time_ms
+                 << " ms, cache_hit=" << (cache_hit ? "true" : "false");
         int64_t sleep_start_us = butil::gettimeofday_us();
-        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
-        common::perf::Log("recall", "sleep", "processing", request->trace_id(),
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+        common::perf::Log("recall", "kvcache_sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us),
+                          "ok", std::string("cache_hit=") + (cache_hit ? "true" : "false"));
     }
 
     int64_t total_cost_us = butil::gettimeofday_us() - start_us;
-    LOG_INFO << "KVCache recall completed, key=" << kv_key
+    LOG_INFO << "KVCache recall completed, key=" << KVCACHE_GLOBAL_KEY
+              << ", cache_hit=" << (cache_hit ? "true" : "false")
               << ", sku_count=" << result.response.sku_ids_size()
               << ", total_cost=" << total_cost_us / 1000.0 << " ms";
     common::perf::Log("recall", "recall_total", "processing", request->trace_id(),
-                      common::perf::UsToMs(total_cost_us), "ok", "mode=kvcache");
+                      common::perf::UsToMs(total_cost_us), "ok",
+                      std::string("mode=kvcache,cache_hit=") + (cache_hit ? "true" : "false"));
 
     result.success = true;
     return result;

@@ -206,6 +206,7 @@ kubectl apply -f 10-rank-sub.yaml
 | `05-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8001 |
 | `06-proxy.yaml` | Deployment + Service | Proxy 网关服务，端口 8080 |
 | `07-recall.yaml` | Deployment + Service | Recall 召回服务，需要 GPU 节点，端口 8002 |
+| `07-recall-novllm.yaml` | Deployment + Service | Recall novllm/KVCache 模式，无需 vLLM/GPU，端口 8002 |
 | `08-precalc.yaml` | Deployment + Service | Precalc 前置计算服务，端口 8003 |
 | `09-rank-master.yaml` | Deployment + Service | RankMaster 精排主图服务，端口 8004 |
 | `10-rank-sub.yaml` | Deployment + Service | RankSub 精排子图服务，端口 8005 |
@@ -316,7 +317,7 @@ kubectl delete -f 00-namespace.yaml
 | `REGISTRY_BACKEND` | etcd | 所有服务 |
 | `ETCD_ENDPOINTS` | etcd-client:2379 | 所有服务 (discovery_client + 服务进程) |
 | `DISCOVERY_ADDR` | discovery-server:8100 | BRPC 模式备用 |
-| `HOST_ID` | default-host | KV Worker, Precalc, RankSub（通过 Downward API 注入节点名） |
+| `HOST_ID` | default-host | KV Worker, Precalc, Recall novllm, RankSub（通过 Downward API 注入节点名） |
 | `FEATURE_SERVICE_NAME` | feature_service | Proxy |
 | `RECALL_SERVICE_NAME` | recall_service | Proxy |
 | `PRECALC_SERVICE_NAME` | precalc_service | Proxy |
@@ -330,6 +331,9 @@ kubectl delete -f 00-namespace.yaml
 | `TOP_K` | 100 | RankMaster |
 | `FEATURE_SLEEP_TIME_MS` | 30 | Feature |
 | `RECALL_SLEEP_TIME_MS` | 30 | Recall |
+| `KVCACHE_HIT_RATE` | 0.5 | Recall novllm |
+| `KVCACHE_HIT_SLEEP_TIME_MS` | 10 | Recall novllm |
+| `KVCACHE_MISS_SLEEP_TIME_MS` | 100 | Recall novllm |
 | `PRECALC_SLEEP_TIME_MS` | 30 | Precalc |
 | `RANK_MASTER_SLEEP_TIME_MS` | 30 | RankMaster |
 | `RANK_SUB_SLEEP_TIME_MS` | 30 | RankSub |
@@ -345,7 +349,7 @@ kubectl delete -f 00-namespace.yaml
 ## 注意事项
 
 - **etcd 模式**：当前默认使用 etcd 做服务注册与发现。etcd 集群部署在 K8s 内（5 副本 StatefulSet），通过 `etcd-client` Service 对内提供访问。每个服务的 entrypoint.sh 自动启动 discovery_client 向 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`。
-- **Recall 服务**：需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）
+- **Recall 服务**：vLLM 版本需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）；`07-recall-novllm.yaml` 使用 KVClient，需要 `hostIPC`、`privileged` 和宿主机 `/dev/shm`
 - **RankSub 副本数**：默认 3，通过 `kubectl scale` 水平扩展，RankMaster 通过 etcd 服务发现自动感知
 - **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
