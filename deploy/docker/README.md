@@ -236,6 +236,9 @@ docker compose top                    # 容器内进程
 | `SKU_COUNT` | 1000 | 允许调整 | SKU 数量 |
 | `RECALL_SLEEP_TIME_MS` | 30 | 允许调整 | Recall 成功请求模拟耗时 |
 | `RECALL_PAYLOAD_SIZE_KB` | 0 | 允许调整 | Recall 响应模拟负载大小 |
+| `KVCACHE_HIT_RATE` | 0.5 | 允许调整 | novllm 模式缓存命中率 |
+| `KVCACHE_HIT_SLEEP_TIME_MS` | 10 | 允许调整 | novllm 模式缓存命中模拟耗时 |
+| `KVCACHE_MISS_SLEEP_TIME_MS` | 100 | 允许调整 | novllm 模式缓存未命中模拟耗时 |
 | `DISCOVERY_ADDR` | discovery-server:8100 | 允许调整 | 服务发现地址 |
 
 ### Precalc
@@ -307,6 +310,6 @@ docker compose top                    # 容器内进程
 
 启动流程：执行 start_datasystem.sh。
 
-KVWorker、Precalc、RankSub 需要共享宿主机 IPC 和 `/dev/shm`，compose 中已为这三个容器配置 `ipc: host`、`privileged: true` 和 `/dev/shm:/dev/shm`。
+KVWorker、Precalc、Recall novllm、RankSub 需要共享宿主机 IPC 和 `/dev/shm`，compose 中已为这些容器配置 `ipc: host`、`privileged: true` 和 `/dev/shm:/dev/shm`。
 
 无环境变量配置。

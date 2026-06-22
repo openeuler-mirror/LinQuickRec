@@ -16,6 +16,7 @@ spec:
       labels:
         app: recall-service
     spec:
+      hostIPC: true
       containers:
       - name: recall
         image: 192.168.84.245:5000/linquickrec/recall-novllm:latest
@@ -30,6 +31,12 @@ spec:
           value: "8002"
         - name: ENABLE_VLLM
           value: "false"
+        - name: HOST_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
         resources:
           requests:
             cpu: "2"
@@ -47,9 +54,14 @@ spec:
         volumeMounts:
         - name: log
           mountPath: /var/log/linquickrec
+        - name: shm
+          mountPath: /dev/shm
       volumes:
       - name: log
         emptyDir: {}
+      - name: shm
+        hostPath:
+          path: /dev/shm
 ---
 apiVersion: v1
 kind: Service
