@@ -130,6 +130,9 @@
 | `--vllm_endpoint` | string | "/v1/chat/completions" | 允许调整 | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 允许调整 | 模型名称/路径 |
 | `--sku_count` | int32 | 1000 | 允许调整 | 返回的 SKU ID 数量 |
+| `--kvcache_hit_rate` | double | 0.5 | 允许调整 | novllm 模式缓存命中率，范围 [0.0, 1.0] |
+| `--kvcache_hit_sleep_time_ms` | int32 | 10 | 允许调整 | novllm 模式缓存命中模拟耗时 (ms) |
+| `--kvcache_miss_sleep_time_ms` | int32 | 100 | 允许调整 | novllm 模式缓存未命中模拟耗时 (ms) |
 
 ### Server 端参数
 

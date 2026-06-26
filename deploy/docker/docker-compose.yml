@@ -94,6 +94,8 @@ services:
         condition: service_healthy
       discovery-server:
         condition: service_healthy
+      kv-worker:
+        condition: service_started
     environment:
       worker_address: "${KV_WORKER_ADDRESS:-kv-worker:31501}"
       etcd_address: "etcd:2379"
@@ -161,8 +163,6 @@ services:
       args:
         ENABLE_VLLM: "${ENABLE_VLLM:-true}"
     image: ${RECALL_IMAGE:-linquickrec/recall:latest}
-    volumes:
-      - /usr/local/cuda-12.9:/usr/local/cuda
     container_name: recall-service
     depends_on:
       etcd:
@@ -191,6 +191,9 @@ services:
       KV_WORKER_SERVICE: "${KV_WORKER_SERVICE:-kv_worker}"
       KVCACHE_TTL_SECONDS: "${KVCACHE_TTL_SECONDS:-3600}"
       KVCACHE_SIZE_BYTES: "${KVCACHE_SIZE_BYTES:-256}"
+      KVCACHE_HIT_RATE: "${KVCACHE_HIT_RATE:-0.5}"
+      KVCACHE_HIT_SLEEP_TIME_MS: "${KVCACHE_HIT_SLEEP_TIME_MS:-10}"
+      KVCACHE_MISS_SLEEP_TIME_MS: "${KVCACHE_MISS_SLEEP_TIME_MS:-100}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
@@ -198,6 +201,11 @@ services:
       HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
       FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
       STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
+    privileged: true
+    ipc: host
+    volumes:
+      - /usr/local/cuda-12.9:/usr/local/cuda
+      - /dev/shm:/dev/shm
     ports:
       - "8002:8002"
       - "${VLLM_PORT:-8000}:8000"

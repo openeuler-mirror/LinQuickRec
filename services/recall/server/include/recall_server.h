@@ -3,7 +3,9 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 #include <brpc/channel.h>
 #include <brpc/controller.h>
@@ -36,6 +38,9 @@ DECLARE_string(discovery_addr);
 DECLARE_string(etcd_endpoints);
 DECLARE_int32(kvcache_ttl_seconds);
 DECLARE_int32(kvcache_size_bytes);
+DECLARE_double(kvcache_hit_rate);
+DECLARE_int32(kvcache_hit_sleep_time_ms);
+DECLARE_int32(kvcache_miss_sleep_time_ms);
 DECLARE_int32(recall_sleep_time_ms);
 DECLARE_int32(recall_payload_size_kb);
 
@@ -115,20 +120,29 @@ private:
     RecallResult process_recall_request(const RecallRequest* request);
 
     /**
-     * @brief KVCache 路径：根据用户特征查找/生成 kvcache，随机生成 SKU
+     * @brief novllm KVCache path with simulated hit/miss latency.
      */
     RecallResult process_kvcache_recall(const RecallRequest* request);
 
     /**
-     * @brief 从用户特征派生 KVWorker key（"rc:" + 16-char hex hash）
+     * @brief Ensure the fixed novllm KVCache key is written once globally.
      */
-    std::string derive_kvcache_key(const RecallRequest* request);
+    common::error::Status ensure_global_kvcache(datasystem::KVClient& kv_client,
+                                                const std::string& trace_id);
+    common::error::Status write_global_kvcache(datasystem::KVClient& kv_client,
+                                               const std::vector<uint8_t>& value,
+                                               const std::string& trace_id,
+                                               const std::string& op_tag);
 
     // vLLM HTTP 客户端
     VllmClient vllm_client_;
 
     // KVWorker 服务发现
     std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
+
+    std::mutex global_kvcache_mutex_;
+    bool global_kvcache_initialized_ = false;
+    std::vector<uint8_t> global_kvcache_value_;
 };
 
 } // namespace recall

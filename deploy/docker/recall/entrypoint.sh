@@ -62,6 +62,9 @@ fi
     --kv_worker_service=${KV_WORKER_SERVICE:-kv_worker} \
     --kvcache_ttl_seconds=${KVCACHE_TTL_SECONDS:-3600} \
     --kvcache_size_bytes=${KVCACHE_SIZE_BYTES:-256} \
+    --kvcache_hit_rate=${KVCACHE_HIT_RATE:-0.5} \
+    --kvcache_hit_sleep_time_ms=${KVCACHE_HIT_SLEEP_TIME_MS:-10} \
+    --kvcache_miss_sleep_time_ms=${KVCACHE_MISS_SLEEP_TIME_MS:-100} \
     $KV_DISCOVERY_FLAGS \
     "$@" &
 RECALL_PID=$!
