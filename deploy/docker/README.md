@@ -43,8 +43,13 @@ deploy/docker/
 所有服务均在容器内编译，无需宿主机安装 brpc 或预编译任何二进制：
 
 前置依赖：
-+ 基础镜像已完成编译
-+ 在LinQuickRec的目录下的share目录，并将必要的两个whl文件+Qwen3-0.6B的模型文件放入share目录中
++ 基础镜像已完成编译 
++ 将必要安装包放入LinQuickRec/share目录中：
+    ```bash
+    # PyTorch:     torch-2.8.0a0+gitba56102-cp311-cp311-linux_aarch64.whl
+    # vllm:        vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
+    # etcd:        etcd-v3.5.12-linux-arm64.tar.gz
+    ```
 
 ```bash
 cd deploy/docker
@@ -67,6 +72,16 @@ docker images | grep linquickrec
 ### 容器化部署（docker-compose）
 
 本章节提供在单节点上部署一套LinQuickRec系统进行功能验证。
+
+**模型准备：**
+
+将必要模型参数文件放入LinQuickRec/share目录并解压：
+```bash
+# Qwen3-0.6B:  Qwen3-0.6B.tar.gz
+cd LinQuickRec/share
+tar -zxvf Qwen3-0.6B.tar.gz
+```
+
 
 **启动容器：**
 
