@@ -94,8 +94,6 @@ services:
         condition: service_healthy
       discovery-server:
         condition: service_healthy
-      kv-worker:
-        condition: service_started
     environment:
       worker_address: "${KV_WORKER_ADDRESS:-kv-worker:31501}"
       etcd_address: "etcd:2379"
