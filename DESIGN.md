@@ -71,6 +71,79 @@ LingQuickRec 是一个 C++ 微服务系统，用于模拟搜索推荐系统的�
 | Stage 2b: 预计算 | 异步并行 | 与 Stage 2a 同时发起 |
 | Stage 3: 精排 | 同步阻塞 | 必须等 Stage 2a/2b 都完成 |
 
+### 3.3 目标架构时序图（待实现）
+
+前置计算能力合并到 RankMaster，不再单独部署 Precalc 服务，但原有执行时序保持不变：
+Proxy 并行发起召回和前置计算，前置计算结果写入 KVWorker。两路都完成后，Proxy 将召回
+得到的 `sku_ids` 交给 FeatureService 批量查询商品特征，再将 SKU ID 及其商品特征均分
+为 10 个分片，并行发送给 10 个 RankMaster 实例。各 RankMaster 从精排专用 KVWorker
+读取前置计算产生的 KVCache，调用 RankSub 完成分片打分。最终由 Proxy 汇总全部分片
+结果、全局排序并返回 Top-K。召回和精排使用相互独立的 KVWorker。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as 调用方
+    participant Proxy as Proxy
+    participant Feature as FeatureService
+    participant Recall as RecallService
+    participant RecallKV as Recall KVWorker (:31501)
+    participant RankKV as Rank KVWorker (:31502)
+    participant Masters as RankMaster #1..#10
+    participant Subs as RankSub
+
+    Client->>Proxy: Recommend(user_id)
+    Proxy->>Feature: GetUserFeatures(user_id)
+    Feature-->>Proxy: 用户特征和用户日志
+
+    par 召回
+        Proxy->>Recall: Recall(user_logs)
+        Recall->>RecallKV: Exist(召回 KVCache key)
+        alt 缓存未命中或首次初始化
+            RecallKV-->>Recall: key 不存在
+            Recall->>RecallKV: Create/Set 召回 KVCache
+            RecallKV-->>Recall: 写入成功
+        else 缓存命中
+            RecallKV-->>Recall: key 存在
+            Recall->>RecallKV: Get(召回 KVCache key)
+            RecallKV-->>Recall: 召回 KVCache
+        end
+        Recall->>Recall: 生成候选 SKU ID
+        Recall-->>Proxy: sku_ids
+    and 前置计算
+        Proxy->>Masters: Precalculate(用户特征, trace_id)
+        Masters->>Masters: 执行前置计算逻辑
+        Masters->>RankKV: Set(精排 KVCache key, KVCache)
+        RankKV-->>Masters: 写入成功
+        Masters-->>Proxy: KVCache key
+    end
+
+    Proxy->>Feature: GetSKUFeatures(sku_ids)
+    Feature-->>Proxy: 全量 SKU 商品特征
+    Proxy->>Proxy: 将 SKU ID 和对应商品特征均分为 10 个分片
+
+    par 10 个分片并行执行
+        Proxy->>Masters: Rank(SKU 分片, 商品特征, KVCache key, trace_id)
+        Masters->>RankKV: Get(精排 KVCache key)
+        RankKV-->>Masters: 精排 KVCache
+        Masters->>Subs: Rank(商品特征, KVCache, trace_id)
+        Subs-->>Masters: 分片内 SKU 分数
+        Masters-->>Proxy: SKU ID 和分数
+    end
+
+    Proxy->>Proxy: 汇总 10 份分数并全局排序
+    Proxy->>Proxy: 按服务端配置截取 Top-K
+    Proxy-->>Client: Top-K SKU ID
+```
+
+> 说明：Recall 只访问召回 KVWorker，Precalc/RankMaster 只访问精排 KVWorker，两套缓存
+> 相互独立。Precalc 只是合并进 RankMaster 的服务进程，仍与 Recall 并行执行，并继续负责
+> 将计算结果写入精排 KVWorker。`RankMaster #1..#10` 表示 10 个 RankMaster 实例：前置
+> 计算请求由其中一个实例处理，精排阶段由 10 个实例分别处理 Proxy 分配的 SKU 分片。
+> 商品特征由 Proxy 从 FeatureService 批量获取并随分片下发，RankMaster 将商品特征和
+> 读取到的精排 KVCache 传给 RankSub；RankSub 不再自行访问 KVWorker。RankMaster 返回
+> 分片分数，全局排序职责归 Proxy。
+
 ## 4. 公共库
 
 公共库 `common_lib` 为所有服务提供统一的基础设施，详见 [common/DESIGN.md](common/DESIGN.md)。

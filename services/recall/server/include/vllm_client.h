@@ -18,6 +18,8 @@ namespace recall {
 struct VllmResponse {
     bool success = false;
     std::string body;
+    double brpc_latency_ms = 0.0;
+    double total_cost_ms = 0.0;
     common::error::Status status = common::error::Status::OK();
 };
 

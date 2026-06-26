@@ -23,7 +23,7 @@ DEFINE_string(server, "127.0.0.1:8001", "服务器地址 (ip:port)");
 DEFINE_uint64(user_id, 12345, "用户 ID");
 DEFINE_int32(log_count, 3, "用户日志数量（当 --user_logs 为空时使用）");
 DEFINE_string(user_logs, "", "用户日志（格式: \"1,2,3;4,5,6\"，分号分隔多个 log，逗号分隔 vec，空值时自动生成）");
-DEFINE_int32(other_size_kb, 100, "other 负载大小（KB），默认 100KB");
+DEFINE_int32(payload_size_kb, 100, "payload 负载大小（KB），默认 100KB");
 DEFINE_int32(timeout_ms, 100000, "超时时间（毫秒），默认 100000ms");
 /**
  * @brief 解析 user_logs 字符串
@@ -122,14 +122,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // 生成 other 负载
-    std::string other_payload = common::generate_random_string(FLAGS_other_size_kb * 1024);
-    request.set_other(other_payload);
+    // 生成 payload 负载
+    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
+    request.set_payload(payload);
 
     std::cout << "Request:" << std::endl;
     std::cout << "  user_id: " << request.user_id() << std::endl;
     std::cout << "  user_logs count: " << request.user_logs_size() << std::endl;
-    std::cout << "  other size: " << request.other().size() << " bytes (" << FLAGS_other_size_kb << " KB)" << std::endl;
+    std::cout << "  payload size: " << request.payload().size() << " bytes (" << FLAGS_payload_size_kb << " KB)" << std::endl;
 
     // 5. 构造响应
     recall::RecallResponse response;

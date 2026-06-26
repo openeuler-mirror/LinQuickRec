@@ -94,11 +94,14 @@ services:
         condition: service_healthy
       discovery-server:
         condition: service_healthy
+      kv-worker:
+        condition: service_started
     environment:
       worker_address: "${KV_WORKER_ADDRESS:-kv-worker:31501}"
       etcd_address: "etcd:2379"
       enable_urma: "${ENABLE_URMA:-0}"
       cpu_affinity: "${CPU_AFFINITY:-0-64}"
+      shared_memory_size_mb: "${SHARED_MEMORY_SIZE_MB:-2048}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
@@ -133,6 +136,8 @@ services:
       SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
       SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
       SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      FEATURE_SLEEP_TIME_MS: "${FEATURE_SLEEP_TIME_MS:-30}"
+      FEATURE_PAYLOAD_SIZE_KB: "${FEATURE_PAYLOAD_SIZE_KB:-0}"
       USER_LOG_COUNT: "${USER_LOG_COUNT:-10}"
       USER_LOG_VEC_SIZE: "${USER_LOG_VEC_SIZE:-30}"
       SKU_FEAT_LENGTH: "${SKU_FEAT_LENGTH:-20}"
@@ -158,7 +163,6 @@ services:
     image: linquickrec/recall:latest
     volumes:
       - /usr/local/cuda-12.9:/usr/local/cuda
-      - ../../share/Qwen3-0.6B:"${MODEL_NAME:-/app/models/Qwen3-0.6B}"
     container_name: recall-service
     depends_on:
       etcd:
@@ -170,6 +174,8 @@ services:
       SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
       SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
       SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      RECALL_SLEEP_TIME_MS: "${RECALL_SLEEP_TIME_MS:-30}"
+      RECALL_PAYLOAD_SIZE_KB: "${RECALL_PAYLOAD_SIZE_KB:-0}"
       VLLM_PORT: "${VLLM_PORT:-8000}"
       VLLM_BASE_URL: "http://127.0.0.1:${VLLM_PORT:-8000}"
       VLLM_ENDPOINT: "${VLLM_ENDPOINT:-/v1/chat/completions}"
@@ -180,7 +186,14 @@ services:
       VLLM_MAX_RETRY: "${VLLM_MAX_RETRY:-3}"
       VLLM_CONNECT_TIMEOUT_MS: "${VLLM_CONNECT_TIMEOUT_MS:--1}"
       VLLM_BACKUP_REQUEST_MS: "${VLLM_BACKUP_REQUEST_MS:--1}"
-      SKU_COUNT: "${SKU_COUNT:-100}"
+      ENABLE_VLLM: "${ENABLE_VLLM:-true}"
+      SKU_COUNT: "${SKU_COUNT:-1000}"
+      KV_WORKER_SERVICE: "${KV_WORKER_SERVICE:-kv_worker}"
+      KVCACHE_TTL_SECONDS: "${KVCACHE_TTL_SECONDS:-3600}"
+      KVCACHE_SIZE_BYTES: "${KVCACHE_SIZE_BYTES:-256}"
+      KVCACHE_HIT_RATE: "${KVCACHE_HIT_RATE:-0.5}"
+      KVCACHE_HIT_SLEEP_TIME_MS: "${KVCACHE_HIT_SLEEP_TIME_MS:-10}"
+      KVCACHE_MISS_SLEEP_TIME_MS: "${KVCACHE_MISS_SLEEP_TIME_MS:-100}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
@@ -188,6 +201,11 @@ services:
       HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
       FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
       STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
+    privileged: true
+    ipc: host
+    volumes:
+      - /usr/local/cuda-12.9:/usr/local/cuda
+      - /dev/shm:/dev/shm
     ports:
       - "8002:8002"
       - "${VLLM_PORT:-8000}:8000"
@@ -223,6 +241,7 @@ services:
       SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
       SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
       SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      PRECALC_SLEEP_TIME_MS: "${PRECALC_SLEEP_TIME_MS:-30}"
       TTL_SECONDS: "${TTL_SECONDS:-5}"
       PRECALC_RESULT_SIZE_MB: "${PRECALC_RESULT_SIZE_MB:-8.5}"
       PAYLOAD_SIZE_KB: "${PAYLOAD_SIZE_KB:-100}"
@@ -233,6 +252,10 @@ services:
       HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
       FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
       STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
+    privileged: true
+    ipc: host
+    volumes:
+      - /dev/shm:/dev/shm
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -258,7 +281,8 @@ services:
       SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
       SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
       SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
-      SCORING_DELAY_MS: "${SCORING_DELAY_MS:-100}"
+      RANK_SUB_SLEEP_TIME_MS: "${RANK_SUB_SLEEP_TIME_MS:-30}"
+      RANK_SUB_PAYLOAD_SIZE_KB: "${RANK_SUB_PAYLOAD_SIZE_KB:-0}"
       REGISTRY_BACKEND: "${REGISTRY_BACKEND:-etcd}"
       ETCD_ENDPOINTS: "${ETCD_ENDPOINTS:-etcd:2379}"
       DISCOVERY_ADDR: "discovery-server:${DISCOVERY_PORT:-8100}"
@@ -266,6 +290,10 @@ services:
       HEALTH_CHECK_TIMEOUT: "${HEALTH_CHECK_TIMEOUT:-2}"
       FAIL_THRESHOLD: "${FAIL_THRESHOLD:-3}"
       STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:-30}"
+    privileged: true
+    ipc: host
+    volumes:
+      - /dev/shm:/dev/shm
     networks:
       - linquickrec-net
     restart: unless-stopped
@@ -293,6 +321,8 @@ services:
       SERVER_NUM_THREADS: "${SERVER_NUM_THREADS:-0}"
       SERVER_IDLE_TIMEOUT_SEC: "${SERVER_IDLE_TIMEOUT_SEC:--1}"
       SERVER_MAX_CONCURRENCY: "${SERVER_MAX_CONCURRENCY:-0}"
+      RANK_MASTER_SLEEP_TIME_MS: "${RANK_MASTER_SLEEP_TIME_MS:-30}"
+      RANK_MASTER_PAYLOAD_SIZE_KB: "${RANK_MASTER_PAYLOAD_SIZE_KB:-0}"
       TOP_K: "${TOP_K:-100}"
       SUB_WORKER_SERVICE_TYPE: "${SUB_WORKER_SERVICE_TYPE:-rank_sub}"
       SUB_WORKER_PARALLELISM: "${SUB_WORKER_PARALLELISM:-4}"

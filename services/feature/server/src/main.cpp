@@ -15,6 +15,15 @@ DEFINE_int32(server_max_concurrency, 0,
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
+    common::logger::LoggerConfig log_config;
+    log_config.level = common::logger::LogLevel::INFO;
+    log_config.console_output = true;
+    log_config.file_path = "/var/log/linquickrec/feature.log";
+    log_config.max_file_size = 100 * 1024 * 1024;
+    log_config.max_files = 5;
+    log_config.enable_trace_id = true;
+    common::logger::Initialize(log_config);
+
     LOG_INFO << "Feature Service starting...";
 
     feature::FeatureServiceImpl service_impl;

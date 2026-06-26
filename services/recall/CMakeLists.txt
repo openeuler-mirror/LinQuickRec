@@ -32,6 +32,49 @@ find_package(Protobuf REQUIRED)
 set(RAPIDJSON_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/rapidjson/include")
 
 # ============================================================================
+# 元戎 SDK 配置（与 precalc 保持一致）
+# ============================================================================
+if(DEFINED ENV{YR_SDK_PATH})
+    set(YR_SDK_PATH $ENV{YR_SDK_PATH})
+else()
+    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
+endif()
+message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
+
+find_path(YR_INCLUDE_DIR datasystem/kv_client.h
+    PATHS ${YR_SDK_PATH}
+    PATH_SUFFIXES include
+)
+
+find_library(YR_LIBRARY
+    NAMES yr-api datasystem
+    PATHS ${YR_SDK_PATH}
+    PATH_SUFFIXES lib lib64
+)
+
+if(NOT YR_INCLUDE_DIR OR NOT YR_LIBRARY)
+    message(WARNING "Yuanrong SDK not found. Please set YR_SDK_PATH environment variable.")
+else()
+    message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+    message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+endif()
+
+# Discovery Client Library（ServiceDiscovery 用于 KVCache 模式）
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client
+                     ${CMAKE_BINARY_DIR}/discovery_client_lib_recall)
+endif()
+
+# Discovery proto（ServiceDiscovery 依赖）
+set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../proto)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path ${PROTO_DIR} --cpp_out ${CMAKE_CURRENT_BINARY_DIR} discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto
+)
+
+# ============================================================================
 # Protobuf 代码生成
 # ============================================================================
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/recall.proto)
@@ -91,19 +134,24 @@ add_executable(recall_server
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
     server/src/main.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
 )
-target_include_directories(recall_server PRIVATE 
-    ${BRPC_INCLUDE_DIR} 
+target_include_directories(recall_server PRIVATE
+    ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../..
+    ${YR_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 target_link_libraries(recall_server PRIVATE
     recall_proto
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
+    ${YR_LIBRARY}
     ${ABSL_LIBS}
     Threads::Threads
 )
@@ -166,6 +214,7 @@ add_executable(recall_test
     tests/test_recall.cpp
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
 )
 target_include_directories(recall_test PRIVATE
     ${BRPC_INCLUDE_DIR}
@@ -173,13 +222,17 @@ target_include_directories(recall_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../..
     ${RAPIDJSON_INCLUDE_DIRS}
+    ${YR_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
 target_link_libraries(recall_test PRIVATE
     recall_proto
+    discovery_client_lib
     common_lib
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
+    ${YR_LIBRARY}
     ${ABSL_LIBS}
     Threads::Threads
 )

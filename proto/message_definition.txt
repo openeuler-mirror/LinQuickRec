@@ -29,7 +29,7 @@ message KRUserLog {
 
 message KRUserFeatureResponse {
     repeated KRUserLog user_logs =1;
-    string other = 2;
+    string payload = 2;
 };
 
 message UserFeatureRequest {
@@ -66,11 +66,12 @@ service FeatureService {
 message RecallRequest {
     uint64_t user_id = 1;
     repeated KRUserLog user_logs = 2;
-    string other = 3;
+    string payload = 3;
 };
 
 message RecallResponse {
     repeated uint64_t sku_ids = 1;
+    string payload = 2;
 };
 
 service RecallService {

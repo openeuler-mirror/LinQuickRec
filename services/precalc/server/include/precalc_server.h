@@ -25,6 +25,7 @@ DECLARE_int32(ttl_seconds);
 DECLARE_int32(user_feat_key_size_kb);
 
 DECLARE_int32(payload_size_kb);
+DECLARE_int32(precalc_sleep_time_ms);
 
 namespace precalc {
 
@@ -66,7 +67,8 @@ private:
                                                     std::string& user_feat_key);
 
     common::error::Status write_to_kvworker(const std::string& user_feat_key,
-                                             const std::string& precalc_result);
+                                             const std::string& precalc_result,
+                                             const std::string& trace_id);
 
     std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
 };

@@ -1,5 +1,7 @@
 FROM linquickrec/base:latest
 
+ENV YR_SDK_PATH="/usr/local/lib64/python3.11/site-packages/yr/datasystem"
+
 # === 可配置的路径参数 ===
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/

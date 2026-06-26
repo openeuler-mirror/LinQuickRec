@@ -1,58 +1,55 @@
-# RankSub 精排子图服务（可水平扩展）
+# Recall 召回服务（KVCache 模式，无 vLLM，无需 GPU 节点）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rank-sub-service
+  name: recall-service
   namespace: linquickrec
   labels:
-    app: rank-sub-service
+    app: recall-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: rank-sub-service
+      app: recall-service
   template:
     metadata:
       labels:
-        app: rank-sub-service
+        app: recall-service
     spec:
-      # datasystem KVClient 通过同节点共享内存读取 kv-worker 中的预计算结果，
-      # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
       hostIPC: true
       containers:
-      - name: rank-sub
-        image: 192.168.84.245:5000/linquickrec/rank-sub:latest
-        securityContext:
-          privileged: true
+      - name: recall
+        image: 192.168.84.245:5000/linquickrec/recall-novllm:latest
         ports:
-        - containerPort: 8005
+        - containerPort: 8002
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8005"
+          value: "8002"
+        - name: ENABLE_VLLM
+          value: "false"
         - name: HOST_ID
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
         resources:
           requests:
-            cpu: "1"
-            memory: "2Gi"
-          limits:
             cpu: "2"
-            memory: "4Gi"
+            memory: "2Gi"
         readinessProbe:
           tcpSocket:
-            port: 8005
-          initialDelaySeconds: 10
+            port: 8002
+          initialDelaySeconds: 15
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8005
-          initialDelaySeconds: 15
+            port: 8002
+          initialDelaySeconds: 30
           periodSeconds: 15
         volumeMounts:
         - name: log
@@ -69,13 +66,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rank-sub-service
+  name: recall-service
   namespace: linquickrec
 spec:
   selector:
-    app: rank-sub-service
+    app: recall-service
   ports:
   - name: rpc
-    port: 8005
-    targetPort: 8005
+    port: 8002
+    targetPort: 8002
   type: ClusterIP

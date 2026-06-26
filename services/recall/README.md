@@ -88,10 +88,16 @@ make recall_server recall_test_client recall_test -j$(nproc)
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
 | `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 100 | 返回的 SKU ID 数量 |
+| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
+| `--enable_vllm` | bool | true | 是否启用 vLLM；false 时使用 novllm/KVCache 模拟召回 |
+| `--kvcache_hit_rate` | double | 0.5 | novllm 模式缓存命中率，范围 [0.0, 1.0] |
+| `--kvcache_hit_sleep_time_ms` | int32 | 10 | novllm 模式缓存命中模拟耗时 (ms) |
+| `--kvcache_miss_sleep_time_ms` | int32 | 100 | novllm 模式缓存未命中模拟耗时 (ms) |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
+
+novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`。随后按 `--kvcache_hit_rate` 随机选择命中或未命中：命中路径先 `Exist` 再 `Get` 固定 key；未命中路径对另一个临时 key 执行 `Exist`，再用 `Create` + `Set` 重写固定 key。返回 SKU 由随机数生成，不依赖 KV value 内容。
 
 **vLLM 通道参数：**
 
@@ -135,7 +141,7 @@ docker run -d --name recall-service \
 ```
        Client (Proxy)
             │
-            │ Recall(user_id, logs, other)
+            │ Recall(user_id, logs, payload)
             ▼
    ┌─────────────────────┐
    │   RecallService     │

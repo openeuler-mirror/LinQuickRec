@@ -1,23 +1,21 @@
 FROM linquickrec/base:latest
 
-ENV YR_SDK_PATH="/usr/local/lib64/python3.11/site-packages/yr/datasystem"
-
-# === 可配置的路径参数 ===
+# 服务代码（不含 share/，构建上下文已通过 dockerignore 排除）
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
-ARG SERVICE_DIR=services/precalc/
-ARG ENTRYPOINT_FILE=deploy/docker/precalc/entrypoint.sh
+ARG SERVICE_DIR=services/recall/
+ARG ENTRYPOINT_FILE=deploy/docker/recall/entrypoint.sh
 ARG DISCOVERY_DIR=services/discovery/
 
 WORKDIR /app
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
-COPY ${SERVICE_DIR} /app/services/precalc/
+COPY ${SERVICE_DIR} /app/services/recall/
 COPY ${DISCOVERY_DIR} /app/services/discovery/
 
 RUN mkdir -p /app/build && cd /app/build && \
-    cmake ../services/precalc -DCMAKE_BUILD_TYPE=Release && \
+    cmake ../services/recall -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 RUN mkdir -p /tmp/build_discovery && cd /tmp/build_discovery && \
     cmake /app/services/discovery -DCMAKE_BUILD_TYPE=Release && \
@@ -29,7 +27,7 @@ RUN chmod +x /app/discovery_client
 COPY ${ENTRYPOINT_FILE} /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8003
+EXPOSE 8002
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
 

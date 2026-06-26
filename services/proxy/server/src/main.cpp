@@ -20,7 +20,14 @@ DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC (
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    common::logger::AddConsoleSink();
+    common::logger::LoggerConfig log_config;
+    log_config.level = common::logger::LogLevel::INFO;
+    log_config.console_output = true;
+    log_config.file_path = "/var/log/linquickrec/proxy.log";
+    log_config.max_file_size = 100 * 1024 * 1024;
+    log_config.max_files = 5;
+    log_config.enable_trace_id = true;
+    common::logger::Initialize(log_config);
     common::logger::SetTraceIdGetter([]() { return proxy::get_current_trace_id(); });
 
     LOG_INFO << "Proxy Service starting...";

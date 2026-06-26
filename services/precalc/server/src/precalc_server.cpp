@@ -6,6 +6,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <brpc/controller.h>
@@ -17,6 +18,7 @@
 
 #include "common/error.h"
 #include "common/logger.h"
+#include "common/perf_logger.h"
 #include "common/random_utils.h"
 
 using namespace datasystem;
@@ -36,6 +38,7 @@ DEFINE_double(precalc_result_size_mb, 8.5, "前置计算结果大小（MB），�
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒）");
 
 DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
+DEFINE_int32(precalc_sleep_time_ms, 30, "Precalc service simulated sleep time (ms)");
 
 namespace precalc {
 
@@ -45,6 +48,7 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     LOG_INFO << "PrecalcServiceImpl initialized";
     LOG_INFO << "Precalc result size: " << FLAGS_precalc_result_size_mb << " MB";
     LOG_INFO << "TTL: " << FLAGS_ttl_seconds << " seconds";
+    LOG_INFO << "Precalc sleep time: " << FLAGS_precalc_sleep_time_ms << " ms";
 
     datasystem::ServiceDiscoveryOptions sdOpts;
     sdOpts.etcdAddress = FLAGS_etcd_endpoints;
@@ -115,7 +119,9 @@ common::error::Status PrecalcServiceImpl::validate_and_extract_key(
 }
 
 common::error::Status PrecalcServiceImpl::write_to_kvworker(
-    const std::string& user_feat_key, const std::string& precalc_result) {
+    const std::string& user_feat_key,
+    const std::string& precalc_result,
+    const std::string& trace_id) {
 
     datasystem::ConnectOptions connectOptions;
     connectOptions.serviceDiscovery = service_discovery_;
@@ -129,6 +135,10 @@ common::error::Status PrecalcServiceImpl::write_to_kvworker(
     int64_t init_start_us = butil::gettimeofday_us();
     datasystem::Status kv_status = kv_client.Init();
     int64_t init_cost_us = butil::gettimeofday_us() - init_start_us;
+    common::perf::Log("precalc", "kv_init", "processing", trace_id,
+                      common::perf::UsToMs(init_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + user_feat_key);
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_INIT_FAILED,
             "KVClient init failed: " + kv_status.ToString());
@@ -149,6 +159,10 @@ common::error::Status PrecalcServiceImpl::write_to_kvworker(
     int64_t create_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Create(user_feat_key, precalc_result.size(), param, buffer);
     int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
+    common::perf::Log("precalc", "kv_create", "processing", trace_id,
+                      common::perf::UsToMs(create_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + user_feat_key);
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_CREATE_FAILED,
             "KVClient Create failed: " + kv_status.ToString());
@@ -160,6 +174,9 @@ common::error::Status PrecalcServiceImpl::write_to_kvworker(
     int64_t memcpy_start_us = butil::gettimeofday_us();
     std::memcpy(buffer->MutableData(), precalc_result.data(), precalc_result.size());
     int64_t memcpy_cost_us = butil::gettimeofday_us() - memcpy_start_us;
+    common::perf::Log("precalc", "kv_memcpy", "processing", trace_id,
+                      common::perf::UsToMs(memcpy_cost_us), "ok",
+                      "key=" + user_feat_key);
     LOG_INFO << "KVClient buffer memcpy completed, cost="
              << memcpy_cost_us / 1000.0 << " ms";
 
@@ -167,6 +184,10 @@ common::error::Status PrecalcServiceImpl::write_to_kvworker(
     int64_t set_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Set(buffer);
     int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
+    common::perf::Log("precalc", "kv_set", "processing", trace_id,
+                      common::perf::UsToMs(set_cost_us),
+                      kv_status.IsOk() ? "ok" : "error",
+                      "key=" + user_feat_key);
     if (!kv_status.IsOk()) {
         auto status = common::error::Status(precalc_errors::KVCLIENT_SET_FAILED,
             "KVClient Set failed: " + kv_status.ToString());
@@ -203,12 +224,15 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int64_t generate_start_us = butil::gettimeofday_us();
     std::string precalc_result = common::generate_random_string(precalc_size);
     int64_t generate_cost_us = butil::gettimeofday_us() - generate_start_us;
+    common::perf::Log("precalc", "generate_result", "processing", request->trace_id(),
+                      common::perf::UsToMs(generate_cost_us), "ok",
+                      "key=" + user_feat_key);
     LOG_INFO << "Generated precalc result, cost=" << generate_cost_us / 1000.0
              << " ms";
 
     int64_t kvwrite_start_us = butil::gettimeofday_us();
 
-    status = write_to_kvworker(user_feat_key, precalc_result);
+    status = write_to_kvworker(user_feat_key, precalc_result, request->trace_id());
     if (status.IsError()) {
         response->set_user_feat_key("");
         return status;
@@ -216,10 +240,26 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
 
     int64_t kvwrite_end_us = butil::gettimeofday_us();
     int64_t kvwrite_cost_us = kvwrite_end_us - kvwrite_start_us;
+    common::perf::Log("precalc", "kv_write_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(kvwrite_cost_us), "ok",
+                      "key=" + user_feat_key);
 
-    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
+    int payload_size_kb = FLAGS_payload_size_kb > 0 ? FLAGS_payload_size_kb : 0;
+    int64_t payload_start_us = butil::gettimeofday_us();
+    std::string payload = common::generate_random_string(payload_size_kb * 1024);
+    common::perf::Log("precalc", "generate_payload", "processing", request->trace_id(),
+                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
+                      "ok", "payload_size=" + std::to_string(payload.size()));
     response->set_payload(payload);
     response->set_user_feat_key(user_feat_key);
+
+    if (FLAGS_precalc_sleep_time_ms > 0) {
+        LOG_INFO << "Simulating precalc sleep: " << FLAGS_precalc_sleep_time_ms << " ms";
+        int64_t sleep_start_us = butil::gettimeofday_us();
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_precalc_sleep_time_ms));
+        common::perf::Log("precalc", "sleep", "processing", request->trace_id(),
+                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
+    }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
 
@@ -233,6 +273,9 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int64_t cost_us = end_us - server_receive_us;
 
     LOG_INFO << "Precalculate completed, cost=" << cost_us / 1000.0 << " ms";
+    common::perf::Log("precalc", "precalc_total", "processing", request->trace_id(),
+                      common::perf::UsToMs(cost_us), "ok",
+                      "key=" + user_feat_key);
 
     return common::error::Status::OK();
 }

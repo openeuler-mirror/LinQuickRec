@@ -15,6 +15,8 @@ cd /app/build
     --server_num_threads=${SERVER_NUM_THREADS:-0} \
     --server_idle_timeout_sec=${SERVER_IDLE_TIMEOUT_SEC:--1} \
     --server_max_concurrency=${SERVER_MAX_CONCURRENCY:-0} \
+    --feature_sleep_time_ms=${FEATURE_SLEEP_TIME_MS:-30} \
+    --feature_payload_size_kb=${FEATURE_PAYLOAD_SIZE_KB:-0} \
     --user_log_count=${USER_LOG_COUNT:-10} \
     --user_log_vec_size=${USER_LOG_VEC_SIZE:-30} \
     --sku_feat_length=${SKU_FEAT_LENGTH:-20} \

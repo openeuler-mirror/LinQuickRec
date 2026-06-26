@@ -34,6 +34,8 @@ DECLARE_int32(sub_worker_connect_timeout_ms);
 DECLARE_int32(sub_worker_backup_request_ms);
 DECLARE_string(sub_worker_lb_policy);
 DECLARE_int32(sub_worker_parallelism);
+DECLARE_int32(rank_master_sleep_time_ms);
+DECLARE_int32(rank_master_payload_size_kb);
 
 namespace rank {
 
@@ -91,7 +93,9 @@ private:
 
     bool call_sub_worker(const std::string& user_feat_key,
                         const std::vector<uint64_t>& sku_ids,
+                        const std::string& payload,
                         const std::string& trace_id,
+                        int bucket_index,
                         RankSubResponse* response);
 
     static void* sub_worker_bthread_fn(void* arg);
