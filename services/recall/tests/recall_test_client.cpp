@@ -136,6 +136,12 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    if (response.error_code() != 0) {
+        std::cerr << "Recall error: code=" << response.error_code()
+                  << " message=" << response.error_message() << std::endl;
+        return -1;
+    }
+
     std::cout << "\n========================================" << std::endl;
     std::cout << "Response:" << std::endl;
     std::cout << "========================================" << std::endl;
