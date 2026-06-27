@@ -26,6 +26,11 @@ int main(int argc, char* argv[]) {
 
     recall::RecallServiceImpl service_impl;
 
+    if (!service_impl.IsReady()) {
+        LOG_ERROR << "RecallServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server server;
 
     if (server.AddService(&service_impl, brpc::SERVER_OWNS_SERVICE) != 0) {

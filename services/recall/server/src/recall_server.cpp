@@ -399,6 +399,8 @@ RecallServiceImpl::RecallServiceImpl()
         auto rc = service_discovery_->Init();
         if (!rc.IsOk()) {
             LOG_ERROR << "ServiceDiscovery init failed: " << rc.ToString();
+            ready_ = false;
+            return;
         }
 
         LOG_INFO << "KVCache mode: KV Worker ServiceDiscovery initialized"
