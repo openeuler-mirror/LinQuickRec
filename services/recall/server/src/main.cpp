@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
 
     brpc::Server server;
 
-    if (server.AddService(&service_impl, brpc::SERVER_OWNS_SERVICE) != 0) {
+    if (server.AddService(&service_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG_ERROR << "Failed to add RecallService";
         return -1;
     }
