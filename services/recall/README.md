@@ -30,12 +30,12 @@ services/recall/
 
 ## 编译命令
 
-| 依赖 | 版本要求 | 备注 |
-|------|----------|------|
-| CMake | >= 3.14 | 编译工具链 |
-| brpc | >= 1.4 | `linquickrec/base:latest` 基础镜像已内置 |
-| protobuf | >= 3.0 | `linquickrec/base:latest` 基础镜像已内置 |
-| abseil-cpp | latest | `linquickrec/base:latest` 基础镜像已内置 |
+| 依赖 | 备注 |
+|------|------|
+| CMake |编译工具链 |
+| brpc | `linquickrec/base:latest` 基础镜像已内置 |
+| protobuf | `linquickrec/base:latest` 基础镜像已内置 |
+| abseil-cpp | `linquickrec/base:latest` 基础镜像已内置 |
 
 ### 脚本构建
 
@@ -66,42 +66,75 @@ make recall_server recall_test_client recall_integration_test -j$(nproc)
 
 ## 启动方式
 
-### 启动 RecallService
+### 启动方式
+
+#### 使用 vLLM 模式（默认）
 
 ```bash
-cd build
-./bin/recall_server --server_port=8002 --vllm_base_url=http://127.0.0.1:8000
+./build/bin/recall_server \
+    --server_port=8002 \
+    --enable_vllm=true \
+    --vllm_base_url=http://127.0.0.1:8000 \
+    --model_name=/workspace/share/Qwen3-0.6B/
 ```
 
-参数说明：
+#### 使用 novllm 模式（KVCache 模拟召回）
+
+```bash
+./build/bin/recall_server \
+    --server_port=8002 \
+    --enable_vllm=false \
+    --kv_worker_service=kv_worker \
+    --registry_backend=etcd \
+    --etcd_endpoints=127.0.0.1:2379 \
+    --kvcache_hit_rate=0.5 \
+    --kvcache_hit_sleep_time_ms=10 \
+    --kvcache_miss_sleep_time_ms=100
+```
+
+novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`。随后按 `--kvcache_hit_rate` 随机选择命中或未命中：命中路径先 `Exist` 再 `Get` 固定 key；未命中路径对另一个临时 key 执行 `Exist`，再用 `Create` + `Set` 重写固定 key。返回 SKU 由随机数生成，不依赖 KV value 内容。
+
+### 参数说明
+
+#### 通用参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--server_port` | int32 | 8002 | 服务监听端口 |
-| `--enable_vllm` | bool | true | 是否启用 vLLM；false 时使用 novllm 模拟召回 |
+| `--enable_vllm` | bool | true | 是否启用 vLLM；false 时使用 novllm/KVCache 模拟召回 |
 | `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
-| `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
-| `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
-| `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | vLLM 模型路径 |
-| `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
-| `--kvcache_hit_rate` | double | 0.5 | novllm 模式缓存命中率，范围 [0.0, 1.0] |
-| `--kvcache_hit_sleep_time_ms` | int32 | 10 | novllm 模式缓存命中模拟耗时 (ms) |
-| `--kvcache_miss_sleep_time_ms` | int32 | 100 | novllm 模式缓存未命中模拟耗时 (ms) |
+| `--recall_sleep_time_ms` | int32 | 30 | 召回模拟延迟 (ms) |
+| `--recall_payload_size_kb` | int32 | 0 | response payload 大小 (KB)，0=不附加 |
 | `--server_num_threads` | int32 | 0 | 服务端 bthread 线程数，0=BRPC 默认(CPU 核数) |
 | `--server_idle_timeout_sec` | int32 | -1 | 空闲连接超时 (秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 最大并发请求数，0=不限制 |
 
-novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`。随后按 `--kvcache_hit_rate` 随机选择命中或未命中：命中路径先 `Exist` 再 `Get` 固定 key；未命中路径对另一个临时 key 执行 `Exist`，再用 `Create` + `Set` 重写固定 key。返回 SKU 由随机数生成，不依赖 KV value 内容。
-
-**vLLM 通道参数：**
+#### vLLM 模式参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--vllm_timeout_ms` | int32 | 100000 | vLLM 通道超时 (ms) |
-| `--vllm_connection_type` | string | "single" | vLLM 通道连接类型 |
+| `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
+| `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
+| `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
+| `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时 (ms) |
+| `--vllm_connection_type` | string | "pooled" | vLLM 通道连接类型 (pooled/short) |
 | `--vllm_max_retry` | int32 | 3 | vLLM 通道 BRPC 重试次数 |
 | `--vllm_connect_timeout_ms` | int32 | -1 | vLLM 通道建连超时 (ms)，-1=禁用 |
 | `--vllm_backup_request_ms` | int32 | -1 | vLLM 通道 backup request (ms)，-1=禁用 |
+
+#### novllm 模式参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--kv_worker_service` | string | "kv_worker" | KV Worker 服务名 |
+| `--registry_backend` | string | "discovery_server" | 注册后端类型 (discovery_server/etcd) |
+| `--discovery_addr` | string | "127.0.0.1:8100" | Discovery server 地址 |
+| `--etcd_endpoints` | string | "127.0.0.1:2379" | etcd 端点 (registry_backend=etcd 时) |
+| `--kvcache_ttl_seconds` | int32 | 3600 | KVCache 全局 key 的 TTL (秒) |
+| `--kvcache_size_bytes` | int32 | 256 | KVCache value 大小 (字节) |
+| `--kvcache_hit_rate` | double | 0.5 | 缓存命中率，范围 [0.0, 1.0] |
+| `--kvcache_hit_sleep_time_ms` | int32 | 10 | 缓存命中模拟耗时 (ms) |
+| `--kvcache_miss_sleep_time_ms` | int32 | 100 | 缓存未命中模拟耗时 (ms) |
 
 ### 使用测试客户端
 
@@ -170,7 +203,7 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 需要 recall 服务在运行中：
 
 ```bash
-./bin/recall_test_client \
+./build/bin/recall_test_client \
     --server="127.0.0.1:8002" \
     --user_id=12345
 ```
@@ -204,6 +237,7 @@ RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等
 ### 构建镜像
 
 ```bash
+# in LinQuickRec root directory
 docker build -t linquickrec/recall:latest \
   -f deploy/docker/recall/Dockerfile .
 ```
