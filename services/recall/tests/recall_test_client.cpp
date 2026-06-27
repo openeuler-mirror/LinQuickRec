@@ -45,7 +45,6 @@ std::vector<std::vector<uint32_t>> parse_user_logs(const std::string& user_logs_
         std::string val_str;
 
         while (std::getline(vec_ss, val_str, ',')) {
-            // 去除空白
             val_str.erase(0, val_str.find_first_not_of(" \t"));
             val_str.erase(val_str.find_last_not_of(" \t") + 1);
             if (!val_str.empty()) {
@@ -81,31 +80,26 @@ std::vector<std::vector<uint32_t>> generate_default_logs(int count) {
 }
 
 int main(int argc, char* argv[]) {
-    // 1. 解析命令行参数
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     std::cout << "========================================" << std::endl;
     std::cout << "Recall Service Client Test" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    // 2. 初始化 channel
     brpc::Channel channel;
     brpc::ChannelOptions options;
-    options.timeout_ms = FLAGS_timeout_ms; // 使用命令行参数指定的超时时间
+    options.timeout_ms = FLAGS_timeout_ms;
 
     if (channel.Init(FLAGS_server.c_str(), &options) != 0) {
         std::cerr << "Fail to initialize channel to " << FLAGS_server << std::endl;
         return -1;
     }
 
-    // 3. 准备 stub
     recall::RecallService_Stub stub(&channel);
 
-    // 4. 构造请求
     recall::RecallRequest request;
     request.set_user_id(FLAGS_user_id);
 
-    // 处理 user_logs
     std::vector<std::vector<uint32_t>> logs;
     if (!FLAGS_user_logs.empty()) {
         logs = parse_user_logs(FLAGS_user_logs);
@@ -122,7 +116,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // 生成 payload 负载
     std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
     request.set_payload(payload);
 
@@ -131,15 +124,11 @@ int main(int argc, char* argv[]) {
     std::cout << "  user_logs count: " << request.user_logs_size() << std::endl;
     std::cout << "  payload size: " << request.payload().size() << " bytes (" << FLAGS_payload_size_kb << " KB)" << std::endl;
 
-    // 5. 构造响应
     recall::RecallResponse response;
-
-    // 6. 控制器
     brpc::Controller cntl;
 
     std::cout << "\nSending request to " << FLAGS_server << std::endl;
 
-    // 7. 发起同步调用
     stub.Recall(&cntl, &request, &response, nullptr);
 
     if (cntl.Failed()) {
@@ -147,7 +136,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // 8. 检查结果
     std::cout << "\n========================================" << std::endl;
     std::cout << "Response:" << std::endl;
     std::cout << "========================================" << std::endl;

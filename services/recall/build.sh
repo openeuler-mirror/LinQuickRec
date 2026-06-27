@@ -69,9 +69,9 @@ if [ $? -eq 0 ]; then
     print_info "  cd ${BUILD_DIR}"
     print_info "  ./bin/recall_test_client --server=127.0.0.1:8001"
     echo ""
-    print_info "To run the test:"
+    print_info "To run the integration test:"
     print_info "  cd ${BUILD_DIR}"
-    print_info "  ./bin/recall_test"
+    print_info "  ./bin/recall_integration_test"
     echo ""
 else
     print_error "Build failed!"

@@ -164,7 +164,7 @@ set_target_properties(recall_server PROPERTIES
 # 编译 Client
 # ============================================================================
 add_executable(recall_test_client 
-    client/recall_test_client.cpp
+    tests/recall_test_client.cpp
 )
 target_include_directories(recall_test_client PRIVATE 
     ${BRPC_INCLUDE_DIR} 
@@ -202,21 +202,21 @@ message(STATUS "===========================================")
 message(STATUS "Build targets:")
 message(STATUS "  - recall_server (with RapidJSON + Global ThreadPool)")
 message(STATUS "  - recall_test_client")
-message(STATUS "  - recall_test (unit tests)")
+message(STATUS "  - recall_integration_test (integration tests)")
 message(STATUS "RapidJSON include dirs: ${RAPIDJSON_INCLUDE_DIRS}")
 message(STATUS "ThreadPool location: ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include")
 message(STATUS "===========================================")
 
 # ============================================================================
-# 编译单元测试
+# 编译集成测试
 # ============================================================================
-add_executable(recall_test
-    tests/test_recall.cpp
+add_executable(recall_integration_test
+    tests/recall_integration_test.cpp
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
 )
-target_include_directories(recall_test PRIVATE
+target_include_directories(recall_integration_test PRIVATE
     ${BRPC_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/server/include
@@ -225,7 +225,7 @@ target_include_directories(recall_test PRIVATE
     ${YR_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../discovery/client/include
 )
-target_link_libraries(recall_test PRIVATE
+target_link_libraries(recall_integration_test PRIVATE
     recall_proto
     discovery_client_lib
     common_lib
@@ -237,10 +237,10 @@ target_link_libraries(recall_test PRIVATE
     Threads::Threads
 )
 
-set_target_properties(recall_test PROPERTIES
+set_target_properties(recall_integration_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(recall_test PRIVATE -Wall -Wextra -O2)
+    target_compile_options(recall_integration_test PRIVATE -Wall -Wextra -O2)
 endif()

@@ -11,28 +11,21 @@ RecallService 是推荐系统的召回层，负责从海量商品池中筛选出
 ```
 services/recall/
 ├── backup/
-│   ├── brpc_client.cpp.backup
-│   ├── brpc_server.cpp.backup
-│   └── recommend.proto.backup
 ├── build.sh
 ├── CMakeLists.txt
 ├── DESIGN.md
 ├── README.md
-├── client/
-│   └── recall_test_client.cpp
 ├── server/
 │   ├── include/
-│   │   ├── recall_server.h      # RecallServiceImpl 声明
-│   │   └── vllm_client.h        # VllmClient 声明
+│   │   ├── recall_server.h
+│   │   └── vllm_client.h
 │   └── src/
-│       ├── main.cpp             # 服务入口
-│       ├── recall_server.cpp    # 服务实现
-│       └── vllm_client.cpp      # vLLM HTTP 客户端实现
-├── client/
-│   └── recall_test_client.cpp   # 测试客户端
-├── tests/
-│   └── test_recall.cpp          # 单元测试
-└── backup/                      # 备份目录
+│       ├── main.cpp
+│       ├── recall_server.cpp
+│       └── vllm_client.cpp
+└── tests/
+    ├── recall_integration_test.cpp
+    └── recall_test_client.cpp
 ```
 
 ## 编译命令
@@ -60,7 +53,7 @@ cd services/recall
 cd services/recall
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make recall_server recall_test_client recall_test -j$(nproc)
+make recall_server recall_test_client recall_integration_test -j$(nproc)
 ```
 
 ### 编译产物
@@ -69,7 +62,7 @@ make recall_server recall_test_client recall_test -j$(nproc)
 |--------|------|
 | `recall_server` | 召回服务主程序 |
 | `recall_test_client` | 测试客户端 |
-| `recall_test` | 单元测试 |
+| `recall_integration_test` | 集成测试 |
 
 ## 启动方式
 
@@ -84,12 +77,12 @@ make recall_server recall_test_client recall_test -j$(nproc)
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--server_port` | int32 | 8002 | 服务监听端口 |
+| `--enable_vllm` | bool | true | 是否启用 vLLM；false 时使用 novllm 模拟召回 |
+| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
 | `--vllm_base_url` | string | "http://127.0.0.1:8000" | vLLM 服务基础 URL |
 | `--vllm_endpoint` | string | "/v1/chat/completions" | vLLM 聊天接口端点 |
-| `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | 模型路径 |
+| `--model_name` | string | "/workspace/share/Qwen3-0.6B/" | vLLM 模型路径 |
 | `--vllm_timeout_ms` | int32 | 100000 | vLLM 请求超时时间（毫秒） |
-| `--sku_count` | int32 | 1000 | 返回的 SKU ID 数量 |
-| `--enable_vllm` | bool | true | 是否启用 vLLM；false 时使用 novllm/KVCache 模拟召回 |
 | `--kvcache_hit_rate` | double | 0.5 | novllm 模式缓存命中率，范围 [0.0, 1.0] |
 | `--kvcache_hit_sleep_time_ms` | int32 | 10 | novllm 模式缓存命中模拟耗时 (ms) |
 | `--kvcache_miss_sleep_time_ms` | int32 | 100 | novllm 模式缓存未命中模拟耗时 (ms) |
@@ -113,6 +106,94 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 
 ```bash
 ./bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
+```
+
+## 测试方法
+
+### 集成测试
+
+集成测试在单进程内启动 mock vLLM（raw socket HTTP 服务器）+ 真实 `RecallServiceImpl`（BRPC server），通过 `RecallService_Stub.Recall()` 发送真实 RPC 并用 `assert()` 验证结果。无需外部 vLLM 或其他依赖服务。
+
+```bash
+# 运行集成测试
+./bin/recall_integration_test
+```
+
+覆盖 5 个场景：
+
+| 场景 | 验证内容 |
+|------|----------|
+| vLLM 返回有效 SKU | 全链路成功，sku_ids 值正确 |
+| vLLM 不可达 | 返回 error_code = `VLLM_REQUEST_FAILED` (0x03030002) |
+| vLLM 返回畸形 JSON | 返回 error_code = `VLLM_RESPONSE_PARSE_FAILED` (0x03030003) |
+| vLLM 返回空 choices | 返回 error_code = `VLLM_RESPONSE_PARSE_FAILED` (0x03030003) |
+| vLLM 返回数不足 + 补齐 | 返回 target 数量的不重复 SKU |
+
+#### 测试原理
+
+测试在一个进程内启动 2 个 server，模拟完整的 vLLM 调用链路：
+
+```
+┌──────────────────────── Single Process ────────────────────────┐
+│                                                                 │
+│  ┌───────────────────────────┐  ┌────────────────────────────┐ │
+│  │  MockVllmServer (:18000)  │  │  RecallServiceImpl         │ │
+│  │  (raw socket HTTP)        │  │  (:18002, BRPC)            │ │
+│  │                           │  │                            │ │
+│  │  POST /v1/chat/completions│  │  ┌──────────────────────┐  │ │
+│  │  → 返回预制 JSON          │◄─┤│  VllmClient            │  │ │
+│  │                           │  │  │  → HTTP POST          │  │ │
+│  └───────────────────────────┘  │  └──────────────────────┘  │ │
+│                                  └─────────────┬──────────────┘ │
+│                                                │                │
+│  ┌─────────────────────────────────────────────▼──────────────┐ │
+│  │  RecallService_Stub.Recall()                               │ │
+│  │  → assert(error_code == expected)                          │ │
+│  │  → assert(sku_ids_size == expected)                        │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+每个场景内部：
+
+1. 启动 MockVllmServer（可选，mock 不可达场景跳过），配置预制 JSON 响应
+2. 设置 gflags（`--vllm_base_url` 指向 mock、`--sku_count=5`、禁用重试和 sleep）
+3. 创建 `RecallServiceImpl` 实例，注册到 `brpc::Server` 并启动
+4. 通过 `RecallService_Stub.Recall()` 发送真实 BRPC 请求
+5. `assert()` 逐一验证：RPC 成功、`error_code`、`sku_ids` 数量和内容、无重复
+6. 任意 `assert` 失败 → 程序立即 abort
+7. 停止所有 Server，清理
+
+### 手动测试
+
+需要 recall 服务在运行中：
+
+```bash
+./bin/recall_test_client \
+    --server="127.0.0.1:8002" \
+    --user_id=12345
+```
+
+输出示例：
+
+```
+========================================
+Recall Service Client Test
+========================================
+Request:
+  user_id: 12345
+  user_logs count: 3
+  payload size: 102400 bytes (100 KB)
+Sending request to 127.0.0.1:8002
+
+========================================
+Response:
+========================================
+SKU IDs count: 1000
+First 20 SKU IDs: 123456, 234567, ...
+========================================
+Test completed successfully!
+========================================
 ```
 
 ## 容器搭建
