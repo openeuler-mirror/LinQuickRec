@@ -79,8 +79,10 @@ private:
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         addr.sin_port = htons(port_);
-        assert(bind(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0);
-        assert(listen(fd_, 5) == 0);
+        int ret = bind(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        assert(ret == 0);
+        ret = listen(fd_, 5);
+        assert(ret == 0);
 
         while (running_) {
             int client = accept(fd_, nullptr, nullptr);
@@ -165,8 +167,7 @@ static void run_scenario(const Scenario& s) {
     if (s.expect_sku_count > 0 && s.expect_prefix.size() < static_cast<size_t>(s.expect_sku_count)) {
         std::unordered_set<uint64_t> seen;
         for (int i = 0; i < rsp.sku_ids_size(); ++i) {
-            bool inserted = seen.insert(rsp.sku_ids(i)).second;
-            assert(inserted);
+            assert(seen.insert(rsp.sku_ids(i)).second);
         }
     }
 

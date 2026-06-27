@@ -107,6 +107,16 @@ struct HasExistBoolRef<Client,
                                                        std::declval<bool&>()))>>
     : std::true_type {};
 
+template <typename Client, typename = void>
+struct HasExistBatch : std::false_type {};
+
+template <typename Client>
+struct HasExistBatch<Client,
+    std::void_t<decltype(std::declval<Client&>().Exist(
+        std::declval<const std::vector<std::string>&>(),
+        std::declval<std::vector<bool>&>()))>>
+    : std::true_type {};
+
 struct KvExistResult {
     bool ok = true;
     bool exists = false;
@@ -124,7 +134,21 @@ std::string status_to_string(const T& status) {
 
 template <typename Client>
 KvExistResult kv_client_exist(Client& kv_client, const std::string& key) {
-    if constexpr (HasExistKeyOnly<Client>::value) {
+    if constexpr (HasExistBatch<Client>::value) {
+        std::vector<std::string> keys = {key};
+        std::vector<bool> exists;
+        auto ret = kv_client.Exist(keys, exists);
+        using Ret = decltype(ret);
+        if constexpr (std::is_same_v<Ret, bool>) {
+            return {ret, !exists.empty() && exists[0], ""};
+        } else if constexpr (HasIsOk<Ret>::value) {
+            bool found = !exists.empty() && exists[0];
+            return {ret.IsOk() || !found, found, status_to_string(ret)};
+        } else {
+            static_assert(HasIsOk<Ret>::value || std::is_same_v<Ret, bool>,
+                          "Unsupported KVClient::Exist(keys, exists) return type");
+        }
+    } else if constexpr (HasExistKeyOnly<Client>::value) {
         auto ret = kv_client.Exist(key);
         using Ret = decltype(ret);
         if constexpr (std::is_same_v<Ret, bool>) {
@@ -148,7 +172,7 @@ KvExistResult kv_client_exist(Client& kv_client, const std::string& key) {
                           "Unsupported KVClient::Exist(key, bool&) return type");
         }
     } else {
-        static_assert(HasExistKeyOnly<Client>::value || HasExistBoolRef<Client>::value,
+        static_assert(HasExistBatch<Client>::value || HasExistKeyOnly<Client>::value || HasExistBoolRef<Client>::value,
                       "Unsupported KVClient::Exist signature");
     }
 }
