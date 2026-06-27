@@ -69,6 +69,7 @@ make recall_server recall_test_client recall_integration_test -j$(nproc)
 ### 启动 RecallService
 
 ```bash
+cd build
 ./bin/recall_server --server_port=8002 --vllm_base_url=http://127.0.0.1:8000
 ```
 
@@ -105,7 +106,7 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 ### 使用测试客户端
 
 ```bash
-./bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
+./build/bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
 ```
 
 ## 测试方法
