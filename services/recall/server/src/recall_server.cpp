@@ -1,4 +1,5 @@
 #include "recall_server.h"
+#include "vllm_client.h"
 
 #include <algorithm>
 #include <chrono>
@@ -383,8 +384,11 @@ static void generate_random_skus(int sku_count, RecallResponse* response) {
     }
 }
 
-RecallServiceImpl::RecallServiceImpl()
-    : vllm_client_(FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms) {
+RecallServiceImpl::RecallServiceImpl() {
+    if (FLAGS_enable_vllm) {
+        vllm_client_ = std::make_unique<VllmClient>(
+            FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms);
+    }
     LOG_INFO << "RecallServiceImpl initialized, enable_vllm=" << FLAGS_enable_vllm;
     LOG_INFO << "Recall sleep time: " << FLAGS_recall_sleep_time_ms << " ms";
     LOG_INFO << "Recall payload size: " << FLAGS_recall_payload_size_kb << " KB";
@@ -692,7 +696,7 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     LOG_DEBUG << "Built vLLM request, size: " << vllm_json.size() << " bytes";
 
     int64_t vllm_start_us = butil::gettimeofday_us();
-    auto vllm_resp = vllm_client_.SendRequest(vllm_json);
+    auto vllm_resp = vllm_client_->SendRequest(vllm_json);
     int64_t vllm_end_us = butil::gettimeofday_us();
     int64_t vllm_cost_us = vllm_end_us - vllm_start_us;
     common::perf::Log("recall", "vllm_rpc", "processing", request->trace_id(),
