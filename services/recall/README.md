@@ -116,7 +116,7 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 
 ```bash
 # 运行集成测试
-./bin/recall_integration_test
+./build/bin/recall_integration_test
 ```
 
 覆盖 5 个场景：

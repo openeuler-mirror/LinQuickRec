@@ -138,16 +138,19 @@ static void run_scenario(const Scenario& s) {
 
     recall::RecallServiceImpl service;
     brpc::Server server;
-    assert(server.AddService(&service, brpc::SERVER_DOESNT_OWN_SERVICE) == 0);
+    int ret = server.AddService(&service, brpc::SERVER_DOESNT_OWN_SERVICE);
+    assert(ret == 0);
     std::string addr = "127.0.0.1:" + std::to_string(RECALL_PORT);
-    assert(server.Start(addr.c_str(), nullptr) == 0);
+    ret = server.Start(addr.c_str(), nullptr);
+    assert(ret == 0);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     brpc::Channel channel;
     brpc::ChannelOptions opts;
     opts.timeout_ms = 5000;
     opts.protocol = "baidu_std";
-    assert(channel.Init(addr.c_str(), &opts) == 0);
+    ret = channel.Init(addr.c_str(), &opts);
+    assert(ret == 0);
     recall::RecallService_Stub stub(&channel);
 
     recall::RecallRequest req;
@@ -167,7 +170,9 @@ static void run_scenario(const Scenario& s) {
     if (s.expect_sku_count > 0 && s.expect_prefix.size() < static_cast<size_t>(s.expect_sku_count)) {
         std::unordered_set<uint64_t> seen;
         for (int i = 0; i < rsp.sku_ids_size(); ++i) {
-            assert(seen.insert(rsp.sku_ids(i)).second);
+            bool inserted = seen.insert(rsp.sku_ids(i)).second;
+            assert(inserted);
+            static_cast<void>(inserted);
         }
     }
 
