@@ -24,6 +24,30 @@
 #include "common/logger.h"
 #include "recall.pb.h"
 
+DECLARE_string(vllm_base_url);
+DECLARE_string(vllm_endpoint);
+DECLARE_string(model_name);
+DECLARE_int32(server_port);
+DECLARE_int32(vllm_timeout_ms);
+DECLARE_int32(sku_count);
+DECLARE_bool(enable_vllm);
+DECLARE_string(kv_worker_service);
+DECLARE_string(registry_backend);
+DECLARE_string(discovery_addr);
+DECLARE_string(etcd_endpoints);
+DECLARE_int32(kvcache_ttl_seconds);
+DECLARE_int32(kvcache_size_bytes);
+DECLARE_double(kvcache_hit_rate);
+DECLARE_int32(kvcache_hit_sleep_time_ms);
+DECLARE_int32(kvcache_miss_sleep_time_ms);
+DECLARE_int32(recall_sleep_time_ms);
+DECLARE_int32(recall_payload_size_kb);
+
+DECLARE_string(vllm_connection_type);
+DECLARE_int32(vllm_max_retry);
+DECLARE_int32(vllm_connect_timeout_ms);
+DECLARE_int32(vllm_backup_request_ms);
+
 namespace recall {
 
 /**
@@ -73,6 +97,7 @@ public:
      * @brief 构造函数
      */
     RecallServiceImpl();
+    ~RecallServiceImpl();
 
     bool IsReady() const { return ready_; }
 

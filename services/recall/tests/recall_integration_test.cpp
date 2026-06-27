@@ -83,6 +83,7 @@ private:
         assert(ret == 0);
         ret = listen(fd_, 5);
         assert(ret == 0);
+        static_cast<void>(ret);
 
         while (running_) {
             int client = accept(fd_, nullptr, nullptr);

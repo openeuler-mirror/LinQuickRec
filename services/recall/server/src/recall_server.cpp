@@ -414,6 +414,7 @@ RecallServiceImpl::RecallServiceImpl() {
                  << ", miss_sleep=" << FLAGS_kvcache_miss_sleep_time_ms << " ms";
     }
 }
+RecallServiceImpl::~RecallServiceImpl() = default;
 
 void RecallServiceImpl::Recall(google::protobuf::RpcController* controller,
                               const RecallRequest* request,
