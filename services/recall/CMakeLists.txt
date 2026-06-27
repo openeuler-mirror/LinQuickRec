@@ -145,7 +145,7 @@ target_link_libraries(recall_server PRIVATE
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
-    ${YR_LIBRARY}
+    ${YR_DATASYSTEM_LIB}
     ${ABSL_LIBS}
     Threads::Threads
 )
@@ -226,7 +226,7 @@ target_link_libraries(recall_integration_test PRIVATE
     ${BRPC_LIBRARIES}
     leveldb
     ${Protobuf_LIBRARIES}
-    ${YR_LIBRARY}
+    ${YR_DATASYSTEM_LIB}
     ${ABSL_LIBS}
     Threads::Threads
 )
