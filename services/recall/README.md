@@ -41,10 +41,10 @@ services/recall/
 
 ```bash
 cd services/recall
-./build.sh              # 默认为 Release 构建
-./build.sh release      # Release 构建
-./build.sh debug        # Debug 构建
-./build.sh clean        # 清理后构建
+bash build.sh              # 默认为 Release 构建
+bash build.sh release      # Release 构建
+bash build.sh debug        # Debug 构建
+bash build.sh clean        # 清理后构建
 ```
 
 ### 手动构建
@@ -135,23 +135,23 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 
 ```
 ┌──────────────────────── Single Process ────────────────────────┐
-│                                                                 │
+│                                                                │
 │  ┌───────────────────────────┐  ┌────────────────────────────┐ │
 │  │  MockVllmServer (:18000)  │  │  RecallServiceImpl         │ │
 │  │  (raw socket HTTP)        │  │  (:18002, BRPC)            │ │
 │  │                           │  │                            │ │
 │  │  POST /v1/chat/completions│  │  ┌──────────────────────┐  │ │
-│  │  → 返回预制 JSON          │◄─┤│  VllmClient            │  │ │
-│  │                           │  │  │  → HTTP POST          │  │ │
+│  │  → return prepared JSON   │◄─┤  │  VllmClient          │  │ │
+│  │                           │  │  │  → HTTP POST         │  │ │
 │  └───────────────────────────┘  │  └──────────────────────┘  │ │
-│                                  └─────────────┬──────────────┘ │
-│                                                │                │
-│  ┌─────────────────────────────────────────────▼──────────────┐ │
-│  │  RecallService_Stub.Recall()                               │ │
-│  │  → assert(error_code == expected)                          │ │
-│  │  → assert(sku_ids_size == expected)                        │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+│                                 └─────────────┬──────────────┘ │
+│                                               │                │
+│  ┌────────────────────────────────────────────▼──────────────┐ │
+│  │  RecallService_Stub.Recall()                              │ │
+│  │  → assert(error_code == expected)                         │ │
+│  │  → assert(sku_ids_size == expected)                       │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 每个场景内部：

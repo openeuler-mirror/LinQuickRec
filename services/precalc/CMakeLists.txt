@@ -61,8 +61,11 @@ set(ABSL_LIBS
 set(PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
+# ============================================================================
 # 元戎 SDK 配置
-if(DEFINED ENV{YR_SDK_PATH})
+# ============================================================================
+
+f(DEFINED ENV{YR_SDK_PATH})
     set(YR_SDK_PATH $ENV{YR_SDK_PATH})
     message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
 else()
@@ -78,6 +81,10 @@ if(NOT YR_DATASYSTEM_LIB)
 endif()
 message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
 message(STATUS "Yuanrong SDK library: ${YR_DATASYSTEM_LIB}")
+
+# ============================================================================
+# 生成protobuf文件
+# ============================================================================
 
 # 生成 precalc protobuf 文件
 add_custom_command(

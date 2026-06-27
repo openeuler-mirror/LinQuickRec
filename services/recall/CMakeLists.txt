@@ -32,32 +32,25 @@ find_package(Protobuf REQUIRED)
 set(RAPIDJSON_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/rapidjson/include")
 
 # ============================================================================
-# 元戎 SDK 配置（与 precalc 保持一致）
+# 元戎 SDK 配置
 # ============================================================================
+
 if(DEFINED ENV{YR_SDK_PATH})
     set(YR_SDK_PATH $ENV{YR_SDK_PATH})
+    message(STATUS "Using Yuanrong SDK from: ${YR_SDK_PATH}")
 else()
-    set(YR_SDK_PATH "/usr/local/lib/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
+    set(YR_SDK_PATH "/usr/local/lib64/python3.11/site-packages/yr/datasystem" CACHE PATH "Yuanrong SDK path")
+    message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
 endif()
-message(STATUS "Using Yuanrong SDK path: ${YR_SDK_PATH}")
 
-find_path(YR_INCLUDE_DIR datasystem/kv_client.h
-    PATHS ${YR_SDK_PATH}
-    PATH_SUFFIXES include
-)
-
-find_library(YR_LIBRARY
-    NAMES yr-api datasystem
-    PATHS ${YR_SDK_PATH}
-    PATH_SUFFIXES lib lib64
-)
-
-if(NOT YR_INCLUDE_DIR OR NOT YR_LIBRARY)
-    message(WARNING "Yuanrong SDK not found. Please set YR_SDK_PATH environment variable.")
-else()
-    message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
-    message(STATUS "Yuanrong SDK library: ${YR_LIBRARY}")
+# 设置元戎ds的头文件和库文件目录
+set(YR_INCLUDE_DIR ${YR_SDK_PATH}/include)
+find_library(YR_DATASYSTEM_LIB datasystem PATHS ${YR_SDK_PATH}/lib NO_DEFAULT_PATH)
+if(NOT YR_DATASYSTEM_LIB)
+    message(FATAL_ERROR "YR SDK library (datasystem) not found in ${YR_SDK_PATH}/lib")
 endif()
+message(STATUS "Yuanrong SDK include: ${YR_INCLUDE_DIR}")
+message(STATUS "Yuanrong SDK library: ${YR_DATASYSTEM_LIB}")
 
 # Discovery Client Library（ServiceDiscovery 用于 KVCache 模式）
 if(NOT TARGET discovery_client_lib)
@@ -77,6 +70,7 @@ add_custom_command(
 # ============================================================================
 # Protobuf 代码生成
 # ============================================================================
+
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/recall.proto)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/recall.pb.cc)
 set(PROTO_HDR ${CMAKE_CURRENT_BINARY_DIR}/recall.pb.h)
