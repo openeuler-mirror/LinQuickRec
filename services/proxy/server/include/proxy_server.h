@@ -29,6 +29,8 @@ DECLARE_int32(feature_timeout_ms);
 DECLARE_int32(recall_timeout_ms);
 DECLARE_int32(precalc_timeout_ms);
 DECLARE_int32(rank_timeout_ms);
+DECLARE_int32(rank_master_parallelism);
+DECLARE_int32(top_k);
 
 DECLARE_string(downstream_connection_type);
 DECLARE_int32(downstream_max_retry);

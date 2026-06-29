@@ -2,26 +2,21 @@ syntax = "proto3";
 
 package rank;
 
-// 启用 C++ 通用服务代码生成
 option cc_generic_services = true;
 
-// 精排主图服务 - 请求
 message RankMasterRequest {
     string user_feat_key = 1;
-    string skus = 2; // 100KB
-    string payload = 3; // 100KB
+    repeated uint64 sku_ids = 2;
     string trace_id = 4;
 }
 
-// 精排主图服务 - 响应
 message RankMasterResponse {
     repeated uint64 candidates = 1;
-    string payload = 2;
+    repeated uint64 scores = 2;
     int32 error_code = 100;
     string error_message = 101;
 }
 
-// 精排主图服务定义
 service RankMasterService {
     rpc Rank(RankMasterRequest) returns (RankMasterResponse);
 }

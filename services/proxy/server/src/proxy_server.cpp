@@ -25,6 +25,8 @@ DEFINE_int32(feature_timeout_ms, 3000, "Feature service timeout (ms)");
 DEFINE_int32(recall_timeout_ms, 5000, "Recall service timeout (ms)");
 DEFINE_int32(precalc_timeout_ms, 5000, "Precalc service timeout (ms)");
 DEFINE_int32(rank_timeout_ms, 10000, "Rank service timeout (ms)");
+DEFINE_int32(rank_master_parallelism, 4, "Number of rank-master shards");
+DEFINE_int32(top_k, 100, "Top-K candidates to return");
 
 DEFINE_string(downstream_connection_type, "pooled",
               "Downstream channel connection type (single/pooled/short)");
@@ -371,78 +373,74 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     const precalc::PrecalcResponse& precalc_rsp,
     RecommendResponse* response) {
 
-    std::string host;
-    int port;
-    std::string instance_id;
-    if (!service_discovery_->GetInstance(
-            FLAGS_rank_service_name, host, port, instance_id)) {
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0004,
-            "RankService: no available instance");
+    int total = recall_rsp.sku_ids_size();
+    if (total == 0) {
+        return common::error::Status::Error(common::error::ModuleCode::GATEWAY,
+            common::error::ErrorType::SERVICE_ERROR, 0x0004, "RankService: no SKUs");
     }
 
-    std::string addr = host + ":" + std::to_string(port);
-    auto channel = make_channel(addr, FLAGS_rank_timeout_ms,
-                                FLAGS_rank_backup_request_ms);
-    if (!channel) {
-        service_discovery_->ReportFailure(instance_id);
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0004,
-            "RankService: channel init failed for " + addr);
+    int n = std::max(1, FLAGS_rank_master_parallelism);
+    int sz = (total + n - 1) / n;
+
+    struct Task { int idx; std::vector<uint64_t> skus; bool ok; std::vector<uint64_t> cand; std::vector<uint64_t> scr; };
+    std::vector<Task> tasks;
+    for (int i = 0; i < n; ++i) {
+        int b = i * sz, e = std::min(b + sz, total);
+        if (b >= total) break;
+        Task t; t.idx = i; t.skus.assign(recall_rsp.sku_ids().begin() + b, recall_rsp.sku_ids().begin() + e);
+        tasks.push_back(std::move(t));
     }
 
-    rank::RankMasterRequest rank_req;
-    rank_req.set_user_feat_key(precalc_rsp.user_feat_key());
-    rank_req.set_trace_id(tls_trace_id);
+    std::vector<std::future<void>> futures;
+    for (auto& t : tasks) {
+        futures.push_back(std::async(std::launch::async, [this, &t, &precalc_rsp]() {
+            std::string host; int port; std::string iid;
+            if (!service_discovery_->GetInstance(FLAGS_rank_service_name, host, port, iid)) return;
+            auto ch = make_channel(host + ":" + std::to_string(port), FLAGS_rank_timeout_ms, FLAGS_rank_backup_request_ms);
+            if (!ch) return;
 
-    std::ostringstream skus_oss;
-    for (int i = 0; i < recall_rsp.sku_ids_size(); ++i) {
-        skus_oss << std::setw(6) << std::setfill('0') << recall_rsp.sku_ids(i);
+            rank::RankMasterRequest req;
+            req.set_user_feat_key(precalc_rsp.user_feat_key());
+            req.set_trace_id(tls_trace_id);
+            for (uint64_t id : t.skus) req.add_sku_ids(id);
+
+            rank::RankMasterResponse rsp;
+            brpc::Controller cntl;
+            rank::RankMasterService_Stub stub(ch.get());
+            int64_t su = butil::gettimeofday_us();
+            stub.Rank(&cntl, &req, &rsp, nullptr);
+            int64_t cu = butil::gettimeofday_us() - su;
+            if (cntl.Failed()) {
+                service_discovery_->ReportFailure(iid);
+                common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
+                                  common::perf::UsToMs(cu), "error", "group=" + std::to_string(t.idx));
+                return;
+            }
+            service_discovery_->ReportSuccess(iid);
+            common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
+                              common::perf::UsToMs(cu), "ok", "group=" + std::to_string(t.idx));
+            t.ok = true;
+            for (int i = 0; i < rsp.candidates_size(); ++i) {
+                t.cand.push_back(rsp.candidates(i));
+                t.scr.push_back(i < rsp.scores_size() ? rsp.scores(i) : 0);
+            }
+        }));
     }
-    rank_req.set_skus(skus_oss.str());
-    rank_req.set_payload(precalc_rsp.payload());
+    for (auto& f : futures) f.get();
 
-    brpc::Controller cntl;
-    cntl.set_timeout_ms(FLAGS_rank_timeout_ms);
-    if (!tls_trace_id.empty()) {
-        cntl.set_log_id(std::stoull(tls_trace_id.substr(0, 16), nullptr, 16));
-    }
+    struct Scored { uint64_t id; uint64_t score; };
+    std::vector<Scored> all;
+    for (auto& t : tasks) if (t.ok) for (size_t i = 0; i < t.cand.size(); ++i)
+        all.push_back({t.cand[i], i < t.scr.size() ? t.scr[i] : uint64_t(0)});
 
-    rank::RankMasterService_Stub stub(channel.get());
-    rank::RankMasterResponse rank_rsp;
-    int64_t start_us = butil::gettimeofday_us();
-    stub.Rank(&cntl, &rank_req, &rank_rsp, nullptr);
-    int64_t cost_us = butil::gettimeofday_us() - start_us;
+    if (all.empty()) return common::error::Status::Error(common::error::ModuleCode::GATEWAY,
+        common::error::ErrorType::SERVICE_ERROR, 0x0004, "RankService: all groups failed");
 
-    if (cntl.Failed()) {
-        service_discovery_->ReportFailure(instance_id);
-        common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
-                          common::perf::UsToMs(cost_us), "error",
-                          "instance=" + instance_id);
-        common::perf::Log("proxy", "proxy_to_rank_master_brpc", "brpc", tls_trace_id,
-                          cntl.latency_us() / 1000.0, "error",
-                          "instance=" + instance_id);
-        return common::error::Status::Error(
-            common::error::ModuleCode::GATEWAY,
-            common::error::ErrorType::SERVICE_ERROR, 0x0004,
-            "RankService: " + cntl.ErrorText());
-    }
+    int k = std::min(FLAGS_top_k, (int)all.size());
+    std::partial_sort(all.begin(), all.begin()+k, all.end(), [](auto& a, auto& b){ return a.score > b.score; });
+    for (int i = 0; i < k; ++i) response->add_candidates(all[i].id);
 
-    service_discovery_->ReportSuccess(instance_id);
-    common::perf::Log("proxy", "rank_rpc", "processing", tls_trace_id,
-                      common::perf::UsToMs(cost_us), "ok",
-                      "instance=" + instance_id);
-    common::perf::Log("proxy", "proxy_to_rank_master_brpc", "brpc", tls_trace_id,
-                      cntl.latency_us() / 1000.0, "ok",
-                      "instance=" + instance_id);
-    for (int i = 0; i < rank_rsp.candidates_size(); ++i) {
-        response->add_candidates(rank_rsp.candidates(i));
-    }
-
-    LOG_INFO << "RankService success: candidates=" << response->candidates_size()
-             << " instance=" << instance_id;
+    LOG_INFO << "Rank done: groups=" << tasks.size() << " total=" << all.size() << " top_k=" << k;
     return common::error::Status::OK();
 }
 
