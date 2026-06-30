@@ -19,6 +19,6 @@ RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8100
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-}
 
 ENTRYPOINT ["/app/entrypoint.sh"]
