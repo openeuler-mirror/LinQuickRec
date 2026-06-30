@@ -3,6 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+trap 'log "Interrupted"; exit 130' INT
+
 REGISTRY=""
 DRY_RUN=false
 TARGET=""
@@ -38,7 +40,7 @@ err() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [options] [image]
+Usage: $(basename "$0") -r REGISTRY <all|image> [options]
 
 Tag pre-built local Docker image(s) with the private registry and push them.
 
@@ -52,9 +54,9 @@ Images:
   precalc, rank-sub, rank-master, proxy
 
 Examples:
-  $(basename "$0") -r 192.168.84.245:5000               # push all images
-  $(basename "$0") -r 192.168.84.245:5000 recall        # push recall only
-  $(basename "$0") -r 10.0.0.1:5000 --dry-run all       # dry-run
+  $(basename "$0") -r 192.168.0.1:5000 all           # push all images
+  $(basename "$0") -r 192.168.0.1:5000 recall        # push recall only
+  $(basename "$0") -r 192.168.0.1:5000 --dry-run all # dry-run
 EOF
 }
 
@@ -107,7 +109,7 @@ parse_args() {
 canonical_target() {
     local target="$1"
 
-    if [[ -z "$target" || "$target" == "all" ]]; then
+    if [[ "$target" == "all" ]]; then
         echo "all"
         return 0
     fi
