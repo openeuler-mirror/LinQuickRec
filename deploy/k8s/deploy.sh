@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE="linquickrec"
-OVERLAY_DIR="${SCRIPT_DIR}/.overlay"
+OVERLAY_DIR="${SCRIPT_DIR}"
 
 RECALL_MODE="novllm"
 DISCOVERY_BACKEND="etcd"
@@ -76,43 +76,40 @@ parse_args() {
 }
 
 generate_kustomize_overlay() {
-    rm -rf "$OVERLAY_DIR"
-    mkdir -p "$OVERLAY_DIR"
-
     cat > "$OVERLAY_DIR/kustomization.yaml" <<KUSTOMIZE
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: ${NAMESPACE}
 
 resources:
-  - ../base/namespace.yaml
-  - ../base/configmap.yaml
-  - ../base/etcd-pv.yaml
-  - ../base/etcd.yaml
-  - ../base/kv-worker.yaml
-  - ../base/feature.yaml
-  - ../base/proxy.yaml
-  - ../base/precalc.yaml
-  - ../base/rank-master.yaml
-  - ../base/rank-sub.yaml
+  - base/namespace.yaml
+  - base/configmap.yaml
+  - base/etcd-pv.yaml
+  - base/etcd.yaml
+  - base/kv-worker.yaml
+  - base/feature.yaml
+  - base/proxy.yaml
+  - base/precalc.yaml
+  - base/rank-master.yaml
+  - base/rank-sub.yaml
 KUSTOMIZE
 
     if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/discovery/deployment.yaml
-  - ../components/discovery/service.yaml
+  - components/discovery/deployment.yaml
+  - components/discovery/service.yaml
 COMP
     fi
 
     if [ "$RECALL_MODE" = "vllm" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/recall-vllm/deployment.yaml
-  - ../components/recall-vllm/service.yaml
+  - components/recall-vllm/deployment.yaml
+  - components/recall-vllm/service.yaml
 COMP
     else
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/recall-novllm/deployment.yaml
-  - ../components/recall-novllm/service.yaml
+  - components/recall-novllm/deployment.yaml
+  - components/recall-novllm/service.yaml
 COMP
     fi
 
