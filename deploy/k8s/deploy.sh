@@ -85,23 +85,34 @@ kind: Kustomization
 namespace: ${NAMESPACE}
 
 resources:
-  - ../base
+  - ../base/namespace.yaml
+  - ../base/configmap.yaml
+  - ../base/etcd-pv.yaml
+  - ../base/etcd.yaml
+  - ../base/kv-worker.yaml
+  - ../base/feature.yaml
+  - ../base/proxy.yaml
+  - ../base/precalc.yaml
+  - ../base/rank-master.yaml
+  - ../base/rank-sub.yaml
 KUSTOMIZE
 
-    # Conditional components
     if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/discovery
+  - ../components/discovery/deployment.yaml
+  - ../components/discovery/service.yaml
 COMP
     fi
 
     if [ "$RECALL_MODE" = "vllm" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/recall-vllm
+  - ../components/recall-vllm/deployment.yaml
+  - ../components/recall-vllm/service.yaml
 COMP
     else
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ../components/recall-novllm
+  - ../components/recall-novllm/deployment.yaml
+  - ../components/recall-novllm/service.yaml
 COMP
     fi
 
