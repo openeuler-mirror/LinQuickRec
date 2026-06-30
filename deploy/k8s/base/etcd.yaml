@@ -69,23 +69,17 @@ spec:
         - name: CLUSTER_NS
           value: "linquickrec"
         readinessProbe:
-          exec:
-            command:
-            - etcdctl
-            - endpoint
-            - health
+          httpGet:
+            path: /health
+            port: 2379
           initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
+          periodSeconds: 5
         livenessProbe:
-          exec:
-            command:
-            - etcdctl
-            - endpoint
-            - health
+          httpGet:
+            path: /health?serializable=true
+            port: 2379
           initialDelaySeconds: 15
-          periodSeconds: 15
-          timeoutSeconds: 5
+          periodSeconds: 10
         volumeMounts:
         - name: etcd-data
           mountPath: /var/lib/etcd
