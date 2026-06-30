@@ -23,7 +23,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 # 添加公共库子目录
 add_subdirectory(common)
 
-# 添加子目�?
+# 添加子目录
 add_subdirectory(services/recall)
 add_subdirectory(services/precalc)
 add_subdirectory(services/rank_master)
