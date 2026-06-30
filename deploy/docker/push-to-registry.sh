@@ -2,25 +2,21 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
 REGISTRY="${REGISTRY:-192.168.84.245:5000}"
 DRY_RUN=false
-BUILD_ONLY=false
-PUSH_ONLY=false
 TARGET=""
 
 SERVICES=(
-    "etcd:etcd:linquickrec/etcd:latest"
-    "discovery:discovery-server:linquickrec/discovery:latest"
-    "kv-worker:kv-worker:linquickrec/kv-worker:latest"
-    "feature:feature-service:linquickrec/feature:latest"
-    "recall:recall-service:linquickrec/recall:latest"
-    "precalc:precalc-service:linquickrec/precalc:latest"
-    "rank-sub:rank-sub-service:linquickrec/rank-sub:latest"
-    "rank-master:rank-master-service:linquickrec/rank-master:latest"
-    "proxy:proxy-service:linquickrec/proxy:latest"
+    "etcd:linquickrec/etcd:latest"
+    "discovery:linquickrec/discovery:latest"
+    "kv-worker:linquickrec/kv-worker:latest"
+    "feature:linquickrec/feature:latest"
+    "recall:linquickrec/recall:latest"
+    "precalc:linquickrec/precalc:latest"
+    "rank-sub:linquickrec/rank-sub:latest"
+    "rank-master:linquickrec/rank-master:latest"
+    "proxy:linquickrec/proxy:latest"
 )
 
 ALIASES=(
@@ -44,13 +40,11 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [options] [image]
 
-Build Docker image(s), tag them with the private registry, and push them.
+Tag pre-built local Docker image(s) with the private registry and push them.
 
 Options:
   -r, --registry REGISTRY  Private registry, default: ${REGISTRY}
-  -n, --dry-run            Print commands without running them
-      --build-only         Build images but do not push
-      --push-only          Push existing local images without building
+      --dry-run            Print commands without running them
   -h, --help               Show this help
 
 Images:
@@ -58,8 +52,8 @@ Images:
   precalc, rank-sub, rank-master, proxy
 
 Examples:
-  $(basename "$0")                    # build and push all images
-  $(basename "$0") recall             # build and push recall only
+  $(basename "$0")                    # push all images
+  $(basename "$0") recall             # push recall only
   $(basename "$0") --registry 10.0.0.1:5000 rank-sub
   $(basename "$0") --dry-run all
 EOF
@@ -85,16 +79,8 @@ parse_args() {
                 REGISTRY="$2"
                 shift 2
                 ;;
-            -n|--dry-run)
+            --dry-run)
                 DRY_RUN=true
-                shift
-                ;;
-            --build-only)
-                BUILD_ONLY=true
-                shift
-                ;;
-            --push-only)
-                PUSH_ONLY=true
                 shift
                 ;;
             -h|--help)
@@ -117,11 +103,6 @@ parse_args() {
                 ;;
         esac
     done
-
-    if $BUILD_ONLY && $PUSH_ONLY; then
-        err "--build-only and --push-only cannot be used together"
-        exit 1
-    fi
 }
 
 canonical_target() {
@@ -133,7 +114,7 @@ canonical_target() {
     fi
 
     for row in "${SERVICES[@]}"; do
-        IFS=: read -r name _ _ _ <<<"$row"
+        IFS=: read -r name _ <<<"$row"
         if [[ "$target" == "$name" ]]; then
             echo "$name"
             return 0
@@ -158,18 +139,11 @@ selected_services() {
     target="$(canonical_target "$TARGET")"
 
     for row in "${SERVICES[@]}"; do
-        IFS=: read -r name _ _ _ <<<"$row"
+        IFS=: read -r name _ <<<"$row"
         if [[ "$target" == "all" || "$target" == "$name" ]]; then
             echo "$row"
         fi
     done
-}
-
-build_image() {
-    local service="$1"
-
-    log "Building compose service: ${service}"
-    run_cmd docker compose -f "$COMPOSE_FILE" build "$service"
 }
 
 push_image() {
@@ -177,7 +151,7 @@ push_image() {
     local tagged="${REGISTRY}/${image}"
 
     if ! $DRY_RUN && ! docker image inspect "$image" >/dev/null 2>&1; then
-        err "Local image not found after build: ${image}"
+        err "Local image not found: ${image}"
         return 1
     fi
 
@@ -190,31 +164,19 @@ push_image() {
 
 process_one() {
     local row="$1"
-    local name service image_tag image_version image
+    local name image
 
-    IFS=: read -r name service image_tag image_version <<<"$row"
-    image="${image_tag}:${image_version}"
+    IFS=: read -r name image <<<"$row"
 
     log "===== ${name} ====="
-
-    if ! $PUSH_ONLY; then
-        build_image "$service" || return 1
-    fi
-
-    if ! $BUILD_ONLY; then
-        push_image "$image" || return 1
-    fi
+    push_image "$image" || return 1
 }
 
 main() {
     parse_args "$@"
 
-    log "Repository root: ${REPO_ROOT}"
-    log "Compose file: ${COMPOSE_FILE}"
     log "Registry: ${REGISTRY}"
     $DRY_RUN && log "Mode: dry-run"
-    $BUILD_ONLY && log "Mode: build-only"
-    $PUSH_ONLY && log "Mode: push-only"
 
     local failed=0
     local count=0
