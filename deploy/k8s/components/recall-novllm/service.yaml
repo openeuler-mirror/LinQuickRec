@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recall-service
+  namespace: linquickrec
+spec:
+  selector:
+    app: recall-service
+  ports:
+  - name: rpc
+    port: 8002
+    targetPort: 8002
+  type: ClusterIP

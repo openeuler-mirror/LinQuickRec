@@ -19,7 +19,7 @@ spec:
       hostIPC: true
       containers:
       - name: recall
-        image: 192.168.84.245:5000/linquickrec/recall:latest
+        image: linquickrec/recall:latest
         ports:
         - containerPort: 8002
           name: rpc
@@ -62,17 +62,3 @@ spec:
       - name: shm
         hostPath:
           path: /dev/shm
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: recall-service
-  namespace: linquickrec
-spec:
-  selector:
-    app: recall-service
-  ports:
-  - name: rpc
-    port: 8002
-    targetPort: 8002
-  type: ClusterIP

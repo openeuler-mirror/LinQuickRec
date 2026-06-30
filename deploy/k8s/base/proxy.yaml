@@ -1,33 +1,33 @@
-# RankMaster 精排主图服务
+# Proxy 网关服务
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rank-master-service
+  name: proxy-service
   namespace: linquickrec
   labels:
-    app: rank-master-service
+    app: proxy-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rank-master-service
+      app: proxy-service
   template:
     metadata:
       labels:
-        app: rank-master-service
+        app: proxy-service
     spec:
       containers:
-      - name: rank-master
-        image: 192.168.84.245:5000/linquickrec/rank-master:latest
+      - name: proxy
+        image: linquickrec/proxy:latest
         ports:
-        - containerPort: 8004
+        - containerPort: 8080
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8004"
+          value: "8080"
         resources:
           requests:
             cpu: "1"
@@ -37,12 +37,12 @@ spec:
             memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8004
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8004
+            port: 8080
           initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
@@ -55,13 +55,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rank-master-service
+  name: proxy-service
   namespace: linquickrec
 spec:
   selector:
-    app: rank-master-service
+    app: proxy-service
   ports:
   - name: rpc
-    port: 8004
-    targetPort: 8004
+    port: 8080
+    targetPort: 8080
   type: ClusterIP

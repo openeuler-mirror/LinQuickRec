@@ -21,7 +21,7 @@ spec:
       hostIPC: true
       containers:
       - name: kv-worker
-        image: 192.168.84.245:5000/linquickrec/kv-worker:latest
+        image: linquickrec/kv-worker:latest
         ports:
         - containerPort: 31501
           name: worker

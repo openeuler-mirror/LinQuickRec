@@ -1,42 +1,49 @@
-# Discovery 服务发现中心
+# RankMaster 精排主图服务
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: discovery-server
+  name: rank-master-service
   namespace: linquickrec
   labels:
-    app: discovery-server
+    app: rank-master-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: discovery-server
+      app: rank-master-service
   template:
     metadata:
       labels:
-        app: discovery-server
+        app: rank-master-service
     spec:
       containers:
-      - name: discovery
-        image: 192.168.84.245:5000/linquickrec/discovery:latest
+      - name: rank-master
+        image: linquickrec/rank-master:latest
         ports:
-        - containerPort: 8100
+        - containerPort: 8004
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8100"
+          value: "8004"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8100
-          initialDelaySeconds: 5
+            port: 8004
+          initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8100
-          initialDelaySeconds: 10
+            port: 8004
+          initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
         - name: log
@@ -48,13 +55,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: discovery-server
+  name: rank-master-service
   namespace: linquickrec
 spec:
   selector:
-    app: discovery-server
+    app: rank-master-service
   ports:
   - name: rpc
-    port: 8100
-    targetPort: 8100
+    port: 8004
+    targetPort: 8004
   type: ClusterIP

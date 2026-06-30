@@ -1,38 +1,38 @@
-# RankSub 精排子图服务（可水平扩展）
+# Precalc 前置计算服务
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rank-sub-service
+  name: precalc-service
   namespace: linquickrec
   labels:
-    app: rank-sub-service
+    app: precalc-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: rank-sub-service
+      app: precalc-service
   template:
     metadata:
       labels:
-        app: rank-sub-service
+        app: precalc-service
     spec:
-      # datasystem KVClient 通过同节点共享内存读取 kv-worker 中的预计算结果，
+      # datasystem KVClient 通过同节点共享内存与本地 kv-worker 通信，
       # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
       hostIPC: true
       containers:
-      - name: rank-sub
-        image: 192.168.84.245:5000/linquickrec/rank-sub:latest
+      - name: precalc
+        image: linquickrec/precalc:latest
         securityContext:
           privileged: true
         ports:
-        - containerPort: 8005
+        - containerPort: 8003
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8005"
+          value: "8003"
         - name: HOST_ID
           valueFrom:
             fieldRef:
@@ -46,12 +46,12 @@ spec:
             memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8005
+            port: 8003
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8005
+            port: 8003
           initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
@@ -69,13 +69,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rank-sub-service
+  name: precalc-service
   namespace: linquickrec
 spec:
   selector:
-    app: rank-sub-service
+    app: precalc-service
   ports:
   - name: rpc
-    port: 8005
-    targetPort: 8005
+    port: 8003
+    targetPort: 8003
   type: ClusterIP

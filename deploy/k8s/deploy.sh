@@ -3,10 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE="linquickrec"
+OVERLAY_DIR="/tmp/linquickrec-k8s-overlay"
 
 RECALL_MODE="novllm"
 DISCOVERY_BACKEND="etcd"
+REGISTRY=""
 ACTION=""
+IMAGE_TAG="latest"
 
 log()  { echo "[$(date +%H:%M:%S)] $*"; }
 err()  { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
@@ -24,11 +27,14 @@ Actions:
 Options:
   --recall-mode vllm|novllm              Recall deployment mode (default: novllm)
   --discovery-backend etcd|discovery-server  Service discovery backend (default: etcd)
+  --registry <prefix>                    Private registry prefix (e.g. harbor.my.com/linquickrec)
+                                         Default: no prefix, images pulled from local
   -h, --help                             Show this help
 
 Examples:
-  $(basename "$0") start --recall-mode novllm
-  $(basename "$0") start --recall-mode vllm --discovery-backend discovery-server
+  $(basename "$0") start
+  $(basename "$0") start --recall-mode vllm --registry harbor.my.com/linquickrec
+  $(basename "$0") start --discovery-backend discovery-server
   $(basename "$0") stop
   $(basename "$0") delete
 EOF
@@ -60,35 +66,70 @@ parse_args() {
                     etcd|discovery-server) DISCOVERY_BACKEND="$2"; shift 2 ;;
                     *) die "Invalid discovery backend: $2 (expected etcd or discovery-server)" ;;
                 esac ;;
+            --registry)
+                if [[ $# -lt 2 ]]; then die "Missing value for --registry"; fi
+                REGISTRY="$2"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
     if [[ -z "$ACTION" ]]; then die "Missing action (start|stop|delete)"; fi
 }
 
-do_start() {
-    local recall_file="07-recall-${RECALL_MODE}.yaml"
+generate_kustomize_overlay() {
+    rm -rf "$OVERLAY_DIR"
+    mkdir -p "$OVERLAY_DIR"
 
+    cat > "$OVERLAY_DIR/kustomization.yaml" <<KUSTOMIZE
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ${NAMESPACE}
+
+resources:
+  - ${SCRIPT_DIR}/base
+KUSTOMIZE
+
+    # Conditional components
+    if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
+        cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
+  - ${SCRIPT_DIR}/components/discovery
+COMP
+    fi
+
+    if [ "$RECALL_MODE" = "vllm" ]; then
+        cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
+  - ${SCRIPT_DIR}/components/recall-vllm
+COMP
+    else
+        cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
+  - ${SCRIPT_DIR}/components/recall-novllm
+COMP
+    fi
+
+    # Image registry override (only if --registry specified)
+    if [[ -n "$REGISTRY" ]]; then
+        cat >> "$OVERLAY_DIR/kustomization.yaml" <<IMAGES
+
+images:
+IMAGES
+        for img in proxy feature recall precalc rank-master rank-sub kv-worker etcd discovery; do
+            cat >> "$OVERLAY_DIR/kustomization.yaml" <<LINE
+  - name: linquickrec/${img}
+    newName: ${REGISTRY}/${img}
+LINE
+        done
+    fi
+}
+
+do_start() {
     log "=========================================="
     log "Deploying LinQuickRec"
     log "  recall mode:       ${RECALL_MODE}"
     log "  discovery backend: ${DISCOVERY_BACKEND}"
+    log "  registry:          ${REGISTRY:-local}"
     log "=========================================="
 
-    kubectl apply -f "${SCRIPT_DIR}/00-namespace.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/01-configmap.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/02-etcd-pv.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/02-etcd.yaml"
-    if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
-        kubectl apply -f "${SCRIPT_DIR}/03-discovery.yaml"
-    fi
-    kubectl apply -f "${SCRIPT_DIR}/04-kv-worker.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/05-feature.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/06-proxy.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/${recall_file}"
-    kubectl apply -f "${SCRIPT_DIR}/08-precalc.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/09-rank-master.yaml"
-    kubectl apply -f "${SCRIPT_DIR}/10-rank-sub.yaml"
+    generate_kustomize_overlay
+    kubectl apply -k "$OVERLAY_DIR"
 
     log "=========================================="
     log "Deployment complete"
@@ -104,19 +145,8 @@ do_stop() {
 
 do_delete() {
     log "Deleting all resources in ${NAMESPACE}..."
-    kubectl delete -f "${SCRIPT_DIR}/10-rank-sub.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/09-rank-master.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/08-precalc.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/07-recall-vllm.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/07-recall-novllm.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/06-proxy.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/05-feature.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/04-kv-worker.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/03-discovery.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/02-etcd.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/02-etcd-pv.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/01-configmap.yaml" --ignore-not-found
-    kubectl delete -f "${SCRIPT_DIR}/00-namespace.yaml" --ignore-not-found
+    generate_kustomize_overlay
+    kubectl delete -k "$OVERLAY_DIR" --ignore-not-found
     log "All resources deleted"
 }
 

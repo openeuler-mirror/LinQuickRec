@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: linquickrec
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - etcd-pv.yaml
+  - etcd.yaml
+  - kv-worker.yaml
+  - feature.yaml
+  - proxy.yaml
+  - precalc.yaml
+  - rank-master.yaml
+  - rank-sub.yaml

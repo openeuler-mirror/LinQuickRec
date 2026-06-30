@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-server
+  namespace: linquickrec
+spec:
+  selector:
+    app: discovery-server
+  ports:
+  - name: rpc
+    port: 8100
+    targetPort: 8100
+  type: ClusterIP

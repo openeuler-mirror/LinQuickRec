@@ -1,0 +1,46 @@
+# Discovery 服务发现中心
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-server
+  namespace: linquickrec
+  labels:
+    app: discovery-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-server
+  template:
+    metadata:
+      labels:
+        app: discovery-server
+    spec:
+      containers:
+      - name: discovery
+        image: linquickrec/discovery:latest
+        ports:
+        - containerPort: 8100
+          name: rpc
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8100"
+        readinessProbe:
+          tcpSocket:
+            port: 8100
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8100
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+        - name: log
+          mountPath: /var/log/linquickrec
+      volumes:
+      - name: log
+        emptyDir: {}

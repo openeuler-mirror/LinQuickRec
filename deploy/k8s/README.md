@@ -1,136 +1,31 @@
 # Kubernetes 部署指南
 
-## 环境准备
+## 前提
 
-### 1. 安装 K8s 集群
-
-以下是单节点集群（适合开发测试）的快速部署方式。生产环境建议使用多节点集群。
-
-#### 使用 kubeadm（推荐）
-
-```bash
-# 1. 所有节点：关闭 swap
-sudo swapoff -a
-sudo sed -i '/swap/d' /etc/fstab
-
-# 2. 所有节点：加载内核模块
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-sudo modprobe overlay
-sudo modprobe br_netfilter
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-sudo sysctl --system
-
-# 3. 所有节点：安装 containerd
-sudo apt-get update
-sudo apt-get install -y containerd
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
-sudo systemctl restart containerd
-
-# 4. 所有节点：安装 kubeadm、kubelet、kubectl
-sudo apt-get install -y apt-transport-https ca-certificates curl
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo systemctl enable kubelet
-
-# 5. Master 节点：初始化集群
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-
-# 6. Master 节点：配置 kubectl
-mkdir -p $HOME/.kube
-sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-# 7. Master 节点：安装网络插件（Calico）
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
-
-# 8. 单节点集群：允许 Master 节点调度 Pod
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-```
-
-#### 使用 minikube（本地开发）
-
-```bash
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube
-minikube start --driver=docker --gpus all --cpus=4 --memory=16g
-minikube kubectl -- get pods -A
-alias kubectl="minikube kubectl --"
-```
-
-### 2. 配置 kubectl
-
-```bash
-kubectl config current-context
-kubectl cluster-info
-kubectl get nodes
-```
-
-如果使用远程集群：
-
-```bash
-scp user@master-ip:/etc/kubernetes/admin.conf ~/.kube/config
-```
-
-### 3. 配置 GPU 节点（Recall 服务需要）
-
-```bash
-kubectl get nodes -o=custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\\.com/gpu
-
-# 安装 NVIDIA GPU Operator
-kubectl apply -f https://raw.githubusercontent.com/NVIDIA/gpu-operator/v23.9.0/deployments/gpu-operator/gpu-operator.yaml
-kubectl wait --for=condition=ready pod -l app=nvidia-device-plugin-daemonset -n gpu-operator --timeout=300s
-```
-
-### 4. 准备镜像
-
-```bash
-docker build -f deploy/docker/etcd/Dockerfile -t linquickrec/etcd:latest .
-docker build -f deploy/docker/kv_worker/Dockerfile -t linquickrec/kv-worker:latest .
-docker build -f deploy/docker/feature/Dockerfile -t linquickrec/feature:latest .
-docker build -f deploy/docker/recall/Dockerfile -t linquickrec/recall:latest .
-docker build -f deploy/docker/precalc/Dockerfile -t linquickrec/precalc:latest .
-docker build -f deploy/docker/rank-master/Dockerfile -t linquickrec/rank-master:latest .
-docker build -f deploy/docker/rank-sub/Dockerfile -t linquickrec/rank-sub:latest .
-docker build -f deploy/docker/proxy/Dockerfile -t linquickrec/proxy:latest .
-
-# minikube 环境：加载到 minikube Docker
-minikube image load linquickrec/etcd:latest
-minikube image load linquickrec/kv-worker:latest
-# ... 其他镜像同理
-
-# 远程集群：推送到镜像仓库
-docker tag linquickrec/recall:latest <registry>/linquickrec/recall:latest
-docker push <registry>/linquickrec/recall:latest
-```
-
-> Discovery 服务镜像需单独构建：`docker build -f services/discovery/Dockerfile -t linquickrec/discovery:latest .`
+本指南假设你已具备可用的 Kubernetes 集群和所有容器镜像（构建方法见 [docker 构建指南](../docker/README.md)）。
 
 ## 集群结构
 
 ```
-namespace: linquickrec
-├── ConfigMap: linquickrec-config              # 共享配置
-├── StatefulSet: etcd (5 Pods)                 # etcd 集群，端口 2379/2380
-├── Deployment: kv-worker (1 Pod)              # KV Worker（元戎 Datasystem）
-├── Deployment: discovery-server (1 Pod)        # 服务发现中心（BRPC 模式备用）
-├── Deployment: feature-service (1 Pod)         # 特征服务 (Mock)
-├── Deployment: proxy-service (1 Pod)           # 网关服务
-├── Deployment: recall-service (1 Pod)          # 召回服务，需要 GPU
-├── Deployment: precalc-service (1 Pod)         # 前置计算服务
-├── Deployment: rank-master-service (1 Pod)     # 精排主图服务
-└── Deployment: rank-sub-service (3 Pods)       # 精排子图服务，可水平扩展
-
-> etcd 集群部署在 K8s 集群内（5 副本 StatefulSet）。
+deploy/k8s/
+├── base/                             # 必部署资源（Kustomize base）
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── etcd-pv.yaml
+│   ├── etcd.yaml                     # StatefulSet (5 Pods) + Headless Service
+│   ├── kv-worker.yaml                # DaemonSet + Service
+│   ├── feature.yaml                  # Deployment + Service (Mock)
+│   ├── proxy.yaml                    # Deployment + Service
+│   ├── precalc.yaml                  # Deployment + Service
+│   ├── rank-master.yaml              # Deployment + Service
+│   └── rank-sub.yaml                 # Deployment + Service (3 replicas)
+├── components/                       # 可选 Component
+│   ├── discovery/                    # discovery-server, 由 --discovery-backend 控制
+│   ├── recall-vllm/                  # vLLM 模式 recall, 由 --recall-mode 控制
+│   └── recall-novllm/                # novllm 模式 recall, 由 --recall-mode 控制
+├── deploy.sh
+└── README.md
 ```
 
 ### 调用关系
@@ -149,89 +44,59 @@ Proxy (:8080)
 
 ### 服务发现机制
 
-每个服务镜像的 `ENTRYPOINT ["/app/entrypoint.sh"]` 自动完成服务注册：
+每个服务镜像的 entrypoint.sh 自动完成服务注册：
 
 1. 启动主服务进程（如 `feature_server`）
-2. 根据 `REGISTRY_BACKEND` 环境变量启动对应的 `discovery_client`，向 etcd 或 discovery-server 注册本服务并维持心跳
-
-Pod 内只有一个容器（主容器），无需额外的 sidecar。entrypoint.sh 会根据 `REGISTRY_BACKEND` 自动选择注册后端。
-
-### 后端选择
-
-通过 ConfigMap 中的 `REGISTRY_BACKEND` 切换服务发现后端，两种模式互斥：
-
-**etcd 模式**（`REGISTRY_BACKEND=etcd`，默认）：
-
-```bash
-kubectl apply -f 00-namespace.yaml
-kubectl apply -f 01-configmap.yaml
-# etcd 在集群内部署
-kubectl apply -f 02-etcd.yaml
-kubectl apply -f 04-kv-worker.yaml
-# 跳过 03-discovery.yaml，etcd 模式使用宿主机外部 etcd
-kubectl apply -f 05-feature.yaml
-kubectl apply -f 06-proxy.yaml
-kubectl apply -f 07-recall.yaml
-kubectl apply -f 08-precalc.yaml
-kubectl apply -f 09-rank-master.yaml
-kubectl apply -f 10-rank-sub.yaml
-```
-
-**discovery_server 模式**（`REGISTRY_BACKEND=discovery_server`）：
-
-```bash
-kubectl apply -f 00-namespace.yaml
-kubectl apply -f 01-configmap.yaml
-kubectl apply -f 04-kv-worker.yaml
-kubectl apply -f 03-discovery.yaml     # 部署 discovery-server
-kubectl apply -f 05-feature.yaml
-kubectl apply -f 06-proxy.yaml
-kubectl apply -f 07-recall.yaml
-kubectl apply -f 08-precalc.yaml
-kubectl apply -f 09-rank-master.yaml
-kubectl apply -f 10-rank-sub.yaml
-```
-
-> 只需修改 ConfigMap 中 `REGISTRY_BACKEND` 的值即可切换模式，容器 entrypoint.sh 自动适配，无需修改 Deployment。
+2. 根据 `REGISTRY_BACKEND` 环境变量启动 discovery_client，向 etcd 或 discovery-server 注册本服务并维持心跳
 
 ### 文件说明
 
-| 文件 | 资源 | 说明 |
-|------|------|------|
-| `00-namespace.yaml` | Namespace | 创建 `linquickrec` 命名空间 |
-| `01-configmap.yaml` | ConfigMap | 共享环境变量（服务发现、超时、vLLM 配置等） |
-| `02-etcd.yaml` | StatefulSet + Service | etcd 集群（5 副本），端口 2379/2380 |
-| `04-kv-worker.yaml` | Deployment + Service | KV Worker（元戎 Datasystem），端口 31501/31502 |
-| `03-discovery.yaml` | Deployment + Service | Discovery 服务发现中心（备用），端口 8100 |
-| `05-feature.yaml` | Deployment + Service | Feature 特征服务 (Mock)，端口 8001 |
-| `06-proxy.yaml` | Deployment + Service | Proxy 网关服务，端口 8080 |
-| `07-recall.yaml` | Deployment + Service | Recall 召回服务，需要 GPU 节点，端口 8002 |
-| `07-recall-novllm.yaml` | Deployment + Service | Recall novllm/KVCache 模式，无需 vLLM/GPU，端口 8002 |
-| `08-precalc.yaml` | Deployment + Service | Precalc 前置计算服务，端口 8003 |
-| `09-rank-master.yaml` | Deployment + Service | RankMaster 精排主图服务，端口 8004 |
-| `10-rank-sub.yaml` | Deployment + Service | RankSub 精排子图服务，端口 8005 |
-| `deploy.sh` | 部署脚本 | 一键部署/删除，支持 etcd / discovery / delete 三个子命令 |
+| 文件/目录 | 资源 | 说明 |
+|-----------|------|------|
+| `base/` | Kustomize base (10 个 YAML) | 必部署资源：namespace, configmap, etcd, kv-worker, feature, proxy, precalc, rank-master, rank-sub |
+| `components/discovery/` | Component | 可选：discovery-server, 由 `--discovery-backend` 控制 |
+| `components/recall-vllm/` | Component | 可选：vLLM 模式 recall，由 `--recall-mode` 控制 |
+| `components/recall-novllm/` | Component | 可选：novllm 模式 recall，由 `--recall-mode` 控制 |
+| `deploy.sh` | 部署脚本 | `start|stop|delete` 命令，支持 `--registry --recall-mode --discovery-backend` 参数 |
 
-## 一键部署
+## 集群部署
+
+### 脚本一键部署
 
 ```bash
 cd deploy/k8s
 
-# etcd 模式（默认）
-./deploy.sh etcd
+# 启动（novllm + etcd，默认，本地镜像）
+bash deploy.sh start
 
-# discovery_server 模式
-./deploy.sh discovery
+# 启动 + 私有 registry
+bash deploy.sh start --registry harbor.mycompany.com/linquickrec
+
+# 启动（vLLM + discovery_server + 私有 registry）
+bash deploy.sh start --recall-mode vllm --discovery-backend discovery-server --registry harbor.mycompany.com/linquickrec
+
+# 停止（缩容到 0，保留定义）
+bash deploy.sh stop
 
 # 删除所有资源
-./deploy.sh delete
+bash deploy.sh delete
 ```
 
-脚本会自动检查 `kubectl` 可用性和集群连通性，按正确顺序部署/删除所有资源。
+`start` 支持参数：`--recall-mode` (vllm/novllm)、`--discovery-backend` (etcd/discovery-server)、`--registry`（私有镜像仓库前缀，不指定则使用本地镜像）。
 
 ### 手动部署
 
-如果需要逐文件控制，可参照"后端选择"章节中的 `kubectl apply` 命令。`02-etcd.yaml` 和 `03-discovery.yaml` 互斥，不要同时应用。
+如需逐文件控制，可使用 Kustomize 直接部署：
+
+```bash
+# 仅 base 资源
+kubectl apply -k base/
+
+# base + discovery
+kubectl apply -k components/discovery && kubectl apply -k base/
+```
+
+`base/` 和 `components/discovery` / `components/recall-vllm` 互斥（同资源名），不要同时应用。建议使用 `deploy.sh` 脚本自动处理。
 
 ### 查看状态
 
@@ -295,22 +160,39 @@ kubectl rollout undo deployment/recall-service -n linquickrec
 ### 删除
 
 ```bash
-kubectl delete -f 10-rank-sub.yaml
-kubectl delete -f 09-rank-master.yaml
-kubectl delete -f 08-precalc.yaml
-kubectl delete -f 07-recall.yaml
-kubectl delete -f 06-proxy.yaml
-kubectl delete -f 05-feature.yaml
-kubectl delete -f 03-discovery.yaml
-kubectl delete -f 04-kv-worker.yaml
-kubectl delete -f 02-etcd.yaml
-kubectl delete -f 01-configmap.yaml
-kubectl delete -f 00-namespace.yaml
+bash deploy.sh delete
 ```
 
 ## 配置说明
 
-所有服务的共享配置在 `01-configmap.yaml` 中，通过 `envFrom` 注入到每个容器。
+### 服务发现后端选择
+
+通过 `REGISTRY_BACKEND` 切换服务发现后端，两种模式互斥：
+
+**etcd 模式**（默认）：`--discovery-backend=etcd`
+
+```bash
+bash deploy.sh start --discovery-backend etcd
+```
+
+**discovery_server 模式**：`--discovery-backend=discovery-server`
+
+```bash
+bash deploy.sh start --discovery-backend discovery-server
+```
+
+> 只需修改 deploy.sh 的 `--discovery-backend` 参数即可切换模式，容器 entrypoint.sh 自动适配，无需修改 Deployment。
+
+### recall-vllm 与 novllm 选用
+
+Recall 服务有两种部署模式：
+
+- **vLLM 模式**：需要 GPU 节点，容器内启动 vLLM 推理服务，通过 localhost HTTP 调用。适用于需要真实大模型召回的场景。
+- **novllm 模式**：无需 GPU，使用 KVCache 模拟召回，通过 KVWorker 读写缓存。适用于压测或无 GPU 环境。
+
+选用方式：通过 `--recall-mode` 参数选择，两种模式共用相同镜像。
+
+所有服务的共享配置在 ConfigMap 中，通过 `envFrom` 注入到每个容器。
 
 | 配置项 | 值 | 使用者 |
 |--------|-----|--------|
@@ -348,8 +230,8 @@ kubectl delete -f 00-namespace.yaml
 
 ## 注意事项
 
-- **etcd 模式**：当前默认使用 etcd 做服务注册与发现。etcd 集群部署在 K8s 内（5 副本 StatefulSet），通过 `etcd-client` Service 对内提供访问。每个服务的 entrypoint.sh 自动启动 discovery_client 向 etcd 注册并维持心跳。切换为 discovery_server 模式需修改 ConfigMap 中 `REGISTRY_BACKEND` 为 `discovery_server`，并部署 `03-discovery.yaml`。
-- **Recall 服务**：vLLM 版本需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）；`07-recall-novllm.yaml` 使用 KVClient，需要 `hostIPC`、`privileged` 和宿主机 `/dev/shm`
+- **etcd 模式**：当前默认使用 etcd 做服务注册与发现。etcd 集群部署在 K8s 内（5 副本 StatefulSet），通过 `etcd-client` Service 对内提供访问。每个服务的 entrypoint.sh 自动启动 discovery_client 向 etcd 注册并维持心跳。切换为 discovery_server 模式需使用 `--discovery-backend discovery-server` 参数。
+- **Recall 服务**：vLLM 版本需要 GPU 节点，readinessProbe 初始等待 120 秒（vLLM 模型加载耗时）；novllm 模式（`--recall-mode novllm`）使用 KVClient，需要 `hostIPC`、`privileged` 和宿主机 `/dev/shm`
 - **RankSub 副本数**：默认 3，通过 `kubectl scale` 水平扩展，RankMaster 通过 etcd 服务发现自动感知
 - **镜像版本**：当前使用 `linquickrec/xxx:latest`，生产环境建议使用具体版本号
 - **日志存储**：各服务日志写入 `/var/log/linquickrec`，当前使用 emptyDir（Pod 重启后丢失），生产环境建议挂载持久卷
