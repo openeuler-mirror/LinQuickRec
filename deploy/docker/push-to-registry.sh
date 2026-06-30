@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-REGISTRY="${REGISTRY:-192.168.84.245:5000}"
+REGISTRY=""
 DRY_RUN=false
 TARGET=""
 
@@ -43,7 +43,7 @@ Usage: $(basename "$0") [options] [image]
 Tag pre-built local Docker image(s) with the private registry and push them.
 
 Options:
-  -r, --registry REGISTRY  Private registry, default: ${REGISTRY}
+  -r, --registry REGISTRY  Private registry address (required)
       --dry-run            Print commands without running them
   -h, --help               Show this help
 
@@ -174,6 +174,11 @@ process_one() {
 
 main() {
     parse_args "$@"
+
+    if [[ -z "$REGISTRY" ]]; then
+        err "REGISTRY is required, use -r/--registry"
+        exit 1
+    fi
 
     log "Registry: ${REGISTRY}"
     $DRY_RUN && log "Mode: dry-run"
