@@ -40,9 +40,10 @@ err() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") -r REGISTRY <all|image> [options]
+Usage: $(basename "$0") -r REGISTRY [image] [options]
 
 Tag pre-built local Docker image(s) with the private registry and push them.
+If image is omitted, defaults to all.
 
 Options:
   -r, --registry REGISTRY  Private registry address (required)
@@ -54,9 +55,9 @@ Images:
   precalc, rank-sub, rank-master, proxy
 
 Examples:
-  $(basename "$0") -r 192.168.0.1:5000 all           # push all images
-  $(basename "$0") -r 192.168.0.1:5000 recall        # push recall only
-  $(basename "$0") -r 192.168.0.1:5000 --dry-run all # dry-run
+  $(basename "$0") -r 192.168.0.1:5000                   # push all images (default)
+  $(basename "$0") -r 192.168.0.1:5000 recall            # push recall only
+  $(basename "$0") -r 192.168.0.1:5000 --dry-run all     # dry-run
 EOF
 }
 
@@ -109,7 +110,7 @@ parse_args() {
 canonical_target() {
     local target="$1"
 
-    if [[ "$target" == "all" ]]; then
+    if [[ -z "$target" || "$target" == "all" ]]; then
         echo "all"
         return 0
     fi
