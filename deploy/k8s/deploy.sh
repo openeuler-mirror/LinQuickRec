@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE="linquickrec"
-OVERLAY_DIR="/tmp/linquickrec-k8s-overlay"
+OVERLAY_DIR="${SCRIPT_DIR}/.overlay"
 
 RECALL_MODE="novllm"
 DISCOVERY_BACKEND="etcd"
@@ -85,23 +85,23 @@ kind: Kustomization
 namespace: ${NAMESPACE}
 
 resources:
-  - ${SCRIPT_DIR}/base
+  - ../base
 KUSTOMIZE
 
     # Conditional components
     if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ${SCRIPT_DIR}/components/discovery
+  - ../components/discovery
 COMP
     fi
 
     if [ "$RECALL_MODE" = "vllm" ]; then
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ${SCRIPT_DIR}/components/recall-vllm
+  - ../components/recall-vllm
 COMP
     else
         cat >> "$OVERLAY_DIR/kustomization.yaml" <<COMP
-  - ${SCRIPT_DIR}/components/recall-novllm
+  - ../components/recall-novllm
 COMP
     fi
 
