@@ -52,10 +52,9 @@ Images:
   precalc, rank-sub, rank-master, proxy
 
 Examples:
-  $(basename "$0")                    # push all images
-  $(basename "$0") recall             # push recall only
-  $(basename "$0") --registry 10.0.0.1:5000 rank-sub
-  $(basename "$0") --dry-run all
+  $(basename "$0") -r 192.168.84.245:5000               # push all images
+  $(basename "$0") -r 192.168.84.245:5000 recall        # push recall only
+  $(basename "$0") -r 10.0.0.1:5000 --dry-run all       # dry-run
 EOF
 }
 
