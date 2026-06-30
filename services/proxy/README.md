@@ -189,6 +189,14 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 
 ## 启动方式
 
+### 启动命令
+
+```bash
+./build/bin/proxy_server \
+    --server_port=8080 \
+    --discovery_addr="discovery-server:8100"
+```
+
 ### 配置参数
 
 | 参数 | 默认值 | 说明 |
@@ -235,14 +243,6 @@ make proxy_server proxy_test_client proxy_integration_test -j$(nproc)
 | `--rank_timeout_ms` | int32 | 10000 | Rank 通道超时 (ms) |
 | `--rank_backup_request_ms` | int32 | -1 | Rank 通道 backup request (ms)，-1=禁用 |
 
-### 直接启动
-
-```bash
-./build/bin/proxy_server \
-    --server_port=8080 \
-    --discovery_addr="discovery-server:8100"
-```
-
 ## 容器搭建
 
 ### 构建镜像
@@ -256,38 +256,26 @@ docker build -t linquickrec/proxy:latest \
 ### 运行容器
 
 ```bash
-# 依赖外部 discovery server
+# etcd 模式（默认，替换 <etcd-ip> 为实际地址）
 docker run -d --name proxy-service \
   -p 8080:8080 \
-  linquickrec/proxy:latest \
-  --discovery_addr="discovery-server:8100"
+  -e REGISTRY_BACKEND=etcd \
+  -e ETCD_ENDPOINTS=<etcd-ip>:2379 \
+  linquickrec/proxy:latest
+
+# discovery_server 模式
+docker run -d --name proxy-service \
+  -p 8080:8080 \
+  -e REGISTRY_BACKEND=discovery_server \
+  -e DISCOVERY_ADDR=<discovery-server-ip>:8100 \
+  linquickrec/proxy:latest
 ```
 
 ## 测试方法
 
 ### 集成测试
 
-集成测试为单进程测试，不依赖任何其他服务容器。
-
-**方式一：容器启动**
-
-需要提前构建完成 `linquickrec/proxy:latest` 容器镜像。
-
-```bash
-# 集成测试
-docker run --rm linquickrec/proxy:latest test
-```
-
-**方式二：命令运行：**
-
-```bash
-mkdir build && cd build
-cmake ..
-make proxy_integration_test -j$(nproc)
-./bin/proxy_integration_test
-```
-
-覆盖 5 个场景：
+集成测试为单进程测试，不依赖任何其他服务容器。它覆盖 5 个场景：
 
 | 场景 | 验证内容 |
 |------|----------|
@@ -296,6 +284,15 @@ make proxy_integration_test -j$(nproc)
 | Recall 服务失败 | 返回 error_code = 0x01030002 |
 | Precalc 服务失败 | 返回 error_code = 0x01030003 |
 | Rank 服务失败 | 返回 error_code = 0x01030004 |
+
+#### 容器启动
+
+需要提前构建完成 `linquickrec/proxy:latest` 容器镜像。
+
+```bash
+# 集成测试
+docker run --rm linquickrec/proxy:latest test
+```
 
 #### 测试原理
 
@@ -386,13 +383,26 @@ run_scenario(TestScenario)
 
 ### 手动测试
 
-需要 proxy 运行中且 discovery 上已注册下游服务：
+`proxy_test_client` 在容器镜像内编译，需通过 `docker exec` 进入运行中的容器来执行。
 
 ```bash
-./build/bin/proxy_test_client \
+# 1. 启动 proxy 容器（etcd 模式）
+docker run -d --name proxy-service \
+  -p 8080:8080 \
+  -e REGISTRY_BACKEND=etcd \
+  -e ETCD_ENDPOINTS=<etcd-ip>:2379 \
+  linquickrec/proxy:latest
+
+# 2. 进入容器，执行测试客户端
+docker exec -it proxy-service /app/build/bin/proxy_test_client \
     --server="127.0.0.1:8080" \
     --user_id=12345
+
+# 3. 清理
+docker stop proxy-service && docker rm proxy-service
 ```
+
+> 如果 etcd 中尚未注册下游服务（feature/recall/precalc/rank），proxy_test_client 会收到错误响应而非崩溃，同样可以验证 proxy 容器正常运行。
 
 输出示例：
 
