@@ -19,6 +19,6 @@ RUN mkdir -p /app/build/examples && cd /app/build/examples && \
 COPY deploy/docker/examples/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-}
 
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
