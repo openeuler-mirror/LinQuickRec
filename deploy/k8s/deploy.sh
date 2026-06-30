@@ -4,104 +4,130 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NAMESPACE="linquickrec"
 
-# 公共资源（两种模式都需要）
-COMMON_FILES=(
-    "00-namespace.yaml"
-    "01-configmap.yaml"
-    "02-etcd-pv.yaml"
-    "04-kv-worker.yaml"
-    "05-feature.yaml"
-    "06-proxy.yaml"
-    "07-recall.yaml"
-    "08-precalc.yaml"
-    "09-rank-master.yaml"
-    "10-rank-sub.yaml"
-)
-
-# 模式专属资源
-declare -A MODE_FILES
-MODE_FILES["etcd"]="02-etcd.yaml"
-MODE_FILES["discovery"]="03-discovery.yaml"
-
-# 逆序删除
-DELETE_FILES=(
-    "10-rank-sub.yaml"
-    "09-rank-master.yaml"
-    "08-precalc.yaml"
-    "07-recall.yaml"
-    "06-proxy.yaml"
-    "05-feature.yaml"
-    "04-kv-worker.yaml"
-    "03-discovery.yaml"
-    "02-etcd.yaml"
-    "02-etcd-pv.yaml"
-    "01-configmap.yaml"
-    "00-namespace.yaml"
-)
+RECALL_MODE="novllm"
+DISCOVERY_BACKEND="etcd"
+ACTION=""
 
 log()  { echo "[$(date +%H:%M:%S)] $*"; }
 err()  { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
-
 die()  { err "$@"; exit 1; }
-
-check_prereqs() {
-    command -v kubectl >/dev/null 2>&1 || die "kubectl 未安装或不在 PATH 中"
-    kubectl cluster-info >/dev/null 2>&1 || die "无法连接 K8s 集群，请检查 kubectl 配置"
-    log "kubectl 可用，集群连通正常"
-}
-
-apply_mode() {
-    local mode="$1"
-    local mode_file="${MODE_FILES[$mode]}"
-
-    log "===== ${mode} 模式部署 ====="
-
-    for f in "${COMMON_FILES[@]}"; do
-        # 在 discovery 模式下插入专属文件（排在 namespace/configmap 之后、服务之前）
-        if [ "$f" = "04-kv-worker.yaml" ] && [ -n "$mode_file" ]; then
-            log "apply ${mode_file}"
-            kubectl apply -f "${SCRIPT_DIR}/${mode_file}"
-        fi
-
-        log "apply ${f}"
-        kubectl apply -f "${SCRIPT_DIR}/${f}"
-    done
-
-    log "===== 部署完成 ====="
-    kubectl get pods -n "${NAMESPACE}" -o wide
-}
-
-do_delete() {
-    log "===== 删除所有资源 ====="
-
-    for f in "${DELETE_FILES[@]}"; do
-        log "delete ${f}"
-        kubectl delete -f "${SCRIPT_DIR}/${f}" --ignore-not-found
-    done
-
-    log "===== 删除完成 ====="
-}
 
 usage() {
     cat <<EOF
-用法: $0 <etcd|discovery|delete>
+Usage: $(basename "$0") <start|stop|delete> [options]
 
-  etcd          etcd 模式：部署集群内 etcd (5 副本) + 所有服务
-  discovery     discovery_server 模式：部署 discovery-server + 所有服务
-  delete        逆序删除全部资源
+Actions:
+  start        Deploy all services to namespace ${NAMESPACE}
+  stop         Scale all deployments and statefulsets to 0 (preserve definitions)
+  delete       Delete all resources in reverse order
+
+Options:
+  --recall-mode vllm|novllm              Recall deployment mode (default: novllm)
+  --discovery-backend etcd|discovery-server  Service discovery backend (default: etcd)
+  -h, --help                             Show this help
+
+Examples:
+  $(basename "$0") start --recall-mode novllm
+  $(basename "$0") start --recall-mode vllm --discovery-backend discovery-server
+  $(basename "$0") stop
+  $(basename "$0") delete
 EOF
-    exit 1
+    exit 0
+}
+
+check_prereqs() {
+    command -v kubectl >/dev/null 2>&1 || die "kubectl not found"
+    kubectl cluster-info >/dev/null 2>&1 || die "cannot connect to K8s cluster"
+    log "kubectl OK, cluster reachable"
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help) usage ;;
+            start|stop|delete)
+                if [[ -n "$ACTION" ]]; then die "Only one action allowed, got '${ACTION}' and '$1'"; fi
+                ACTION="$1"; shift ;;
+            --recall-mode)
+                if [[ $# -lt 2 ]]; then die "Missing value for --recall-mode"; fi
+                case "$2" in
+                    vllm|novllm) RECALL_MODE="$2"; shift 2 ;;
+                    *) die "Invalid recall mode: $2 (expected vllm or novllm)" ;;
+                esac ;;
+            --discovery-backend)
+                if [[ $# -lt 2 ]]; then die "Missing value for --discovery-backend"; fi
+                case "$2" in
+                    etcd|discovery-server) DISCOVERY_BACKEND="$2"; shift 2 ;;
+                    *) die "Invalid discovery backend: $2 (expected etcd or discovery-server)" ;;
+                esac ;;
+            *) die "Unknown option: $1" ;;
+        esac
+    done
+    if [[ -z "$ACTION" ]]; then die "Missing action (start|stop|delete)"; fi
+}
+
+do_start() {
+    local recall_file="07-recall-${RECALL_MODE}.yaml"
+
+    log "=========================================="
+    log "Deploying LinQuickRec"
+    log "  recall mode:       ${RECALL_MODE}"
+    log "  discovery backend: ${DISCOVERY_BACKEND}"
+    log "=========================================="
+
+    kubectl apply -f "${SCRIPT_DIR}/00-namespace.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/01-configmap.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/02-etcd-pv.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/02-etcd.yaml"
+    if [ "$DISCOVERY_BACKEND" = "discovery-server" ]; then
+        kubectl apply -f "${SCRIPT_DIR}/03-discovery.yaml"
+    fi
+    kubectl apply -f "${SCRIPT_DIR}/04-kv-worker.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/05-feature.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/06-proxy.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/${recall_file}"
+    kubectl apply -f "${SCRIPT_DIR}/08-precalc.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/09-rank-master.yaml"
+    kubectl apply -f "${SCRIPT_DIR}/10-rank-sub.yaml"
+
+    log "=========================================="
+    log "Deployment complete"
+    kubectl get pods -n "${NAMESPACE}" -o wide
+}
+
+do_stop() {
+    log "Stopping all workloads in ${NAMESPACE}..."
+    kubectl scale deployment --all --replicas=0 -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl scale statefulset --all --replicas=0 -n "${NAMESPACE}" 2>/dev/null || true
+    log "All workloads scaled to 0"
+}
+
+do_delete() {
+    log "Deleting all resources in ${NAMESPACE}..."
+    kubectl delete -f "${SCRIPT_DIR}/10-rank-sub.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/09-rank-master.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/08-precalc.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/07-recall-vllm.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/07-recall-novllm.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/06-proxy.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/05-feature.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/04-kv-worker.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/03-discovery.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/02-etcd.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/02-etcd-pv.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/01-configmap.yaml" --ignore-not-found
+    kubectl delete -f "${SCRIPT_DIR}/00-namespace.yaml" --ignore-not-found
+    log "All resources deleted"
 }
 
 main() {
-    [ $# -eq 1 ] || usage
-
+    parse_args "$@"
     check_prereqs
 
-    case "$1" in
-        etcd|discovery) apply_mode "$1" ;;
-        delete)         do_delete ;;
-        *)             usage ;;
+    case "$ACTION" in
+        start)  do_start ;;
+        stop)   do_stop ;;
+        delete) do_delete ;;
     esac
 }
 
