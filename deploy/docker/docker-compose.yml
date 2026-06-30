@@ -1,10 +1,15 @@
 # LingQuickRec Docker Compose — 仅用于镜像构建
 #
-# 使用方法：
-#   docker compose build                                    # etcd + novllm (default)
-#   ENABLE_VLLM=true docker compose build                   # etcd + vLLM
-#   docker compose --profile discovery-server build          # discovery + novllm
-#   ENABLE_VLLM=true docker compose --profile discovery-server build  # discovery + vLLM
+# ENABLE_VLLM 通过 .env 文件控制，编辑 deploy/docker/.env 切换模式：
+#   ENABLE_VLLM=false  →  novllm 模式（KVCache，无需 GPU）
+#   ENABLE_VLLM=true   →  vLLM 模式（需 GPU + 模型）
+#
+# 构建命令：
+#   docker compose build                                    # 基础服务 + recall
+#   docker compose --profile discovery-server build          # 基础服务 + recall + discovery
+#
+# 删除所有构建产物（镜像）：
+#   docker compose down --rmi all
 #
 # 容器启动通过 deploy.sh 或 kubectl apply 管理，不在此文件中配置。
 
