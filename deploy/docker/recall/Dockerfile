@@ -1,14 +1,19 @@
 FROM linquickrec/base:latest
 
 ENV YR_SDK_PATH="/usr/local/lib64/python3.11/site-packages/yr/datasystem"
-ENV PROXY_IP="141.1.220.189"
-ENV PROXY_PORT="3128"
 
+ARG PROXY_IP=""
+ARG PROXY_PORT="3128"
+ENV PROXY_IP=${PROXY_IP}
+ENV PROXY_PORT=${PROXY_PORT}
 ENV http_proxy=http://${PROXY_IP}:${PROXY_PORT}
 ENV https_proxy="${http_proxy}"
 ENV HTTP_PROXY="${http_proxy}"
 ENV HTTPS_PROXY="${https_proxy}"
 ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
+
+# 是否启用 vLLM（false 时跳过所有 vLLM/模型安装和拷贝，镜像大幅缩小）
+ARG ENABLE_VLLM=true
 
 # === 可配置的路径参数 ===
 # vLLM 相关（仅 ENABLE_VLLM=true 时使用）
@@ -22,9 +27,6 @@ ARG COMMON_DIR=common/
 ARG SERVICE_DIR=services/recall/
 ARG ENTRYPOINT_FILE=deploy/docker/recall/entrypoint.sh
 ARG DISCOVERY_DIR=services/discovery/
-
-# 是否启用 vLLM（false 时跳过所有 vLLM/模型安装和拷贝，镜像大幅缩小）
-ARG ENABLE_VLLM=true
 
 WORKDIR /app
 
