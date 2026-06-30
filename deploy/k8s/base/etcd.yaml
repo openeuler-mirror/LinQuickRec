@@ -76,6 +76,7 @@ spec:
             - health
           initialDelaySeconds: 10
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           exec:
             command:
@@ -84,6 +85,7 @@ spec:
             - health
           initialDelaySeconds: 15
           periodSeconds: 15
+          timeoutSeconds: 5
         volumeMounts:
         - name: etcd-data
           mountPath: /var/lib/etcd
