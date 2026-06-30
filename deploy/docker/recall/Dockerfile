@@ -15,6 +15,17 @@ ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
 # 是否启用 vLLM（false 时跳过所有 vLLM/模型安装和拷贝，镜像大幅缩小）
 ARG ENABLE_VLLM=true
 
+RUN if [ "$ENABLE_VLLM" = "true" ] && [ -z "$PROXY_IP" ]; then \
+        echo "ERROR: ENABLE_VLLM=true requires PROXY_IP to be set."; \
+        echo ""; \
+        echo "Set it in deploy/docker/.env:"; \
+        echo "  PROXY_IP=<your-proxy-ip>"; \
+        echo ""; \
+        echo "Or pass via command line:"; \
+        echo "  PROXY_IP=<ip> docker compose build"; \
+        exit 1; \
+    fi
+
 # === 可配置的路径参数 ===
 # vLLM 相关（仅 ENABLE_VLLM=true 时使用）
 ARG VLLM_WHL=share/vllm-0.11.0rc6+cu129-cp311-cp311-linux_aarch64.whl
