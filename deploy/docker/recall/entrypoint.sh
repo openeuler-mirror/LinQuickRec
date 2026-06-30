@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ "$1" = "test" ]; then
+    shift
+    exec /app/build/bin/recall_integration_test "$@"
+fi
+
 # 必须存在MODEL_NAME环境变量
 if [ -z "$MODEL_NAME" ]; then
     echo "Error: Environment variable MODEL_NAME is not defined or empty." >&2
