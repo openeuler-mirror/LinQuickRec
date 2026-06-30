@@ -26,7 +26,7 @@ spec:
       - matchExpressions:
         - key: kubernetes.io/hostname
           operator: In
-          values: [node1]
+          values: [${NODE_0}]
 ---
 # etcd-pv-1 → node1
 apiVersion: v1
@@ -47,7 +47,7 @@ spec:
       - matchExpressions:
         - key: kubernetes.io/hostname
           operator: In
-          values: [node1]
+          values: [${NODE_0}]
 ---
 # etcd-pv-2 → node1
 apiVersion: v1
@@ -68,7 +68,7 @@ spec:
       - matchExpressions:
         - key: kubernetes.io/hostname
           operator: In
-          values: [node1]
+          values: [${NODE_0}]
 ---
 # etcd-pv-3 → node2
 apiVersion: v1
@@ -89,7 +89,7 @@ spec:
       - matchExpressions:
         - key: kubernetes.io/hostname
           operator: In
-          values: [node2]
+          values: [${NODE_1}]
 ---
 # etcd-pv-4 → node2
 apiVersion: v1
@@ -110,4 +110,4 @@ spec:
       - matchExpressions:
         - key: kubernetes.io/hostname
           operator: In
-          values: [node2]
+          values: [${NODE_1}]
