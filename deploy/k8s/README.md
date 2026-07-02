@@ -63,26 +63,32 @@ Proxy (:8080)
 
 ### 脚本一键部署
 
+`deploy.sh` 脚本默认使用novllm+etcd模式
+
 ```bash
 cd deploy/k8s
 
-# 启动（novllm + etcd，默认，本地镜像）
+# 启动（novllm + etcd，默认，使用运行时的本地镜像）
 bash deploy.sh start
 
 # 启动 + 私有 registry
-bash deploy.sh start --registry harbor.mycompany.com/linquickrec
+bash deploy.sh start -r 192.168.0.1:5000
 
 # 启动（vLLM + discovery_server + 私有 registry）
-bash deploy.sh start --recall-mode vllm --discovery-backend discovery-server --registry harbor.mycompany.com/linquickrec
+bash deploy.sh start --recall-mode vllm --discovery-backend discovery-server -r 192.168.0.1:5000
+```
 
+`start` 支持参数：`-r/--registry`（registry 地址，如 `192.168.0.1:5000`，不指定则用本地镜像）、`--recall-mode` (vllm/novllm)、`--discovery-backend` (etcd/discovery-server)。
+
+**停止和删除：**
+
+```
 # 停止（缩容到 0，保留定义）
 bash deploy.sh stop
 
 # 删除所有资源
 bash deploy.sh delete
 ```
-
-`start` 支持参数：`--recall-mode` (vllm/novllm)、`--discovery-backend` (etcd/discovery-server)、`--registry`（私有镜像仓库前缀，不指定则使用本地镜像）。
 
 ### 手动部署
 
@@ -155,12 +161,6 @@ kubectl set image deployment/recall-service recall=linquickrec/recall:v2 -n linq
 kubectl rollout status deployment/recall-service -n linquickrec
 kubectl rollout history deployment/recall-service -n linquickrec
 kubectl rollout undo deployment/recall-service -n linquickrec
-```
-
-### 删除
-
-```bash
-bash deploy.sh delete
 ```
 
 ## 配置说明

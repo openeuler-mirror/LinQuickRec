@@ -27,13 +27,14 @@ Actions:
 Options:
   --recall-mode vllm|novllm              Recall deployment mode (default: novllm)
   --discovery-backend etcd|discovery-server  Service discovery backend (default: etcd)
-  --registry <prefix>                    Private registry prefix (e.g. harbor.my.com/linquickrec)
-                                         Default: no prefix, images pulled from local
+  -r, --registry <host:port>               Private registry host:port (e.g. 192.168.0.1:5000)
+                                         Default: no registry, images pulled from local
   -h, --help                             Show this help
 
 Examples:
   $(basename "$0") start
-  $(basename "$0") start --recall-mode vllm --registry harbor.my.com/linquickrec
+  $(basename "$0") start -r 192.168.0.1:5000
+  $(basename "$0") start --recall-mode vllm -r 192.168.0.1:5000
   $(basename "$0") start --discovery-backend discovery-server
   $(basename "$0") stop
   $(basename "$0") delete
@@ -66,9 +67,9 @@ parse_args() {
                     etcd|discovery-server) DISCOVERY_BACKEND="$2"; shift 2 ;;
                     *) die "Invalid discovery backend: $2 (expected etcd or discovery-server)" ;;
                 esac ;;
-            --registry)
+            -r|--registry)
                 if [[ $# -lt 2 ]]; then die "Missing value for --registry"; fi
-                REGISTRY="$2"; shift 2 ;;
+                REGISTRY="${2%/}"; shift 2 ;;
             *) die "Unknown option: $1" ;;
         esac
     done
@@ -135,7 +136,7 @@ IMAGES
         for img in proxy feature recall precalc rank-master rank-sub kv-worker etcd discovery; do
             cat >> "$OVERLAY_DIR/kustomization.yaml" <<LINE
   - name: linquickrec/${img}
-    newName: ${REGISTRY}/${img}
+    newName: ${REGISTRY}/linquickrec/${img}
 LINE
         done
     fi
