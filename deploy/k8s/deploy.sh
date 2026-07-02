@@ -22,6 +22,7 @@ Usage: $(basename "$0") <start|stop|delete> [options]
 Actions:
   start        Deploy all services to namespace ${NAMESPACE}
   stop         Scale all deployments and statefulsets to 0 (preserve definitions)
+  restart      Stop then start (preserve data, apply latest YAML changes)
   delete       Delete all resources in reverse order
 
 Options:
@@ -37,6 +38,7 @@ Examples:
   $(basename "$0") start --recall-mode vllm -r 192.168.0.1:5000
   $(basename "$0") start --discovery-backend discovery-server
   $(basename "$0") stop
+  $(basename "$0") restart
   $(basename "$0") delete
 EOF
     exit 0
@@ -52,7 +54,7 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help) usage ;;
-            start|stop|delete)
+            start|stop|delete|restart)
                 if [[ -n "$ACTION" ]]; then die "Only one action allowed, got '${ACTION}' and '$1'"; fi
                 ACTION="$1"; shift ;;
             --recall-mode)
@@ -181,6 +183,7 @@ main() {
     case "$ACTION" in
         start)  do_start ;;
         stop)   do_stop ;;
+        restart) do_stop; do_start ;;
         delete) do_delete ;;
     esac
 }
