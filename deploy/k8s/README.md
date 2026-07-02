@@ -63,26 +63,25 @@ Proxy (:8080)
 
 ### 脚本一键部署
 
-`deploy.sh` 脚本默认使用novllm+etcd模式
-
 ```bash
 cd deploy/k8s
 
-# 启动（novllm + etcd，默认，使用运行时的本地镜像）
+# 默认启动（novllm + etcd，本地镜像）
 bash deploy.sh start
 
-# 启动 + 私有 registry
+# 指定私有 registry
 bash deploy.sh start -r 192.168.0.1:5000
-
-# 启动（vLLM + discovery_server + 私有 registry）
-bash deploy.sh start --recall-mode vllm --discovery-backend discovery-server -r 192.168.0.1:5000
 ```
 
-`start` 支持参数：`-r/--registry`（registry 地址，如 `192.168.0.1:5000`，不指定则用本地镜像）、`--recall-mode` (vllm/novllm)、`--discovery-backend` (etcd/discovery-server)。
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-r, --registry` | (本地) | 私有 registry 地址，如 `192.168.0.1:5000` |
+| `--recall-mode` | `novllm` | Recall 部署模式：`vllm` 或 `novllm` |
+| `--discovery-backend` | `etcd` | 服务发现后端：`etcd` 或 `discovery-server` |
 
 **停止和删除：**
 
-```
+```bash
 # 停止（缩容到 0，保留定义）
 bash deploy.sh stop
 
