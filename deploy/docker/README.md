@@ -42,12 +42,12 @@ deploy/docker/
 
 ## 构建镜像
 
-### 1. 配置 `.env`
+### 配置 `.env`
 
 编辑 `deploy/docker/.env` 设置构建参数：
 
 ```bash
-# 若使用vLLM，该参数需要设置为false
+# 若使用vLLM，该参数需要设置为true
 ENABLE_VLLM=false
 
 # 若使用vLLM，下列两个参数需要填写，用于pip install下载必要的包
@@ -56,7 +56,7 @@ PROXY_IP=
 PROXY_PORT=3128
 ```
 
-### 2. 执行构建
+### 执行构建
 
 ```bash
 cd deploy/docker
@@ -97,16 +97,6 @@ bash ./push-to-registry.sh -r 192.168.0.1:5000 all
 
 # 推送单个
 bash ./push-to-registry.sh -r 192.168.0.1:5000 recall
-```
-
-**清理镜像**：
-
-```bash
-# 删除构建产物（镜像）
-docker compose down --rmi all
-
-# 删除悬空镜像
-docker image prune -f
 ```
 
 ## 验证镜像
@@ -156,6 +146,19 @@ docker run --rm --privileged --ipc=host -v /dev/shm:/dev/shm \
   linquickrec/kv-worker:latest &
 sleep 3 && docker ps | grep kv-worker && echo "KV Worker OK" && kill %1
 ```
+
+## 清理镜像
+
+*（仅在您需要清理构建出来的镜像时运行！）*
+
+```bash
+# 删除构建产物（镜像）
+docker compose down --rmi all
+
+# 删除悬空镜像
+docker image prune -f
+```
+
 
 ## 基础镜像
 

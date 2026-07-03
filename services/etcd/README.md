@@ -10,10 +10,15 @@ etcd 是一个分布式、可靠的键值存储系统，在本项目中作为服
 
 ```
 services/etcd/
-└── README.md
+├── README.md
+└── ...
 
 deploy/docker/etcd/
-└── Dockerfile
+├── Dockerfile
+└── entrypoint.sh
+
+deploy/k8s/base/
+└── etcd.yaml                        # StatefulSet (5 Pods) + 2 Services
 ```
 
 ## 业务流程
@@ -23,19 +28,19 @@ deploy/docker/etcd/
 ```
    service container
    ┌──────────────────────────────┐
-   │   main service (:8003)        │
+   │   main service (:8003)       │
    └──────────┬───────────────────┘
               │  TCP probe (ready?)
    ┌──────────▼───────────────────┐
-   │   discovery_client            │
-   │  ──── LeaseGrant(TTL) ────> │         etcd (:2379)
-   │  ──── Put(key, val, lease)─> │  ┌──────────────────────────┐
+   │   discovery_client           │
+   │  ──── LeaseGrant(TTL) ─────> │         etcd (:2379)
+   │  ──── Put(key, val, lease)─> │  ┌─────────────────────────┐
    │  ──── keep-alive (bg thr)──> │  │ /linquickrec/services/  │
    │                              │  │   proxy/                │
-   │  <─── Range(prefix) ─────── │  │   recall_service/       │
+   │  <─── Range(prefix) ──────── │  │   recall_service/       │
    └──────────────────────────────┘  │   rank_service/         │
                                      │   feature_service/      │
-                                     └──────────────────────────┘
+                                     └─────────────────────────┘
 ```
 
 etcd 自动通过 lease 过期机制清理崩溃实例，无需额外的健康检查服务端。
@@ -59,40 +64,89 @@ Value 格式：`{"host":"10.0.0.5","port":8001}`
 
 ## 编译命令
 
-本服务无需编译，直接拉取官方镜像即可：
-
-```bash
-docker pull quay.io/coreos/etcd:v3.5
-```
+本服务无需编译，直接使用构建好的linquickrec/etcd:latest镜像即可。
 
 ## 启动方式
 
-### Docker Compose
-
-```bash
-cd deploy/docker/discovery/examples
-docker compose -f docker-compose.etcd.yml up --build
-```
-
-### 直接运行
+### 启动命令
 
 ```bash
 docker run -d --name etcd \
   -p 2379:2379 \
-  quay.io/coreos/etcd:v3.5 \
+  linquickrec/etcd:latest \
   etcd --listen-client-urls=http://0.0.0.0:2379 \
        --advertise-client-urls=http://0.0.0.0:2379
 ```
 
 ## 容器搭建
 
+### 构建镜像
+
 ```bash
 docker build -t linquickrec/etcd:latest \
   -f deploy/docker/etcd/Dockerfile .
 ```
 
+### 运行容器
+
 ```bash
 docker run -d --name etcd \
   -p 2379:2379 \
   linquickrec/etcd:latest
+```
+
+## 测试方法
+
+### 集群健康
+
+```bash
+# 成员列表（应为 5 个 started 的 etcd 节点）
+kubectl exec -n linquickrec etcd-0 -- etcdctl member list -w table
+
+# 端点状态（所有成员 IS_HEALTHY=true）
+kubectl exec -n linquickrec etcd-0 -- etcdctl endpoint status --cluster -w table
+```
+
+预期输出：
+
+```
++------------------+---------+-------+---------+--------+-----------+
+|       ENDPOINT   |    ID   |VERSION|DB SIZE  |LEADER  |IS_HEALTHY |
++------------------+---------+-------+---------+--------+-----------+
+| etcd-0.etcd...   | c204... | 3.5.12| 20 kB   |  true  |     true  |
+| etcd-1.etcd...   | 1904... | 3.5.12| 20 kB   |  false |     true  |
+| ...                                                  |     true  |
++------------------+---------+-------+---------+--------+-----------+
+```
+
+### 读写验证
+
+```bash
+# etcd-0 写入
+kubectl exec -n linquickrec etcd-0 -- etcdctl put test-key "hello"
+
+# etcd-1 读取（验证数据复制）
+kubectl exec -n linquickrec etcd-1 -- etcdctl get test-key
+
+# 清理
+kubectl exec -n linquickrec etcd-0 -- etcdctl del test-key
+```
+
+### 服务注册
+
+```bash
+# 列出所有已注册的 discovery_client key
+kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/ --prefix --keys-only
+
+# 查看注册详情（host + port）
+kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/ --prefix
+```
+
+正常部署后应包含 `proxy`、`recall_service`、`feature_service`、`precalc_service`、`rank_service`、`rank_sub` 等服务的注册信息。
+
+### 实时监听
+
+```bash
+# 监听注册变化（部署/停止服务时观察 key 动态）
+kubectl exec -n linquickrec etcd-0 -- etcdctl watch /linquickrec/ --prefix
 ```
