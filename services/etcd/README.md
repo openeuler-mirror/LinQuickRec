@@ -18,7 +18,9 @@ deploy/docker/etcd/
 └── entrypoint.sh
 
 deploy/k8s/base/
-└── etcd.yaml                        # StatefulSet (5 Pods) + 2 Services
+├── etcd-headless-svc.yaml            # Headless Service (Pod peer DNS)
+├── etcd-client-svc.yaml              # ClusterIP Service (client access)
+└── etcd-statefulset.yaml             # StatefulSet (5 Pods, emptyDir)
 ```
 
 ## 业务流程
@@ -84,11 +86,10 @@ etcd 通过环境变量配置：
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `DATA_DIR` | `/var/lib/etcd` | 数据目录 |
-| `CLUSTER_SIZE` | `5` | 集群节点数 |
+| `CLUSTER_SIZE` | `5` | 集群节点数（需与 StatefulSet replicas 一致） |
 | `SERVICE_NAME` | `etcd` | Headless Service 名 |
 | `CLUSTER_NS` | `linquickrec` | K8s 命名空间 |
-| `SNAPSHOT_COUNT` | `5000` | 快照计数阈值 |
+| `DATA_DIR` | `/var/lib/etcd` | etcd 数据目录（emptyDir，Pod 重启后从 peer 同步恢复） |
 
 ## 容器搭建
 

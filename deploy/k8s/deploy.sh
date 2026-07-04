@@ -78,19 +78,6 @@ parse_args() {
     if [[ -z "$ACTION" ]]; then die "Missing action (start|stop|delete)"; fi
 }
 
-prepare_pv() {
-    local gen_dir="${SCRIPT_DIR}/.generated"
-    mkdir -p "$gen_dir"
-
-    local nodes
-    nodes=($(kubectl get nodes -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true))
-    export NODE_0="${nodes[0]:-master}"
-    export NODE_1="${nodes[1]:-${NODE_0}}"
-
-    envsubst < "${SCRIPT_DIR}/base/etcd-pv.yaml.tmpl" > "${gen_dir}/etcd-pv.yaml"
-    log "PV generated for nodes: ${NODE_0}, ${NODE_1}"
-}
-
 generate_kustomize_overlay() {
     cat > "$OVERLAY_DIR/kustomization.yaml" <<KUSTOMIZE
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -100,7 +87,6 @@ namespace: ${NAMESPACE}
 resources:
   - base/namespace.yaml
   - base/configmap.yaml
-  - .generated/etcd-pv.yaml
   - base/etcd-headless-svc.yaml
   - base/etcd-client-svc.yaml
   - base/etcd-statefulset.yaml
@@ -154,7 +140,6 @@ do_start() {
     log "  registry:          ${REGISTRY:-local}"
     log "=========================================="
 
-    prepare_pv
     generate_kustomize_overlay
     kubectl apply -k "$OVERLAY_DIR"
 
@@ -172,7 +157,6 @@ do_stop() {
 
 do_delete() {
     log "Deleting all resources in ${NAMESPACE}..."
-    prepare_pv
     generate_kustomize_overlay
     kubectl delete -k "$OVERLAY_DIR" --ignore-not-found
     log "All resources deleted"

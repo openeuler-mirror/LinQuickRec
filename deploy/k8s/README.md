@@ -12,8 +12,9 @@ deploy/k8s/
 │   ├── kustomization.yaml
 │   ├── namespace.yaml
 │   ├── configmap.yaml
-│   ├── etcd-pv.yaml
-│   ├── etcd.yaml                     # StatefulSet (5 Pods) + Headless Service
+│   ├── etcd-headless-svc.yaml         # Headless Service (Pod DNS)
+│   ├── etcd-client-svc.yaml            # ClusterIP Service (client access)
+│   ├── etcd-statefulset.yaml           # StatefulSet (5 Pods, emptyDir)
 │   ├── kv-worker.yaml                # DaemonSet + Service
 │   ├── feature.yaml                  # Deployment + Service (Mock)
 │   ├── proxy.yaml                    # Deployment + Service

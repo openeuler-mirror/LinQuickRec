@@ -1,3 +1,2 @@
 kustomization.yaml
-.generated/
 .overlay/
