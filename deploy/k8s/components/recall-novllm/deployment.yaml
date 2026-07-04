@@ -17,6 +17,24 @@ spec:
         app: recall-service
     spec:
       hostIPC: true
+      initContainers:
+      - name: wait-for-etcd
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for etcd (etcd-client:2379)..."
+          for i in $(seq 1 60); do
+            if wget -qO- http://etcd-client:2379/health 2>/dev/null | grep -q true; then
+              echo "etcd is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/60..."
+            sleep 1
+          done
+          echo "etcd not ready after 60s" >&2
+          exit 1
       containers:
       - name: recall
         image: linquickrec/recall:latest

@@ -19,6 +19,24 @@ spec:
       # datasystem KVClient 通过同节点共享内存读取 kv-worker 中的预计算结果，
       # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
       hostIPC: true
+      initContainers:
+      - name: wait-for-etcd
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for etcd (etcd-client:2379)..."
+          for i in $(seq 1 60); do
+            if wget -qO- http://etcd-client:2379/health 2>/dev/null | grep -q true; then
+              echo "etcd is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/60..."
+            sleep 1
+          done
+          echo "etcd not ready after 60s" >&2
+          exit 1
       containers:
       - name: rank-sub
         image: linquickrec/rank-sub:latest
