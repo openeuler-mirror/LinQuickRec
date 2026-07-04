@@ -53,7 +53,7 @@ cd /app/build
 
 # KVCache 模式下透传服务发现参数
 if [ "$REGISTRY_BACKEND" = "etcd" ]; then
-    KV_DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=${ETCD_ENDPOINTS}"
+    KV_DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=http://${ETCD_ENDPOINTS}"
 else
     KV_DISCOVERY_FLAGS="--registry_backend=discovery_server --discovery_addr=${DISCOVERY_ADDR}"
 fi

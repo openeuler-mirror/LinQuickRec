@@ -19,7 +19,7 @@ echo "==========================================="
 
 # Build discovery flags for precalc_server
 if [ "$REGISTRY_BACKEND" = "etcd" ]; then
-    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=$ETCD_ENDPOINTS"
+    DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=http://$ETCD_ENDPOINTS"
 else
     DISCOVERY_FLAGS="--discovery_addr=$DISCOVERY_ADDR"
 fi
