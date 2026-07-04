@@ -11,6 +11,7 @@ TARGET=""
 
 SERVICES=(
     "etcd:linquickrec/etcd:latest"
+    "base:linquickrec/base:latest"
     "discovery:linquickrec/discovery:latest"
     "kv-worker:linquickrec/kv-worker:latest"
     "feature:linquickrec/feature:latest"
@@ -51,7 +52,7 @@ Options:
   -h, --help               Show this help
 
 Images:
-  all, etcd, discovery, kv-worker, feature, recall,
+  all, base, etcd, discovery, kv-worker, feature, recall,
   precalc, rank-sub, rank-master, proxy
 
 Examples:
@@ -132,7 +133,7 @@ canonical_target() {
     done
 
     err "Unknown image target: ${target}"
-    echo "Available images: etcd discovery kv-worker feature recall precalc rank-sub rank-master proxy" >&2
+    echo "Available images: base etcd discovery kv-worker feature recall precalc rank-sub rank-master proxy" >&2
     exit 1
 }
 

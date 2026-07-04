@@ -123,7 +123,7 @@ COMP
 
 images:
 IMAGES
-        for img in proxy feature recall precalc rank-master rank-sub kv-worker etcd discovery; do
+        for img in base proxy feature recall precalc rank-master rank-sub kv-worker etcd discovery; do
             cat >> "$OVERLAY_DIR/kustomization.yaml" <<LINE
   - name: linquickrec/${img}
     newName: ${REGISTRY}/linquickrec/${img}

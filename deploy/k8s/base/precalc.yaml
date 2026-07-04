@@ -21,14 +21,14 @@ spec:
       hostIPC: true
       initContainers:
       - name: wait-for-etcd
-        image: busybox:1.36
+        image: linquickrec/base:latest
         command:
         - sh
         - -c
         - |
           echo "Waiting for etcd (etcd-client:2379)..."
           for i in $(seq 1 60); do
-            if wget -qO- http://etcd-client:2379/health 2>/dev/null | grep -q true; then
+            if curl -fsS http://etcd-client:2379/health > /dev/null 2>&1; then
               echo "etcd is ready!"
               exit 0
             fi
