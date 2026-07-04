@@ -78,6 +78,18 @@ docker run -d --name etcd \
        --advertise-client-urls=http://0.0.0.0:2379
 ```
 
+### 配置参数
+
+etcd 通过环境变量配置：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `DATA_DIR` | `/var/lib/etcd` | 数据目录 |
+| `CLUSTER_SIZE` | `5` | 集群节点数 |
+| `SERVICE_NAME` | `etcd` | Headless Service 名 |
+| `CLUSTER_NS` | `linquickrec` | K8s 命名空间 |
+| `SNAPSHOT_COUNT` | `5000` | 快照计数阈值 |
+
 ## 容器搭建
 
 ### 构建镜像

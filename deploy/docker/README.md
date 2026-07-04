@@ -108,8 +108,8 @@ bash ./push-to-registry.sh -r 192.168.0.1:5000 recall
 | 服务 | 验证命令 |
 |------|---------|
 | proxy | `docker run --rm linquickrec/proxy:latest test` |
-| recall | `docker run --rm linquickrec/recall:latest ./build/bin/recall_integration_test` |
-| precalc | `docker run --rm linquickrec/precalc:latest ./build/bin/precalc_test` |
+| recall | `docker run --rm linquickrec/recall:latest test` |
+| precalc | `docker run --rm linquickrec/precalc:latest test` |
 
 测试通过时输出 `=== All ... Tests Passed ===`。
 
