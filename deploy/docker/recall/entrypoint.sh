@@ -11,6 +11,14 @@ ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 ENABLE_VLLM="${ENABLE_VLLM:-true}"
 
+# 元戎 SDK 不接受 DNS hostname，需解析为 IP
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    ETCD_HOST="${ETCD_ENDPOINTS%%:*}"
+    ETCD_PORT="${ETCD_ENDPOINTS##*:}"
+    ETCD_IP=$(getent hosts "$ETCD_HOST" | head -1 | awk '{print $1}')
+    ETCD_ENDPOINTS="${ETCD_IP}:${ETCD_PORT}"
+fi
+
 echo "==========================================="
 echo "Starting Recall Service"
 echo "  enable_vllm=${ENABLE_VLLM}"
@@ -53,7 +61,7 @@ cd /app/build
 
 # KVCache 模式下透传服务发现参数
 if [ "$REGISTRY_BACKEND" = "etcd" ]; then
-    KV_DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=http://${ETCD_ENDPOINTS}"
+    KV_DISCOVERY_FLAGS="--registry_backend=etcd --etcd_endpoints=${ETCD_ENDPOINTS}"
 else
     KV_DISCOVERY_FLAGS="--registry_backend=discovery_server --discovery_addr=${DISCOVERY_ADDR}"
 fi
