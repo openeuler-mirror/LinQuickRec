@@ -1,5 +1,5 @@
 ---
-name: service-readme-convention
+name: service-readme
 description: >
   Standard template for service-level README.md in the LinQuickRec project.
   All services SHOULD follow the 6 mandatory sections defined below.
