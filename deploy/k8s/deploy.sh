@@ -101,7 +101,9 @@ resources:
   - base/namespace.yaml
   - base/configmap.yaml
   - .generated/etcd-pv.yaml
-  - base/etcd.yaml
+  - base/etcd-headless-svc.yaml
+  - base/etcd-client-svc.yaml
+  - base/etcd-statefulset.yaml
   - base/kv-worker.yaml
   - base/feature.yaml
   - base/proxy.yaml

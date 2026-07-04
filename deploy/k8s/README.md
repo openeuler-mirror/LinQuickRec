@@ -66,11 +66,11 @@ Proxy (:8080)
 ```bash
 cd deploy/k8s
 
-# 默认启动（novllm + etcd，本地镜像）
+# 默认启动（novllm + etcd），使用本地镜像
 bash deploy.sh start
 
-# 指定私有 registry
-bash deploy.sh start -r 192.168.0.1:5000
+# 使用私有镜像仓库
+bash deploy.sh start -r <your-docker-hub-ip>:<your-docker-hub-port>
 ```
 
 | 参数 | 默认值 | 说明 |

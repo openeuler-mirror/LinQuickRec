@@ -5,7 +5,9 @@ namespace: linquickrec
 resources:
   - namespace.yaml
   - configmap.yaml
-  - etcd.yaml
+  - etcd-headless-svc.yaml
+  - etcd-client-svc.yaml
+  - etcd-statefulset.yaml
   - kv-worker.yaml
   - feature.yaml
   - proxy.yaml
