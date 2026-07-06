@@ -124,9 +124,10 @@ kubectl exec -n linquickrec etcd-0 -- etcdctl member list -w table
 **主机：**
 
 ```bash
-kubectl port-forward -n linquickrec svc/etcd-client 2379:2379 &
-curl -s http://127.0.0.1:2379/health
+curl -s http://<任一节点IP>:32379/health
 ```
+
+etcd-client Service 已暴露为 NodePort 32379，可从集群外直接访问。
 
 预期输出（5 个成员全部 IS_HEALTHY=true，有一个 LEADER）：
 
@@ -153,11 +154,10 @@ kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/services/ --prefi
 **主机：**
 
 ```bash
-kubectl port-forward -n linquickrec svc/etcd-client 2379:2379 &
-etcdctl --endpoints=http://127.0.0.1:2379 get /linquickrec/services/ --prefix --keys-only
+etcdctl --endpoints=http://<任一节点IP>:32379 get /linquickrec/services/ --prefix --keys-only
 ```
 
-（主机方式需本地安装 etcdctl：`apt install etcd-client` 或从 GitHub releases 下载二进制。）
+（需本地安装 etcdctl：`apt install etcd-client` 或从 GitHub releases 下载二进制。）
 
 预期输出（7 个业务服务注册成功）：
 

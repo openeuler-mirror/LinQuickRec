@@ -11,4 +11,5 @@ spec:
   - name: client
     port: 2379
     targetPort: 2379
-  type: ClusterIP
+    nodePort: 32379
+  type: NodePort
