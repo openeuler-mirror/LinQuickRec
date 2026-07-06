@@ -6,6 +6,8 @@ etcd 是一个分布式、可靠的键值存储系统，在本项目中作为服
 
 本模块仅包含容器化镜像定义，无 C++ 代码。
 
+集群数据存储在 emptyDir 中，Pod 重启时通过 Raft 从 peer 同步恢复。使用 startupProbe（`failureThreshold: 30 × 10s = 最多 310s`）保护首次集群 bootstrap，livenessProbe 使用 `serializable=true` 避免集群抖动时误杀。
+
 ## 目录结构
 
 ```

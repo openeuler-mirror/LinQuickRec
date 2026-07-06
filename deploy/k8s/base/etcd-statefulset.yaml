@@ -34,17 +34,17 @@ spec:
           value: "etcd"
         - name: CLUSTER_NS
           value: "linquickrec"
-        readinessProbe:
+        startupProbe:
           httpGet:
             path: /health
             port: 2379
           initialDelaySeconds: 10
-          periodSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 30
         livenessProbe:
           httpGet:
             path: /health?serializable=true
             port: 2379
-          initialDelaySeconds: 15
           periodSeconds: 10
         volumeMounts:
         - name: etcd-data
