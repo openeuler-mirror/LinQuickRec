@@ -6,7 +6,7 @@ etcd 是一个分布式、可靠的键值存储系统，在本项目中作为服
 
 本模块仅包含容器化镜像定义，无 C++ 代码。
 
-集群数据存储在 emptyDir 中，Pod 重启时通过 Raft 从 peer 同步恢复。使用 startupProbe（`failureThreshold: 30 × 10s = 最多 310s`）保护首次集群 bootstrap，livenessProbe 使用 `serializable=true` 避免集群抖动时误杀。
+集群数据存储在 PVC 中，Pod 重启时保留。二次启动检测 `/var/lib/etcd/member/snap` 存在则自动以 `existing` 状态加入集群，无需重做 bootstrap。
 
 ## 目录结构
 
@@ -91,7 +91,7 @@ etcd 通过环境变量配置：
 | `CLUSTER_SIZE` | `5` | 集群节点数（需与 StatefulSet replicas 一致） |
 | `SERVICE_NAME` | `etcd` | Headless Service 名 |
 | `CLUSTER_NS` | `linquickrec` | K8s 命名空间 |
-| `DATA_DIR` | `/var/lib/etcd` | etcd 数据目录（emptyDir，Pod 重启后从 peer 同步恢复） |
+| `DATA_DIR` | `/var/lib/etcd` | etcd 数据目录（PVC 持久化，Pod 重启后保留） |
 
 ## 容器搭建
 
