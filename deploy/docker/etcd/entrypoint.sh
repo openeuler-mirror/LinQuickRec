@@ -36,6 +36,17 @@ done
 echo "Cluster: ${CLUSTER}"
 echo "State: ${STATE}"
 
+# Wait for all peers to be reachable before starting etcd
+echo "Waiting for all peers to be reachable..."
+for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
+    PEER="etcd-${i}.${SERVICE}.${NS}.svc.cluster.local"
+    while ! ping -W 2 -c 1 "$PEER" >/dev/null 2>&1; do
+        echo "  ${PEER} not reachable, retrying..."
+        sleep 1
+    done
+    echo "  ${PEER} reachable"
+done
+
 exec etcd \
   --name "$HOSTNAME" \
   --data-dir "$DATA_DIR" \
