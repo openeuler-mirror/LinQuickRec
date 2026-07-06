@@ -35,16 +35,24 @@ spec:
         - name: CLUSTER_NS
           value: "linquickrec"
         startupProbe:
-          httpGet:
-            path: /health
-            port: 2379
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+            - --dial-timeout=2s
+            - --command-timeout=2s
           initialDelaySeconds: 10
           periodSeconds: 10
           failureThreshold: 30
         livenessProbe:
-          httpGet:
-            path: /health?serializable=true
-            port: 2379
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+            - --dial-timeout=2s
+            - --command-timeout=2s
           periodSeconds: 10
         volumeMounts:
         - name: etcd-data
