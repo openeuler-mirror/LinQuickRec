@@ -6,7 +6,7 @@ etcd 是一个分布式、可靠的键值存储系统，在本项目中作为服
 
 本模块仅包含容器化镜像定义，无 C++ 代码。
 
-集群数据存储在 PVC 中，Pod 重启时保留。二次启动检测 `/var/lib/etcd/member/snap` 存在则自动以 `existing` 状态加入集群，无需重做 bootstrap。
+集群数据存储在 emptyDir 中，Pod 重启时通过 Raft 从 peer 同步恢复。
 
 ## 目录结构
 
