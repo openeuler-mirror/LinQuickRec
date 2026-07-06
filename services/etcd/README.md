@@ -110,56 +110,71 @@ docker run -d --name etcd \
 
 ## 测试方法
 
-### 集群健康
+### 集群健康检查
+
+**Pod 内：**
 
 ```bash
-# 成员列表（应为 5 个 started 的 etcd 节点）
-kubectl exec -n linquickrec etcd-0 -- etcdctl member list -w table
-
-# 端点状态（所有成员 IS_HEALTHY=true）
 kubectl exec -n linquickrec etcd-0 -- etcdctl endpoint status --cluster -w table
+kubectl exec -n linquickrec etcd-0 -- etcdctl member list -w table
 ```
 
-预期输出：
-
-```
-+------------------+---------+-------+---------+--------+-----------+
-|       ENDPOINT   |    ID   |VERSION|DB SIZE  |LEADER  |IS_HEALTHY |
-+------------------+---------+-------+---------+--------+-----------+
-| etcd-0.etcd...   | c204... | 3.5.12| 20 kB   |  true  |     true  |
-| etcd-1.etcd...   | 1904... | 3.5.12| 20 kB   |  false |     true  |
-| ...                                                  |     true  |
-+------------------+---------+-------+---------+--------+-----------+
-```
-
-### 读写验证
+**主机：**
 
 ```bash
-# etcd-0 写入
-kubectl exec -n linquickrec etcd-0 -- etcdctl put test-key "hello"
-
-# etcd-1 读取（验证数据复制）
-kubectl exec -n linquickrec etcd-1 -- etcdctl get test-key
-
-# 清理
-kubectl exec -n linquickrec etcd-0 -- etcdctl del test-key
+kubectl port-forward -n linquickrec svc/etcd-client 2379:2379 &
+curl -s http://127.0.0.1:2379/health
 ```
 
-### 服务注册
+预期输出（5 个成员全部 IS_HEALTHY=true，有一个 LEADER）：
+
+```text
++---------------------------+---------+--------+---------+--------+-----------+
+|         ENDPOINT          |   ID    |VERSION | DB SIZE | LEADER |IS_HEALTHY |
++---------------------------+---------+--------+---------+--------+-----------+
+| etcd-0.etcd.linquickrec.. | c204... | 3.5.12 |  20 kB  |  false |     true  |
+| etcd-1.etcd.linquickrec.. | 1904... | 3.5.12 |  20 kB  |  true  |     true  |
+| etcd-2.etcd.linquickrec.. | 3d9e... | 3.5.12 |  20 kB  |  false |     true  |
+| etcd-3.etcd.linquickrec.. | 2a02... | 3.5.12 |  20 kB  |  false |     true  |
+| etcd-4.etcd.linquickrec.. | 3a94... | 3.5.12 |  20 kB  |  false |     true  |
++---------------------------+---------+--------+---------+--------+-----------+
+```
+
+### 服务注册检查
+
+**Pod 内：**
 
 ```bash
-# 列出所有已注册的 discovery_client key
-kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/ --prefix --keys-only
-
-# 查看注册详情（host + port）
-kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/ --prefix
+kubectl exec -n linquickrec etcd-0 -- etcdctl get /linquickrec/services/ --prefix --keys-only
 ```
 
-正常部署后应包含 `proxy`、`recall_service`、`feature_service`、`precalc_service`、`rank_service`、`rank_sub` 等服务的注册信息。
+**主机：**
+
+```bash
+kubectl port-forward -n linquickrec svc/etcd-client 2379:2379 &
+etcdctl --endpoints=http://127.0.0.1:2379 get /linquickrec/services/ --prefix --keys-only
+```
+
+（主机方式需本地安装 etcdctl：`apt install etcd-client` 或从 GitHub releases 下载二进制。）
+
+预期输出（7 个业务服务注册成功）：
+
+```text
+/linquickrec/services/proxy/proxy_192.168.219.77_8080
+/linquickrec/services/recall_service/recall_service_192.168.219.77_8002
+/linquickrec/services/feature_service/feature_service_192.168.219.77_8001
+/linquickrec/services/precalc_service/precalc_service_192.168.219.77_8003
+/linquickrec/services/rank_service/rank_service_192.168.219.77_8004
+/linquickrec/services/rank_sub/rank_sub_192.168.219.77_8005
+/linquickrec/services/kv_worker/kv_worker_192.168.219.77_31501
+```
 
 ### 实时监听
 
+**Pod 内：**
+
 ```bash
-# 监听注册变化（部署/停止服务时观察 key 动态）
-kubectl exec -n linquickrec etcd-0 -- etcdctl watch /linquickrec/ --prefix
+kubectl exec -n linquickrec etcd-0 -- etcdctl watch /linquickrec/services/ --prefix
 ```
+
+观察 Pod 重启或扩缩容时 key 的动态变化。
