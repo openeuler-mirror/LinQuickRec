@@ -71,7 +71,7 @@ docker compose build
 docker compose --profile discovery-server build
 
 # 构建指定服务
-docker compose build recall-service
+docker compose build recall
 ```
 
 产物镜像 `<name>:latest` 存储在本地 Docker 缓存中：
