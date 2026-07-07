@@ -36,6 +36,8 @@ class RankMasterServiceImpl : public RankMasterService {
 public:
     RankMasterServiceImpl();
 
+    bool IsReady() const { return ready_; }
+
     void Rank(google::protobuf::RpcController* controller,
               const RankMasterRequest* request,
               RankMasterResponse* response,
@@ -52,6 +54,7 @@ private:
 
     std::unique_ptr<common::ServiceDiscovery> service_discovery_;
     std::shared_ptr<datasystem::ServiceDiscovery> kv_service_discovery_;
+    bool ready_ = true;
 };
 
 } // namespace rank

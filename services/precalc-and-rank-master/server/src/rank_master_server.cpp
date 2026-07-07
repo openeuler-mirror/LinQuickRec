@@ -57,6 +57,8 @@ RankMasterServiceImpl::RankMasterServiceImpl() {
     auto rc = kv_service_discovery_->Init();
     if (!rc.IsOk()) {
         LOG_ERROR << "KV ServiceDiscovery init failed: " << rc.ToString();
+        ready_ = false;
+        return;
     }
 
     LOG_INFO << "Discovery backend=" << FLAGS_registry_backend << " addr=" << backend_addr;

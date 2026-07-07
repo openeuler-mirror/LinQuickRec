@@ -59,6 +59,8 @@ PrecalcServiceImpl::PrecalcServiceImpl() {
     auto rc = service_discovery_->Init();
     if (!rc.IsOk()) {
         LOG_ERROR << "ServiceDiscovery init failed: " << rc.ToString();
+        ready_ = false;
+        return;
     }
 
     LOG_INFO << "KV Worker ServiceDiscovery: etcd=" << FLAGS_etcd_endpoints

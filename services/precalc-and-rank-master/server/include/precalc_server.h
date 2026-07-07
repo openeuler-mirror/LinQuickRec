@@ -39,6 +39,8 @@ public:
      */
     PrecalcServiceImpl();
 
+    bool IsReady() const { return ready_; }
+
     /**
      * @brief 处理前置计算请求
      * 
@@ -71,6 +73,7 @@ private:
                                              const std::string& trace_id);
 
     std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
+    bool ready_ = true;
 };
 
 } // namespace precalc

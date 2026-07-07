@@ -31,6 +31,15 @@ int main(int argc, char* argv[]) {
     precalc::PrecalcServiceImpl precalc_svc;
     rank::RankMasterServiceImpl rank_master_svc;
 
+    if (!precalc_svc.IsReady()) {
+        LOG_ERROR << "PrecalcServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+    if (!rank_master_svc.IsReady()) {
+        LOG_ERROR << "RankMasterServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server precalc_svr, rank_master_svr;
     int ret = precalc_svr.AddService(&precalc_svc, brpc::SERVER_DOESNT_OWN_SERVICE);
     assert(ret == 0);
