@@ -388,6 +388,11 @@ RecallServiceImpl::RecallServiceImpl() {
     if (FLAGS_enable_vllm) {
         vllm_client_ = std::make_unique<VllmClient>(
             FLAGS_vllm_base_url, FLAGS_vllm_endpoint, FLAGS_vllm_timeout_ms);
+        if (!vllm_client_->IsReady()) {
+            LOG_ERROR << "RecallServiceImpl initialization failed: vLLM channel init failed";
+            ready_ = false;
+            return;
+        }
     }
     LOG_INFO << "RecallServiceImpl initialized, enable_vllm=" << FLAGS_enable_vllm;
     LOG_INFO << "Recall sleep time: " << FLAGS_recall_sleep_time_ms << " ms";

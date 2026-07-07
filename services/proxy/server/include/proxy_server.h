@@ -85,6 +85,8 @@ private:
         const precalc::PrecalcResponse& precalc_rsp,
         RecommendResponse* response);
 
+    bool IsReady() const { return true; }
+
     std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
 

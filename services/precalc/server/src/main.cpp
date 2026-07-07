@@ -26,6 +26,11 @@ int main(int argc, char* argv[]) {
 
     precalc::PrecalcServiceImpl precalc_service;
     
+    if (!precalc_service.IsReady()) {
+        LOG_ERROR << "PrecalcServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server server;
     
     if (server.AddService(&precalc_service, brpc::SERVER_OWNS_SERVICE) != 0) {

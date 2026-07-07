@@ -32,6 +32,11 @@ int main(int argc, char* argv[]) {
 
     rank::RankMasterServiceImpl rank_master_service;
 
+    if (!rank_master_service.IsReady()) {
+        LOG_ERROR << "RankMasterServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server server;
 
     if (server.AddService(&rank_master_service, brpc::SERVER_OWNS_SERVICE) != 0) {

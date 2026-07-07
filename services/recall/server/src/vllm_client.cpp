@@ -29,6 +29,7 @@ VllmClient::VllmClient(const std::string& base_url, const std::string& endpoint,
     std::string url = base_url_ + endpoint_;
     if (channel_.Init(url.c_str(), &channel_opts) != 0) {
         LOG_ERROR << "Failed to initialize vLLM channel: " << url;
+        channel_ready_ = false;
     } else {
         LOG_INFO << "vLLM channel initialized: " << url
                  << " (timeout=" << timeout_ms_ << "ms)";

@@ -27,6 +27,8 @@ class VllmClient {
 public:
     VllmClient(const std::string& base_url, const std::string& endpoint, int timeout_ms);
 
+    bool IsReady() const { return channel_ready_; }
+
     VllmResponse SendRequest(const std::string& json_body);
 
 private:
@@ -34,6 +36,7 @@ private:
     std::string endpoint_;
     int timeout_ms_;
     brpc::Channel channel_;
+    bool channel_ready_ = true;
 };
 
 } // namespace recall

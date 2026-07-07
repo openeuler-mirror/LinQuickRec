@@ -50,6 +50,8 @@ public:
      */
     RankSubServiceImpl();
 
+    bool IsReady() const { return ready_; }
+
     /**
      * @brief 处理精排请求
      * 
@@ -75,6 +77,7 @@ private:
                                               RankSubResponse* response);
 
     std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
+    bool ready_ = true;
 };
 
 } // namespace rank
