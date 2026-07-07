@@ -78,6 +78,8 @@
 | `--precalc_backup_request_ms` | int32 | -1 | 允许调整 | Precalc backup request 延迟阈值(ms)，-1=禁用 |
 | `--rank_timeout_ms` | int32 | 10000 | 允许调整 | Rank 服务 RPC 超时(ms) |
 | `--rank_backup_request_ms` | int32 | -1 | 允许调整 | Rank backup request 延迟阈值(ms)，-1=禁用 |
+| `--rank_master_parallelism` | int32 | 4 | 允许调整 | Proxy 并行调用 rank-master shard 数 |
+| `--top_k` | int32 | 100 | 允许调整 | 返回前 K 个候选商品 |
 
 ## Discovery Client（sidecar）
 
@@ -215,7 +217,6 @@
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
 | `--server_port` | int32 | 8005 | 允许调整 | 监听端口 |
-| `--kv_worker_service` | string | "kv_worker" | 允许调整 | KV Worker 在 Discovery 中的注册服务类型名 |
 | `--rank_sub_sleep_time_ms` | int32 | 30 | 允许调整 | RankSub 成功请求模拟耗时 (ms) |
 | `--rank_sub_payload_size_kb` | int32 | 0 | 允许调整 | RankSub 响应模拟负载大小 (KB) |
 

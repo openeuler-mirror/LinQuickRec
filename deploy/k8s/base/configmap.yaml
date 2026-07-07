@@ -82,9 +82,9 @@ data:
   # 下游通道共享参数
   # ========================
   DOWNSTREAM_CONNECTION_TYPE: "pooled"
-  DOWNSTREAM_MAX_RETRIES: "2"
   DOWNSTREAM_MAX_RETRY: "3"
   DOWNSTREAM_CONNECT_TIMEOUT_MS: "-1"
+  DOWNSTREAM_LB_POLICY: ""
 
   # ========================
   # 下游 RPC 超时
@@ -142,6 +142,7 @@ data:
   # RankMaster
   # ========================
   TOP_K: "100"
+  RANK_MASTER_PARALLELISM: "4"
   SUB_WORKER_PARALLELISM: "4"
   SUB_WORKER_TIMEOUT_MS: "5000"
   SUB_WORKER_CONNECTION_TYPE: "pooled"
@@ -153,4 +154,4 @@ data:
   # ========================
   # RankSub
   # ========================
-  # RankSub 当前除通用 sleep_time 与 KV_WORKER_SERVICE 外无额外业务参数。
+  # RankSub 为纯打分服务，接收 user_feat + sku_ids，返回 skus_id + skus_score。

@@ -15,7 +15,6 @@ DEFINE_string(recall_service_name, "recall_service", "Recall service name in dis
 DEFINE_string(precalc_service_name, "precalc_service", "Precalc service name in discovery");
 DEFINE_string(rank_service_name, "rank_service", "Rank service name in discovery");
 DEFINE_int32(discovery_refresh_interval_ms, 5000, "Discovery cache refresh interval (ms)");
-DEFINE_int32(downstream_max_retries, 2, "Max retry attempts per downstream RPC (legacy)");
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
