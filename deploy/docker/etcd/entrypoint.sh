@@ -9,21 +9,21 @@ NS="${CLUSTER_NS:-linquickrec}"
 mkdir -p "$DATA_DIR"
 
 # DNS 预检
-NS=$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf)
+DNS_NS=$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf)
 
 # UDP 53 端口连通性（最多重试 3 次）
-if [ -n "$NS" ]; then
+if [ -n "$DNS_NS" ]; then
     RETRY=0
-    while ! timeout 2 bash -c "echo >/dev/udp/${NS}/53" 2>/dev/null; do
+    while ! timeout 2 bash -c "echo >/dev/udp/${DNS_NS}/53" 2>/dev/null; do
         RETRY=$((RETRY + 1))
         if [ $RETRY -ge 3 ]; then
-            echo "ERROR: DNS server ${NS}:53 not reachable after 3 attempts, sleeping for manual debug"
+            echo "ERROR: DNS server ${DNS_NS}:53 not reachable after 3 attempts, sleeping for manual debug"
             exec sleep infinity
         fi
-        echo "DNS server ${NS}:53 not reachable (${RETRY}/3), retrying..."
+        echo "DNS server ${DNS_NS}:53 not reachable (${RETRY}/3), retrying..."
         sleep 2
     done
-    echo "DNS server ${NS}:53 reachable"
+    echo "DNS server ${DNS_NS}:53 reachable"
 fi
 
 # DNS 解析验证（最多重试 3 次，失败后 sleep 等调试）
@@ -71,8 +71,13 @@ echo "State: ${STATE}"
 echo "Waiting for all peers to be reachable..."
 for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
     PEER="etcd-${i}.${SERVICE}.${NS}.svc.cluster.local"
+    RETRY=0
     while ! ping -W 2 -c 1 "$PEER" >/dev/null 2>&1; do
-        echo "  ${PEER} not reachable, retrying..."
+        RETRY=$((RETRY + 1))
+        if [ $RETRY -ge 10 ]; then
+            echo "ERROR: ${PEER} not reachable after 10s, sleeping for manual debug"
+            exec sleep infinity
+        fi
         sleep 1
     done
     echo "  ${PEER} reachable"
