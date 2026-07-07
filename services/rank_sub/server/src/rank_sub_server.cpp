@@ -16,17 +16,11 @@
 #include <butil/time.h>
 #include <gflags/gflags.h>
 
-#include <datasystem/kv_client.h>
-
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/perf_logger.h"
 #include "common/random_utils.h"
 #include "common/sku_utils.h"
-
-using namespace datasystem;
-
-using namespace datasystem;
 
 DEFINE_int32(server_port, 8005, "服务器监听端口");
 DEFINE_string(registry_backend, "discovery_server",
@@ -35,8 +29,6 @@ DEFINE_string(discovery_addr, "127.0.0.1:8100",
     "Discovery server address");
 DEFINE_string(etcd_endpoints, "127.0.0.1:2379",
     "etcd endpoints, comma-separated (for etcd backend)");
-DEFINE_string(kv_worker_service, "kv_worker",
-    "KV Worker service name to discover");
 DEFINE_int32(rank_sub_sleep_time_ms, 30, "RankSub service simulated sleep time (ms)");
 DEFINE_int32(rank_sub_payload_size_kb, 0, "RankSub response payload size (KB)");
 
@@ -60,22 +52,7 @@ double simulate_score(uint64_t sku_id, const std::string& user_feat) {
 }
 
 RankSubServiceImpl::RankSubServiceImpl() {
-    datasystem::ServiceDiscoveryOptions sdOpts;
-    sdOpts.etcdAddress = FLAGS_etcd_endpoints;
-    sdOpts.hostIdEnvName = "HOST_ID";
-    sdOpts.affinityPolicy = datasystem::ServiceAffinityPolicy::PREFERRED_SAME_NODE;
-    service_discovery_ = std::make_shared<datasystem::ServiceDiscovery>(sdOpts);
-
-    auto rc = service_discovery_->Init();
-    if (!rc.IsOk()) {
-        LOG_ERROR << "ServiceDiscovery init failed: " << rc.ToString();
-        ready_ = false;
-        return;
-    }
-
     LOG_INFO << "RankSubServiceImpl initialized";
-    LOG_INFO << "KV Worker ServiceDiscovery: etcd=" << FLAGS_etcd_endpoints
-              << ", affinity=PREFERRED_SAME_NODE";
     LOG_INFO << "RankSub sleep time: " << FLAGS_rank_sub_sleep_time_ms << " ms";
     LOG_INFO << "RankSub payload size: " << FLAGS_rank_sub_payload_size_kb << " KB";
 }
@@ -108,79 +85,24 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
     LOG_INFO << "Rank request received, payload_size="
              << request->payload().size() << " bytes";
 
-    if (request->user_feat_key().empty()) {
+    if (request->user_feat().empty()) {
         auto status = common::error::Status(rank_sub_errors::EMPTY_USER_FEAT_KEY,
-            "Empty user_feat_key in request");
+            "Empty user_feat in request");
         LOG_ERROR << status.ToString();
         return status;
     }
 
-    if (request->skus_sub().empty()) {
+    if (request->sku_ids_size() == 0) {
         auto status = common::error::Status(rank_sub_errors::EMPTY_SKUS_SUB,
-            "Empty skus_sub in request");
+            "Empty sku_ids in request");
         LOG_ERROR << status.ToString();
         return status;
     }
 
-    datasystem::ConnectOptions connectOptions;
-    connectOptions.serviceDiscovery = service_discovery_;
-
-    LOG_DEBUG << "Connecting to kv_worker via SDK ServiceDiscovery";
-
-    KVClient kv_client(connectOptions);
-
-    int64_t kv_init_start_us = butil::gettimeofday_us();
-    datasystem::Status kv_status = kv_client.Init();
-    int64_t kv_init_cost_us = butil::gettimeofday_us() - kv_init_start_us;
-    common::perf::Log("rank_sub", "kv_init", "processing", request->trace_id(),
-                      common::perf::UsToMs(kv_init_cost_us),
-                      kv_status.IsOk() ? "ok" : "error",
-                      "key=" + request->user_feat_key());
-    if (!kv_status.IsOk()) {
-        auto status = common::error::Status(rank_sub_errors::KVCLIENT_INIT_FAILED,
-            "KVClient init failed: " + kv_status.ToString());
-        LOG_ERROR << status.ToString();
-        return status;
-    }
-
-    int64_t kv_read_start_us = butil::gettimeofday_us();
-
-    datasystem::Optional<datasystem::Buffer> buffer;
-    kv_status = kv_client.Get(request->user_feat_key(), buffer);
-
-    int64_t kv_read_end_us = butil::gettimeofday_us();
-    int64_t kv_read_cost_us = kv_read_end_us - kv_read_start_us;
-    common::perf::Log("rank_sub", "kv_get", "processing", request->trace_id(),
-                      common::perf::UsToMs(kv_read_cost_us),
-                      kv_status.IsOk() ? "ok" : "error",
-                      "key=" + request->user_feat_key());
-
-    if (!kv_status.IsOk()) {
-        auto status = common::error::Status(rank_sub_errors::KVCLIENT_GET_FAILED,
-            "KVClient Get failed for key: " + request->user_feat_key() + ", error: " + kv_status.ToString());
-        LOG_ERROR << status.ToString();
-        return status;
-    }
-
-    std::string user_feat(reinterpret_cast<const char*>(buffer->ImmutableData()), buffer->GetSize());
-
-    LOG_DEBUG << "Retrieved user_feat from KVWorker: key="
-              << request->user_feat_key()
-              << ", size=" << user_feat.size() << " bytes";
-
-    int64_t parse_start_us = butil::gettimeofday_us();
-    std::vector<uint64_t> sku_ids = parse_skus_from_string(request->skus_sub());
-    int64_t parse_cost_us = butil::gettimeofday_us() - parse_start_us;
-    common::perf::Log("rank_sub", "parse_skus", "processing", request->trace_id(),
-                      common::perf::UsToMs(parse_cost_us),
-                      sku_ids.empty() ? "error" : "ok",
-                      "key=" + request->user_feat_key());
-
-    if (sku_ids.empty()) {
-        auto status = common::error::Status(rank_sub_errors::NO_SKU_PARSED,
-            "No SKU IDs parsed from skus_sub");
-        LOG_ERROR << status.ToString();
-        return status;
+    std::string user_feat = request->user_feat();
+    std::vector<uint64_t> sku_ids;
+    for (int i = 0; i < request->sku_ids_size(); ++i) {
+        sku_ids.push_back(request->sku_ids(i));
     }
 
     int64_t scoring_start_us = butil::gettimeofday_us();

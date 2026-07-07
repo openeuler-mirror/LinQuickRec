@@ -63,21 +63,21 @@ int main(int argc, char* argv[]) {
     
     if (FLAGS_user_feat_key.empty()) {
         // 使用默认测试 key
-        request.set_user_feat_key("test_user_12345");
+        request.set_user_feat("test_user_12345");
     } else {
-        request.set_user_feat_key(FLAGS_user_feat_key);
+        request.set_user_feat(FLAGS_user_feat_key);
     }
     
     if (FLAGS_skus_sub.empty()) {
         // 生成默认测试数据（10 个商品）
-        request.set_skus_sub(generate_skus_sub_string(10));
+        request.set_sku_ids("100000100001100002100003100004100005100006100007100008100009");
     } else {
-        request.set_skus_sub(FLAGS_skus_sub);
+        request.set_sku_ids(FLAGS_skus_sub);
     }
 
     std::cout << "Request:" << std::endl;
-    std::cout << "  user_feat_key: " << request.user_feat_key() << std::endl;
-    std::cout << "  skus_sub size: " << request.skus_sub().size() << " bytes" << std::endl;
+    std::cout << "  user_feat: " << request.user_feat() << std::endl;
+    std::cout << "  sku_ids size: " << request.sku_ids().size() << " bytes" << std::endl;
 
     rank::RankSubResponse response;
     brpc::Controller cntl;

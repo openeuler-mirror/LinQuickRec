@@ -15,14 +15,12 @@
 #include "common/error.h"
 #include "common/logger.h"
 #include "common/sku_utils.h"
-#include <datasystem/datasystem.h>
 #include "rank_sub.pb.h"
 
 DECLARE_int32(server_port);
 DECLARE_string(registry_backend);
 DECLARE_string(discovery_addr);
 DECLARE_string(etcd_endpoints);
-DECLARE_string(kv_worker_service);
 DECLARE_int32(rank_sub_sleep_time_ms);
 DECLARE_int32(rank_sub_payload_size_kb);
 
@@ -74,9 +72,8 @@ private:
      * @return common::error::Status 处理状态
      */
     common::error::Status process_rank_request(const RankSubRequest* request,
-                                              RankSubResponse* response);
+                                               RankSubResponse* response);
 
-    std::shared_ptr<datasystem::ServiceDiscovery> service_discovery_;
     bool ready_ = true;
 };
 
