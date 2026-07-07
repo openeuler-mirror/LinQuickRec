@@ -8,6 +8,12 @@ NS="${CLUSTER_NS:-linquickrec}"
 
 mkdir -p "$DATA_DIR"
 
+# 1. Verify CoreDNS is reachable
+if ! nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1; then
+    echo "ERROR: CoreDNS not reachable, check kube-dns pods" >&2
+    exit 1
+fi
+
 STATE="new"
 [ -d "$DATA_DIR/member/snap" ] && STATE="existing"
 
