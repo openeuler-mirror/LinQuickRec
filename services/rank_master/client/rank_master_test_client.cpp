@@ -37,6 +37,7 @@ DEFINE_string(kv_worker_service, "kv_worker", "KV Worker service name");
 DEFINE_double(tensor_size_mb, 8.5, "tensor 大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒），默认 5 秒");
 DEFINE_string(user_feat_key, "", "自定义 user_feat_key（空值时随机生成 16 位数字）");
+DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 
 bool write_to_kvworker(const std::string& key, const std::string& value,
                        const std::string& host, int port, int ttl) {
