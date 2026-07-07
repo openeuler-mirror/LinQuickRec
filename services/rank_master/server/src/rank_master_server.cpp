@@ -314,7 +314,9 @@ common::error::Status RankMasterServiceImpl::call_workers_and_aggregate(
     }
 
     for (bthread_t tid : tids) {
-        bthread_join(tid, nullptr);
+        if (bthread_join(tid, nullptr) != 0) {
+            LOG_ERROR << "bthread_join failed";
+        }
     }
     common::perf::Log("rank_master", "sub_worker_fanout_wait", "processing", trace_id,
                       common::perf::UsToMs(butil::gettimeofday_us() - fanout_start_us),
