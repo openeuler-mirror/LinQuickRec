@@ -53,6 +53,8 @@ public:
      */
     RankMasterServiceImpl();
 
+    bool IsReady() const { return true; }
+
     /**
      * @brief 析构函数
      */
@@ -103,8 +105,6 @@ private:
     void select_top_k(const std::map<uint64_t, double>& all_scores,
                      int top_k,
                      std::vector<uint64_t>& candidates);
-
-    bool IsReady() const { return true; }
 
     std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };

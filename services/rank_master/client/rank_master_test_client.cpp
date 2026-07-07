@@ -30,7 +30,6 @@
 DEFINE_string(server, "127.0.0.1:8005", "服务器地址 (ip:port)");
 DEFINE_int32(timeout_ms, 30000, "超时时间（毫秒）");
 DEFINE_int32(sku_count, 1000, "模拟的商品数量（当 --skus 为空时使用）");
-DEFINE_int32(payload_size_kb, 100, "payload 大小（KB），默认 100KB");
 DEFINE_string(registry_backend, "discovery_server", "Registry backend");
 DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(etcd_endpoints, "127.0.0.1:2379", "etcd endpoints");
@@ -38,23 +37,6 @@ DEFINE_string(kv_worker_service, "kv_worker", "KV Worker service name");
 DEFINE_double(tensor_size_mb, 8.5, "tensor 大小（MB），默认 8.5MB");
 DEFINE_int32(ttl_seconds, 5, "TTL 时间（秒），默认 5 秒");
 DEFINE_string(user_feat_key, "", "自定义 user_feat_key（空值时随机生成 16 位数字）");
-DEFINE_string(skus, "", "自定义 skus 字符串（空值时随机生成 sku_count 个 6 位 SKU）");
-
-/**
- * @brief 生成随机 SKU 字符串
- */
-std::string generate_skus_string(int count) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<uint64_t> dis(100000, 999999);
-
-    std::string result;
-    for (int i = 0; i < count; ++i) {
-        uint64_t sku_id = dis(gen);
-        result += std::to_string(sku_id);
-    }
-    return result;
-}
 
 bool write_to_kvworker(const std::string& key, const std::string& value,
                        const std::string& host, int port, int ttl) {
@@ -146,11 +128,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // 处理 payload
-    std::string payload = common::generate_random_string(FLAGS_payload_size_kb * 1024);
-    std::cout << "Generated payload: " << payload.size() << " bytes ("
-              << FLAGS_payload_size_kb << " KB)" << std::endl;
-
     std::cout << "\nConnecting to RankMaster Server..." << std::endl;
 
     brpc::Channel channel;
@@ -164,27 +141,23 @@ int main(int argc, char* argv[]) {
 
     rank::RankMasterService_Stub stub(&channel);
 
-    // 处理 skus
-    std::string skus_str;
-    if (!FLAGS_skus.empty()) {
-        skus_str = FLAGS_skus;
-        std::cout << "Using custom skus: " << skus_str.size() << " bytes" << std::endl;
-    } else {
-        skus_str = generate_skus_string(FLAGS_sku_count);
-        std::cout << "Generated random skus: " << FLAGS_sku_count << " items, "
-                  << skus_str.size() << " bytes" << std::endl;
-    }
+    // 生成 SKU IDs
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint64_t> dis(100000, 999999);
 
     rank::RankMasterRequest request;
     request.set_user_feat_key(user_feat_key);
-    request.set_skus(skus_str);
-    request.set_payload(payload);
+    for (int i = 0; i < FLAGS_sku_count; ++i) {
+        request.add_sku_ids(dis(gen));
+    }
+    if (FLAGS_payload_size_kb > 0) {
+        request.set_payload(common::generate_random_string(FLAGS_payload_size_kb * 1024));
+    }
 
     std::cout << "\nRequest:" << std::endl;
     std::cout << "  user_feat_key: " << request.user_feat_key() << std::endl;
-    std::cout << "  skus size: " << request.skus().size() << " bytes" << std::endl;
-    std::cout << "  payload size: " << request.payload().size() << " bytes ("
-              << request.payload().size() / 1024.0 << " KB)" << std::endl;
+    std::cout << "  sku_ids count: " << request.sku_ids_size() << std::endl;
 
     rank::RankMasterResponse response;
     brpc::Controller cntl;

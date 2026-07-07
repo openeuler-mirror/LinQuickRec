@@ -7,12 +7,14 @@ option cc_generic_services = true;
 message RankMasterRequest {
     string user_feat_key = 1;
     repeated uint64 sku_ids = 2;
+    string payload = 3;
     string trace_id = 4;
 }
 
 message RankMasterResponse {
     repeated uint64 candidates = 1;
     repeated uint64 scores = 2;
+    string payload = 3;
     int32 error_code = 100;
     string error_message = 101;
 }

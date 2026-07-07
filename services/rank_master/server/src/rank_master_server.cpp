@@ -164,8 +164,10 @@ bool RankMasterServiceImpl::call_sub_worker(
     }
 
     RankSubRequest request;
-    request.set_user_feat_key(user_feat_key);
-    request.set_skus_sub(skus_to_string(sku_ids));
+    request.set_user_feat(user_feat_key);
+    for (uint64_t id : sku_ids) {
+        request.add_sku_ids(id);
+    }
     request.set_payload(payload);
     request.set_trace_id(trace_id);
 
@@ -260,20 +262,15 @@ common::error::Status RankMasterServiceImpl::validate_and_parse(
         return status;
     }
 
-    if (request->skus().empty()) {
+    if (request->sku_ids_size() == 0) {
         auto status = common::error::Status(rank_master_errors::EMPTY_SKUS,
-            "Empty skus in request");
+            "Empty sku_ids in request");
         LOG_ERROR << status.ToString();
         return status;
     }
 
-    sku_ids = parse_skus_from_string(request->skus());
-
-    if (sku_ids.empty()) {
-        auto status = common::error::Status(rank_master_errors::NO_SKU_PARSED,
-            "No SKU IDs parsed from skus");
-        LOG_ERROR << status.ToString();
-        return status;
+    for (int i = 0; i < request->sku_ids_size(); ++i) {
+        sku_ids.push_back(request->sku_ids(i));
     }
 
     LOG_DEBUG << "Total SKU count: " << sku_ids.size();
