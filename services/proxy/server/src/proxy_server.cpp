@@ -382,7 +382,7 @@ common::error::Status ProxyServiceImpl::call_rank_service(
     int n = std::max(1, FLAGS_rank_master_parallelism);
     int sz = (total + n - 1) / n;
 
-    struct Task { int idx; std::vector<uint64_t> skus; bool ok; std::vector<uint64_t> cand; std::vector<uint64_t> scr; };
+    struct Task { int idx; std::vector<uint64_t> skus; bool ok = false; std::vector<uint64_t> cand; std::vector<uint64_t> scr; };
     std::vector<Task> tasks;
     for (int i = 0; i < n; ++i) {
         int b = i * sz, e = std::min(b + sz, total);

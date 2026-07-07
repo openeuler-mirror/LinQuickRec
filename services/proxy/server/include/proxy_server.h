@@ -58,6 +58,8 @@ public:
     ProxyServiceImpl();
     ~ProxyServiceImpl();
 
+    bool IsReady() const { return true; }
+
     void Recommend(google::protobuf::RpcController* controller,
                    const RecommendRequest* request,
                    RecommendResponse* response,
@@ -86,8 +88,6 @@ private:
         const recall::RecallResponse& recall_rsp,
         const precalc::PrecalcResponse& precalc_rsp,
         RecommendResponse* response);
-
-    bool IsReady() const { return true; }
 
     std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
