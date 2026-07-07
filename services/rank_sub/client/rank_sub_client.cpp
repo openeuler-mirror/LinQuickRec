@@ -17,27 +17,13 @@
 #include <gflags/gflags.h>
 
 #include "rank_sub.pb.h"
+#include "common/random_utils.h"
 
 DEFINE_string(server, "127.0.0.1:8006", "服务器地址 (ip:port)");
 DEFINE_int32(timeout_ms, 10000, "超时时间（毫秒）");
-DEFINE_string(user_feat_key, "", "前置计算结果 key");
-DEFINE_string(skus_sub, "", "商品 ID 字符串（每 6 位一个商品 ID）");
-
-/**
- * @brief 生成测试用的商品 ID 字符串
- * 
- * @param count 商品数量
- * @return std::string 商品 ID 字符串（每 6 位一个商品 ID）
- */
-std::string generate_skus_sub_string(int count) {
-    std::string result;
-    for (int i = 0; i < count; ++i) {
-        // 生成 6 位数字的商品 ID
-        uint64_t sku_id = 100000 + i;
-        result += std::to_string(sku_id);
-    }
-    return result;
-}
+DEFINE_string(user_feat, "", "用户特征数据");
+DEFINE_int32(sku_count, 10, "生成测试 SKU 数量");
+DEFINE_int32(payload_size_kb, 0, "请求 payload 大小 (KB)");
 
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -61,23 +47,25 @@ int main(int argc, char* argv[]) {
     // 构造请求
     rank::RankSubRequest request;
     
-    if (FLAGS_user_feat_key.empty()) {
-        // 使用默认测试 key
+    if (FLAGS_user_feat.empty()) {
         request.set_user_feat("test_user_12345");
     } else {
-        request.set_user_feat(FLAGS_user_feat_key);
+        request.set_user_feat(FLAGS_user_feat);
     }
     
-    if (FLAGS_skus_sub.empty()) {
-        // 生成默认测试数据（10 个商品）
-        request.set_sku_ids("100000100001100002100003100004100005100006100007100008100009");
-    } else {
-        request.set_sku_ids(FLAGS_skus_sub);
+    int count = FLAGS_sku_count;
+    for (int i = 0; i < count; ++i) {
+        request.add_sku_ids(100000 + i);
+    }
+
+    if (FLAGS_payload_size_kb > 0) {
+        request.set_payload(common::generate_random_string(FLAGS_payload_size_kb * 1024));
     }
 
     std::cout << "Request:" << std::endl;
     std::cout << "  user_feat: " << request.user_feat() << std::endl;
-    std::cout << "  sku_ids size: " << request.sku_ids().size() << " bytes" << std::endl;
+    std::cout << "  sku_ids count: " << request.sku_ids_size() << std::endl;
+    std::cout << "  payload size: " << request.payload().size() << " bytes" << std::endl;
 
     rank::RankSubResponse response;
     brpc::Controller cntl;

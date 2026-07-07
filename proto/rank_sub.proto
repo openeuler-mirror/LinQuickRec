@@ -8,11 +8,13 @@ message RankSubRequest {
     repeated uint64 sku_ids = 1;
     bytes user_feat = 2;
     string trace_id = 3;
+    string payload = 4;
 }
 
 message RankSubResponse {
     repeated uint32 skus_id = 1;
     repeated uint64 skus_score = 2;
+    string payload = 3;
     int32 error_code = 100;
     string error_message = 101;
 }
