@@ -44,22 +44,37 @@ STATE="new"
 
 # Resolve own pod DNS to IP for advertise URLs
 MY_DNS="${HOSTNAME}.${SERVICE}.${NS}.svc.cluster.local"
-MY_IP=$(getent hosts "$MY_DNS" | head -1 | awk '{print $1}')
-if [ -z "$MY_IP" ]; then
-    echo "WARNING: DNS lookup failed for ${MY_DNS}, using hostname as fallback"
-    MY_IP="$MY_DNS"
-fi
+echo "Resolving my IP (${MY_DNS})..."
+RETRY=0
+MY_IP=""
+while [ -z "$MY_IP" ]; do
+    MY_IP=$(getent hosts "$MY_DNS" 2>/dev/null | head -1 | awk '{print $1}')
+    RETRY=$((RETRY + 1))
+    if [ -z "$MY_IP" ] && [ $RETRY -ge 30 ]; then
+        echo "ERROR: DNS lookup failed for ${MY_DNS} after 30s, sleeping for manual debug"
+        exec sleep infinity
+    fi
+    [ -z "$MY_IP" ] && sleep 1
+done
 echo "My IP: ${MY_IP} (${MY_DNS})"
 
 # Build --initial-cluster with IP addresses instead of DNS hostnames
 CLUSTER=""
 for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
     PEER="etcd-${i}.${SERVICE}.${NS}.svc.cluster.local"
-    PEER_IP=$(getent hosts "$PEER" | head -1 | awk '{print $1}')
-    if [ -z "$PEER_IP" ]; then
-        echo "WARNING: DNS lookup failed for ${PEER}, using hostname as fallback"
-        PEER_IP="$PEER"
-    fi
+    echo "Resolving ${PEER}..."
+    RETRY=0
+    PEER_IP=""
+    while [ -z "$PEER_IP" ]; do
+        PEER_IP=$(getent hosts "$PEER" 2>/dev/null | head -1 | awk '{print $1}')
+        RETRY=$((RETRY + 1))
+        if [ -z "$PEER_IP" ] && [ $RETRY -ge 30 ]; then
+            echo "ERROR: DNS lookup failed for ${PEER} after 30s, sleeping for manual debug"
+            exec sleep infinity
+        fi
+        [ -z "$PEER_IP" ] && sleep 1
+    done
+    echo "  ${PEER} -> ${PEER_IP}"
     [ -n "$CLUSTER" ] && CLUSTER+=","
     CLUSTER+="etcd-${i}=http://${PEER_IP}:2380"
 done
