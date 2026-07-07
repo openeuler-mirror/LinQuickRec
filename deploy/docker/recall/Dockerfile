@@ -39,6 +39,8 @@ WORKDIR /app
 # 不产生任何镜像层内容，避免将大文件写入镜像。
 RUN --mount=type=bind,source=.,target=/ctx \
     if [ "$ENABLE_VLLM" = "true" ]; then \
+        export http_proxy=http://${PROXY_IP}:${PROXY_PORT} && \
+        export https_proxy="${http_proxy}" && \
         pip3 install /ctx/${TORCH_WHL} && \
         pip3 install /ctx/${VLLM_WHL} && \
         pip3 install --force-reinstall \
