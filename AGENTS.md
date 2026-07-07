@@ -40,7 +40,7 @@ AI 辅助的 commit 必须在末尾加 `AI-assisted: opencode` 脚注。详见 `
 
 ## 服务 README 规范
 
-每个服务 README 必须包含 6 个章节（中文）：模块简介、目录结构、业务流程、编译命令、启动方式、容器搭建。Proxy 的 README 是参考实现。详见 `.agents/skills/service-readme-convention/SKILL.md`。
+每个服务 README 必须包含 6 个章节（中文）：模块简介、目录结构、业务流程、编译命令、启动方式、容器搭建。Proxy 的 README 是参考实现。详见 `.agents/skills/service-readme/SKILL.md`。
 
 ## 常用文件路径
 

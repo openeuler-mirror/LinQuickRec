@@ -19,9 +19,27 @@ spec:
       # datasystem KVClient 通过同节点共享内存与本地 kv-worker 通信，
       # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
       hostIPC: true
+      initContainers:
+      - name: wait-for-etcd
+        image: linquickrec/base:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for etcd (etcd-client:2379)..."
+          for i in $(seq 1 60); do
+            if curl -fsS http://etcd-client:2379/health > /dev/null 2>&1; then
+              echo "etcd is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/60..."
+            sleep 1
+          done
+          echo "etcd not ready after 60s" >&2
+          exit 1
       containers:
       - name: precalc
-        image: 192.168.84.245:5000/linquickrec/precalc:latest
+        image: linquickrec/precalc:latest
         securityContext:
           privileged: true
         ports:

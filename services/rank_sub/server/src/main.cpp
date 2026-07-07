@@ -26,6 +26,11 @@ int main(int argc, char* argv[]) {
 
     rank::RankSubServiceImpl rank_sub_service;
 
+    if (!rank_sub_service.IsReady()) {
+        LOG_ERROR << "RankSubServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server server;
 
     if (server.AddService(&rank_sub_service, brpc::SERVER_OWNS_SERVICE) != 0) {

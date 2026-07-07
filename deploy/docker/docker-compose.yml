@@ -26,37 +26,37 @@ services:
       dockerfile: deploy/docker/kv_worker/Dockerfile
     image: linquickrec/kv-worker:latest
 
-  feature-service:
+  feature:
     build:
       context: ../..
       dockerfile: deploy/docker/feature/Dockerfile
     image: linquickrec/feature:latest
 
-  precalc-service:
+  precalc:
     build:
       context: ../..
       dockerfile: deploy/docker/precalc/Dockerfile
     image: linquickrec/precalc:latest
 
-  rank-sub-service:
+  rank-sub:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-sub/Dockerfile
     image: linquickrec/rank-sub:latest
 
-  rank-master-service:
+  rank-master:
     build:
       context: ../..
       dockerfile: deploy/docker/rank-master/Dockerfile
     image: linquickrec/rank-master:latest
 
-  proxy-service:
+  proxy:
     build:
       context: ../..
       dockerfile: deploy/docker/proxy/Dockerfile
     image: linquickrec/proxy:latest
 
-  recall-service:
+  recall:
     build:
       context: ../..
       dockerfile: deploy/docker/recall/Dockerfile

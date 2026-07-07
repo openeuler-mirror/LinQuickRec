@@ -104,6 +104,8 @@ private:
                      int top_k,
                      std::vector<uint64_t>& candidates);
 
+    bool IsReady() const { return true; }
+
     std::unique_ptr<common::ServiceDiscovery> service_discovery_;
 };
 

@@ -1,18 +1,9 @@
 #!/bin/bash
 set -e
 
-# 必须存在MODEL_NAME环境变量
-if [ -z "$MODEL_NAME" ]; then
-    echo "Error: Environment variable MODEL_NAME is not defined or empty." >&2
-    exit 1
-else
-    echo "MODEL_NAME is set to: $MODEL_NAME"
-fi
-
-# 检查MODEL_NAME的路径是否真实存在
-if [ ! -e "$MODEL_NAME" ]; then
-    echo "Error: The path specified by MODEL_NAME does not exist: $VLLM_MODEL_PATH" >&2
-    exit 1
+if [ "$1" = "test" ]; then
+    shift
+    exec /app/build/bin/recall_integration_test "$@"
 fi
 
 REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
@@ -20,12 +11,31 @@ ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
 ENABLE_VLLM="${ENABLE_VLLM:-true}"
 
+# 元戎 SDK 不接受 DNS hostname，需解析为 IP
+if [ "$REGISTRY_BACKEND" = "etcd" ]; then
+    ETCD_HOST="${ETCD_ENDPOINTS%%:*}"
+    ETCD_PORT="${ETCD_ENDPOINTS##*:}"
+    ETCD_IP=$(getent hosts "$ETCD_HOST" | head -1 | awk '{print $1}')
+    ETCD_ENDPOINTS="${ETCD_IP}:${ETCD_PORT}"
+fi
+
 echo "==========================================="
 echo "Starting Recall Service"
 echo "  enable_vllm=${ENABLE_VLLM}"
 echo "==========================================="
 
 if [ "$ENABLE_VLLM" = "true" ]; then
+    # vLLM 模式：校验 MODEL_NAME 路径
+    if [ -z "$MODEL_NAME" ]; then
+        echo "Error: MODEL_NAME is not defined or empty." >&2
+        exit 1
+    fi
+    echo "MODEL_NAME is set to: $MODEL_NAME"
+    if [ ! -e "$MODEL_NAME" ]; then
+        echo "Error: MODEL_NAME path does not exist: $MODEL_NAME" >&2
+        exit 1
+    fi
+
     echo "Starting vLLM..."
     /app/start_vllm_back.sh &
     VLLM_PID=$!

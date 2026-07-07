@@ -1,0 +1,42 @@
+# etcd StatefulSet
+# 扩容：同步修改 replicas 和 CLUSTER_SIZE，然后 kubectl apply -k deploy/k8s/
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: linquickrec
+  labels:
+    app: etcd
+spec:
+  serviceName: etcd
+  podManagementPolicy: Parallel
+  replicas: 5
+  selector:
+    matchLabels:
+      app: etcd
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: linquickrec/etcd:latest
+        ports:
+        - containerPort: 2379
+          name: client
+        - containerPort: 2380
+          name: peer
+        env:
+        - name: CLUSTER_SIZE
+          value: "5"
+        - name: SERVICE_NAME
+          value: "etcd"
+        - name: CLUSTER_NS
+          value: "linquickrec"
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /var/lib/etcd
+      volumes:
+      - name: etcd-data
+        emptyDir: {}

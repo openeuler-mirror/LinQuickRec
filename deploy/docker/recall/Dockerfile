@@ -4,13 +4,6 @@ ENV YR_SDK_PATH="/usr/local/lib64/python3.11/site-packages/yr/datasystem"
 
 ARG PROXY_IP=""
 ARG PROXY_PORT="3128"
-ENV PROXY_IP=${PROXY_IP}
-ENV PROXY_PORT=${PROXY_PORT}
-ENV http_proxy=http://${PROXY_IP}:${PROXY_PORT}
-ENV https_proxy="${http_proxy}"
-ENV HTTP_PROXY="${http_proxy}"
-ENV HTTPS_PROXY="${https_proxy}"
-ENV no_proxy="127.0.0.1,.huawei.com,localhost,local,.local"
 
 # 是否启用 vLLM（false 时跳过所有 vLLM/模型安装和拷贝，镜像大幅缩小）
 ARG ENABLE_VLLM=true
@@ -46,6 +39,8 @@ WORKDIR /app
 # 不产生任何镜像层内容，避免将大文件写入镜像。
 RUN --mount=type=bind,source=.,target=/ctx \
     if [ "$ENABLE_VLLM" = "true" ]; then \
+        export http_proxy=http://${PROXY_IP}:${PROXY_PORT} && \
+        export https_proxy="${http_proxy}" && \
         pip3 install /ctx/${TORCH_WHL} && \
         pip3 install /ctx/${VLLM_WHL} && \
         pip3 install --force-reinstall \

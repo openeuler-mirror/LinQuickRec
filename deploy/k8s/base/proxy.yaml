@@ -1,42 +1,51 @@
-# RankSub 精排子图服务（可水平扩展）
+# Proxy 网关服务
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rank-sub-service
+  name: proxy-service
   namespace: linquickrec
   labels:
-    app: rank-sub-service
+    app: proxy-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: rank-sub-service
+      app: proxy-service
   template:
     metadata:
       labels:
-        app: rank-sub-service
+        app: proxy-service
     spec:
-      # datasystem KVClient 通过同节点共享内存读取 kv-worker 中的预计算结果，
-      # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
-      hostIPC: true
+      initContainers:
+      - name: wait-for-etcd
+        image: linquickrec/base:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for etcd (etcd-client:2379)..."
+          for i in $(seq 1 60); do
+            if curl -fsS http://etcd-client:2379/health > /dev/null 2>&1; then
+              echo "etcd is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/60..."
+            sleep 1
+          done
+          echo "etcd not ready after 60s" >&2
+          exit 1
       containers:
-      - name: rank-sub
-        image: 192.168.84.245:5000/linquickrec/rank-sub:latest
-        securityContext:
-          privileged: true
+      - name: proxy
+        image: linquickrec/proxy:latest
         ports:
-        - containerPort: 8005
+        - containerPort: 8080
           name: rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
-          value: "8005"
-        - name: HOST_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
+          value: "8080"
         resources:
           requests:
             cpu: "1"
@@ -46,36 +55,31 @@ spec:
             memory: "4Gi"
         readinessProbe:
           tcpSocket:
-            port: 8005
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
-            port: 8005
+            port: 8080
           initialDelaySeconds: 15
           periodSeconds: 15
         volumeMounts:
         - name: log
           mountPath: /var/log/linquickrec
-        - name: shm
-          mountPath: /dev/shm
       volumes:
       - name: log
         emptyDir: {}
-      - name: shm
-        hostPath:
-          path: /dev/shm
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: rank-sub-service
+  name: proxy-service
   namespace: linquickrec
 spec:
   selector:
-    app: rank-sub-service
+    app: proxy-service
   ports:
   - name: rpc
-    port: 8005
-    targetPort: 8005
+    port: 8080
+    targetPort: 8080
   type: ClusterIP

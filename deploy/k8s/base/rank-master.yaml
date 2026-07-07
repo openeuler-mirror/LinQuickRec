@@ -16,9 +16,27 @@ spec:
       labels:
         app: rank-master-service
     spec:
+      initContainers:
+      - name: wait-for-etcd
+        image: linquickrec/base:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for etcd (etcd-client:2379)..."
+          for i in $(seq 1 60); do
+            if curl -fsS http://etcd-client:2379/health > /dev/null 2>&1; then
+              echo "etcd is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/60..."
+            sleep 1
+          done
+          echo "etcd not ready after 60s" >&2
+          exit 1
       containers:
       - name: rank-master
-        image: 192.168.84.245:5000/linquickrec/rank-master:latest
+        image: linquickrec/rank-master:latest
         ports:
         - containerPort: 8004
           name: rpc

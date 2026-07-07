@@ -28,9 +28,27 @@ services/recall/
     └── recall_test_client.cpp
 ```
 
+## 业务流程
+
+```
+       Client (Proxy)
+            │
+            │ Recall(user_id, logs, payload)
+            ▼
+   ┌─────────────────────┐
+   │   RecallService     │
+   │   (:8002)           │
+   │                     │
+   │  1. Proto → JSON    │
+   │  2. Build Prompt    │──── HTTP POST ────▶ vLLM (:8000)
+   │  3. Parse SKU IDs   │◀── JSON Response ──
+   │  4. Return Response │
+   └─────────────────────┘
+```
+
 ## 编译命令
 
-| 依赖 | 备注 |
+| 依赖 | 版本要求 | 备注 |
 |------|------|
 | CMake |编译工具链 |
 | brpc | `linquickrec/base:latest` 基础镜像已内置 |
@@ -66,7 +84,7 @@ make recall_server recall_test_client recall_integration_test -j$(nproc)
 
 ## 启动方式
 
-### 启动方式
+### 启动命令
 
 #### 使用 vLLM 模式（默认）
 
@@ -94,7 +112,7 @@ make recall_server recall_test_client recall_integration_test -j$(nproc)
 
 novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`。随后按 `--kvcache_hit_rate` 随机选择命中或未命中：命中路径先 `Exist` 再 `Get` 固定 key；未命中路径对另一个临时 key 执行 `Exist`，再用 `Create` + `Set` 重写固定 key。返回 SKU 由随机数生成，不依赖 KV value 内容。
 
-### 参数说明
+### 配置参数
 
 #### 通用参数
 
@@ -136,10 +154,26 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 | `--kvcache_hit_sleep_time_ms` | int32 | 10 | 缓存命中模拟耗时 (ms) |
 | `--kvcache_miss_sleep_time_ms` | int32 | 100 | 缓存未命中模拟耗时 (ms) |
 
-### 使用测试客户端
+## 容器搭建
+
+RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等待就绪。
+
+### 构建镜像
 
 ```bash
-./build/bin/recall_test_client --server=127.0.0.1:8002 --user_id=12345
+# in LinQuickRec root directory
+docker build -t linquickrec/recall:latest \
+  -f deploy/docker/recall/Dockerfile .
+```
+
+### 运行容器
+
+```bash
+docker run -d --name recall-service \
+  --gpus all \
+  -p 8000:8000 \
+  -p 8002:8002 \
+  linquickrec/recall:latest
 ```
 
 ## 测试方法
@@ -149,8 +183,11 @@ novllm 模式会在第一次请求前写入固定 KV key `rc:novllm:global_seed`
 集成测试在单进程内启动 mock vLLM（raw socket HTTP 服务器）+ 真实 `RecallServiceImpl`（BRPC server），通过 `RecallService_Stub.Recall()` 发送真实 RPC 并用 `assert()` 验证结果。无需外部 vLLM 或其他依赖服务。
 
 ```bash
-# 运行集成测试
+# 本地运行
 ./build/bin/recall_integration_test
+
+# 通过 Docker 运行（无需 vLLM 和 MODEL_NAME）
+docker run --rm linquickrec/recall:latest test
 ```
 
 覆盖 5 个场景：
@@ -228,46 +265,6 @@ First 20 SKU IDs: 123456, 234567, ...
 ========================================
 Test completed successfully!
 ========================================
-```
-
-## 容器搭建
-
-RecallService 与 vLLM 同容器部署，容器启动时自动启动 vLLM 并等待就绪。
-
-### 构建镜像
-
-```bash
-# in LinQuickRec root directory
-docker build -t linquickrec/recall:latest \
-  -f deploy/docker/recall/Dockerfile .
-```
-
-### 启动容器
-
-```bash
-docker run -d --name recall-service \
-  --gpus all \
-  -p 8000:8000 \
-  -p 8002:8002 \
-  linquickrec/recall:latest
-```
-
-## 业务流程
-
-```
-       Client (Proxy)
-            │
-            │ Recall(user_id, logs, payload)
-            ▼
-   ┌─────────────────────┐
-   │   RecallService     │
-   │   (:8002)           │
-   │                     │
-   │  1. Proto → JSON    │
-   │  2. Build Prompt    │──── HTTP POST ────▶ vLLM (:8000)
-   │  3. Parse SKU IDs   │◀── JSON Response ──
-   │  4. Return Response │
-   └─────────────────────┘
 ```
 
 ## 端口对照表

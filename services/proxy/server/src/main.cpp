@@ -34,6 +34,11 @@ int main(int argc, char* argv[]) {
 
     proxy::ProxyServiceImpl service_impl;
 
+    if (!service_impl.IsReady()) {
+        LOG_ERROR << "ProxyServiceImpl initialization failed, shutting down";
+        return -1;
+    }
+
     brpc::Server server;
 
     if (server.AddService(static_cast<google::protobuf::Service*>(&service_impl),
