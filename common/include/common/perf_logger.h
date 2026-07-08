@@ -1,11 +1,13 @@
 #ifndef COMMON_PERF_LOGGER_H
 #define COMMON_PERF_LOGGER_H
 
+#include <chrono>
 #include <iomanip>
 #include <sstream>
 #include <string>
 
 #include "common/logger.h"
+#include "common/perf_registry.h"
 
 namespace common {
 namespace perf {
@@ -28,6 +30,20 @@ inline void Log(const std::string& service,
         oss << " " << extra;
     }
     LOG_INFO << oss.str();
+
+    // Dual-write to ring buffer for real-time collection
+    if (PerfRingRegistry::Instance().Initialized()) {
+        Span span;
+        span.ts_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        span.SetService(service);
+        span.SetStage(stage);
+        span.SetMetric(metric);
+        span.SetTraceId(trace_id);
+        span.duration_ms = static_cast<float>(duration_ms);
+        span.SetStatus(status);
+        PerfRingRegistry::Instance().Push(span);
+    }
 }
 
 inline double UsToMs(int64_t duration_us) {
