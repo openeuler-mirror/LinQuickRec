@@ -15,6 +15,7 @@
 #include "common/service_discovery.h"
 #include "common/error.h"
 #include "common/logger.h"
+#include <datasystem/datasystem.h>
 #include "rank_master.pb.h"
 #include "rank_sub.pb.h"
 
