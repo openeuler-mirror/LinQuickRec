@@ -136,7 +136,7 @@ void FileSink::Write(const std::string& message) {
     }
     
     if (file_.is_open()) {
-        file_ << message << std::endl;
+        file_ << message << '\n';
         current_file_size_ += message.size() + 1; // +1 for newline
     }
 }
