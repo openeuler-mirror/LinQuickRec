@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "series_manager.h"
 #include "sqlite_store.h"
 #include "stats_engine.h"
 
@@ -39,6 +40,8 @@ private:
     void HandleHealth(brpc::Controller* cntl);
     void HandleStatsCurrent(brpc::Controller* cntl);
     void HandleTrace(brpc::Controller* cntl);
+    void HandleSeries(brpc::Controller* cntl);
+    void HandleOutliers(brpc::Controller* cntl);
     void HandleNotFound(brpc::Controller* cntl);
 
     SqliteStore* sqlite_store_;

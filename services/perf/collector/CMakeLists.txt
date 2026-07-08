@@ -41,6 +41,7 @@ add_executable(perf_collector
     src/stats_engine.cpp
     src/sqlite_store.cpp
     src/api_handlers.cpp
+    src/series_manager.cpp
 )
 
 target_include_directories(perf_collector PRIVATE

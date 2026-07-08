@@ -11,6 +11,7 @@
 #include "common/logger.h"
 #include "common/perf_registry.h"
 #include "common/service_discovery.h"
+#include "series_manager.h"
 #include "sqlite_store.h"
 #include "stats_engine.h"
 
@@ -113,6 +114,10 @@ void StartPuller(
                 for (auto& s : spans) {
                     StatsEngine::Instance().Push(s.service, s.stage, s.duration_ms);
                     batch.push_back(std::move(s));
+                }
+
+                if (SeriesManager::Instance().ActiveSeriesId() != 0) {
+                    SeriesManager::Instance().IncrementSpanCount();
                 }
             }
         }

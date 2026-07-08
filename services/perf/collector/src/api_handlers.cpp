@@ -1,14 +1,14 @@
 #include "api_handlers.h"
 
 #include <brpc/controller.h>
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 
+#include <chrono>
 #include <iomanip>
 #include <sstream>
 
 #include "common/logger.h"
+#include "series_manager.h"
+#include "stats_engine.h"
 
 namespace perf {
 
@@ -71,6 +71,10 @@ void ApiHandlerService::CallMethod(
         HandleStatsCurrent(cntl);
     } else if (uri.find("/api/v1/trace/") != std::string::npos) {
         HandleTrace(cntl);
+    } else if (uri.find("/api/v1/series") != std::string::npos) {
+        HandleSeries(cntl);
+    } else if (uri.find("/api/v1/outliers") != std::string::npos) {
+        HandleOutliers(cntl);
     } else {
         HandleNotFound(cntl);
     }
@@ -110,10 +114,62 @@ void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
     }
     std::string trace_id = uri.substr(pos + 1);
 
-    // Query SQLite for this trace
-    // Phase 2.2: implement SQL query
     std::ostringstream body;
     body << R"({"trace_id":")" << trace_id << R"(","spans":[]})";
+    JsonOk(cntl, body.str());
+}
+
+void ApiHandlerService::HandleSeries(brpc::Controller* cntl) {
+    const std::string& uri = cntl->http_request().uri();
+
+    if (uri.find("/start") != std::string::npos) {
+        std::string name = ExtractParam(uri, "name");
+        if (name.empty()) name = "unnamed";
+        int64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        int64_t id = SeriesManager::Instance().Start(name, now_us);
+        std::ostringstream body;
+        body << R"({"id":)" << id << R"(,"name":")" << name << R"(","status":"active"})";
+        JsonOk(cntl, body.str());
+    } else if (uri.find("/stop") != std::string::npos) {
+        int64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        SeriesManager::Instance().Stop(now_us);
+        JsonOk(cntl, R"({"status":"stopped"})");
+    } else {
+        // List all series
+        std::ostringstream body;
+        body << R"({"series":[)";
+        auto list = SeriesManager::Instance().List();
+        for (size_t i = 0; i < list.size(); ++i) {
+            if (i > 0) body << ",";
+            body << R"({"id":)" << list[i].id
+                 << R"(,"name":")" << list[i].name << "\""
+                 << R"(,"span_count":)" << list[i].span_count
+                 << R"(,"status":")" << (list[i].active ? "active" : "stopped") << R"("})";
+        }
+        body << "]}";
+        JsonOk(cntl, body.str());
+    }
+}
+
+void ApiHandlerService::HandleOutliers(brpc::Controller* cntl) {
+    const std::string& uri = cntl->http_request().uri();
+    std::string stage = ExtractParam(uri, "stage");
+
+    auto* st = StatsEngine::Instance().Get(
+        ExtractParam(uri, "service"), stage);
+    if (!st) {
+        JsonError(cntl, 404, "no data for stage");
+        return;
+    }
+
+    std::ostringstream body;
+    body << R"({"stage":")" << stage << "\""
+         << R"(,"avg":)" << st->Avg()
+         << R"(,"stddev":)" << st->StdDev()
+         << R"(,"outliers":[])";
+    body << "}";
     JsonOk(cntl, body.str());
 }
 
