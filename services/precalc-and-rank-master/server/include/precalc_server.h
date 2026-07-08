@@ -11,7 +11,6 @@
 #include <gflags/gflags.h>
 
 #include "common/error.h"
-#include "common/logger.h"
 #include <datasystem/datasystem.h>
 #include "precalc.pb.h"
 
