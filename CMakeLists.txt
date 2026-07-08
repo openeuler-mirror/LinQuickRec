@@ -30,6 +30,8 @@ add_subdirectory(services/rank_sub)
 add_subdirectory(services/proxy)
 add_subdirectory(services/discovery)
 add_subdirectory(services/feature)
+add_subdirectory(services/perf/collector)
+add_subdirectory(services/feature)
 
 # 打印配置信息
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
