@@ -39,6 +39,10 @@ services:
     image: linquickrec/precalc-and-rank-master:latest
 
   rank-sub:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/rank-sub/Dockerfile
+    image: linquickrec/rank-sub:latest
 
   proxy:
     build:
