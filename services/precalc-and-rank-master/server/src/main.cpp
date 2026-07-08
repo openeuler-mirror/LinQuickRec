@@ -4,6 +4,7 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 #include "common/logger.h"
+#include "common/perf_handler.h"
 
 DEFINE_int32(discovery_refresh_interval_ms, 5000, "");
 DEFINE_int32(server_num_threads, 0, "");
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
     cfg.max_files = 5;
     cfg.enable_trace_id = true;
     common::logger::Initialize(cfg);
+    common::perf::PerfRingRegistry::Instance().Init();
 
     precalc::PrecalcServiceImpl precalc_svc;
     rank::RankMasterServiceImpl rank_master_svc;
@@ -45,6 +47,11 @@ int main(int argc, char* argv[]) {
     assert(ret == 0);
     ret = rank_master_svr.AddService(&rank_master_svc, brpc::SERVER_DOESNT_OWN_SERVICE);
     assert(ret == 0);
+
+    precalc_svr.AddService(new common::perf::DebugPerfService,
+                           brpc::SERVER_OWNS_SERVICE);
+    rank_master_svr.AddService(new common::perf::DebugPerfService,
+                               brpc::SERVER_OWNS_SERVICE);
 
     brpc::ServerOptions precalc_opts;
     configure_opts(precalc_opts);

@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 
 #include "common/logger.h"
+#include "common/perf_handler.h"
 
 DEFINE_int32(server_num_threads, 0,
              "Server bthread num_threads, 0 = BRPC default");
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
     log_config.max_files = 5;
     log_config.enable_trace_id = true;
     common::logger::Initialize(log_config);
+    common::perf::PerfRingRegistry::Instance().Init();
 
     rank::RankSubServiceImpl rank_sub_service;
 
@@ -37,7 +39,12 @@ int main(int argc, char* argv[]) {
         LOG_ERROR << "Failed to add RankSubService";
         return -1;
     }
-    
+
+    if (server.AddService(new common::perf::DebugPerfService,
+                          brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add DebugPerfService";
+    }
+
     brpc::ServerOptions server_options;
     if (FLAGS_server_num_threads > 0) {
         server_options.num_threads = FLAGS_server_num_threads;

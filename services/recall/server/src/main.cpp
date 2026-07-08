@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 
 #include "common/logger.h"
+#include "common/perf_handler.h"
 
 DEFINE_int32(server_num_threads, 0,
              "Server bthread num_threads, 0 = BRPC default");
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
     log_config.max_files = 5;
     log_config.enable_trace_id = true;
     common::logger::Initialize(log_config);
+    common::perf::PerfRingRegistry::Instance().Init();
 
     recall::RecallServiceImpl service_impl;
 
@@ -36,6 +38,11 @@ int main(int argc, char* argv[]) {
     if (server.AddService(&service_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG_ERROR << "Failed to add RecallService";
         return -1;
+    }
+
+    if (server.AddService(new common::perf::DebugPerfService,
+                          brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add DebugPerfService";
     }
 
     brpc::ServerOptions server_options;
