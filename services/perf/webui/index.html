@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perf Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        h1 { margin: 0 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h2 { margin: 0 0 12px; font-size: 14px; color: #666; text-transform: uppercase; }
+        .metric { font-size: 32px; font-weight: bold; color: #333; }
+        .metric-label { font-size: 12px; color: #999; margin-top: 4px; }
+        .stage-select { margin-bottom: 16px; }
+        .stage-select select { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Perf Dashboard</h1>
+    <div class="stage-select">
+        <label>Stage:</label>
+        <select id="stageSelect" onchange="onStageChange()">
+            <option value="proxy|proxy_e2e">proxy_e2e</option>
+            <option value="proxy|recall_rpc">recall_rpc</option>
+            <option value="proxy|feature_rpc">feature_rpc</option>
+            <option value="proxy|precalc_rpc">precalc_rpc</option>
+            <option value="proxy|rank_rpc">rank_rpc</option>
+            <option value="recall|recall_total">recall_total</option>
+            <option value="precalc|precalc_total">precalc_total</option>
+            <option value="rank_master|rank_master_total">rank_master_total</option>
+            <option value="rank_sub|rank_sub_total">rank_sub_total</option>
+        </select>
+        <button onclick="refresh()">Refresh</button>
+    </div>
+    <div class="grid">
+        <div class="card">
+            <h2>Request Count</h2>
+            <div id="count" class="metric">-</div>
+            <div class="metric-label">total spans</div>
+        </div>
+        <div class="card">
+            <h2>Average</h2>
+            <div id="avg" class="metric">-</div>
+            <div class="metric-label">ms</div>
+        </div>
+        <div class="card">
+            <h2>P50</h2>
+            <div id="p50" class="metric">-</div>
+            <div class="metric-label">ms</div>
+        </div>
+        <div class="card">
+            <h2>P99</h2>
+            <div id="p99" class="metric">-</div>
+            <div class="metric-label">ms</div>
+        </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+        <canvas id="chart" height="100"></canvas>
+    </div>
+</body>
+</html>

@@ -5,10 +5,12 @@ RUN apt-get update && apt-get install -y libsqlite3-dev && rm -rf /var/lib/apt/l
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
 ARG PERF_SERVICE_DIR=services/perf/collector/
+ARG WEBUI_DIR=services/perf/webui/
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
 COPY ${PERF_SERVICE_DIR} /app/services/perf/collector/
+COPY ${WEBUI_DIR} /app/webui/
 
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/perf/collector -DCMAKE_BUILD_TYPE=Release && \

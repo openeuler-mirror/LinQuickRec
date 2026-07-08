@@ -42,6 +42,7 @@ private:
     void HandleTrace(brpc::Controller* cntl);
     void HandleSeries(brpc::Controller* cntl);
     void HandleOutliers(brpc::Controller* cntl);
+    void HandleStatic(brpc::Controller* cntl, const std::string& path);
     void HandleNotFound(brpc::Controller* cntl);
 
     SqliteStore* sqlite_store_;

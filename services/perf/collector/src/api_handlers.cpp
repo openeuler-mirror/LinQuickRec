@@ -3,6 +3,7 @@
 #include <brpc/controller.h>
 
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 
@@ -75,6 +76,9 @@ void ApiHandlerService::CallMethod(
         HandleSeries(cntl);
     } else if (uri.find("/api/v1/outliers") != std::string::npos) {
         HandleOutliers(cntl);
+    } else if (uri.find("/js/") != std::string::npos || uri == "/" || uri.empty()) {
+        std::string path = (uri == "/" || uri.empty()) ? "/index.html" : uri;
+        HandleStatic(cntl, path);
     } else {
         HandleNotFound(cntl);
     }
@@ -171,6 +175,29 @@ void ApiHandlerService::HandleOutliers(brpc::Controller* cntl) {
          << R"(,"outliers":[])";
     body << "}";
     JsonOk(cntl, body.str());
+}
+
+void ApiHandlerService::HandleStatic(brpc::Controller* cntl, const std::string& path) {
+    std::string file_path = "/app/webui" + path;
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        cntl->http_response().set_status_code(404);
+        cntl->http_response().body() = "Not found";
+        return;
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)),
+                         std::istreambuf_iterator<char>());
+
+    cntl->http_response().set_status_code(200);
+    if (path.find(".js") != std::string::npos) {
+        cntl->http_response().set_content_type("application/javascript");
+    } else if (path.find(".html") != std::string::npos) {
+        cntl->http_response().set_content_type("text/html; charset=utf-8");
+    } else {
+        cntl->http_response().set_content_type("text/plain");
+    }
+    cntl->http_response().body() = content;
 }
 
 void ApiHandlerService::HandleNotFound(brpc::Controller* cntl) {
