@@ -154,9 +154,9 @@
 | `--vllm_connect_timeout_ms` | int32 | -1 | 允许调整 | TCP 建连超时(ms)，-1=禁用 |
 | `--vllm_backup_request_ms` | int32 | -1 | 允许调整 | Backup request 延迟阈值(ms)，-1=禁用 |
 
-## Precalc
+## Precalc-and-Rank-Master（合并服务）
 
-### 业务参数
+### Precalc 业务参数
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|
@@ -175,9 +175,9 @@
 | `--server_idle_timeout_sec` | int32 | -1 | 不建议修改 | 空闲连接超时(秒)，-1=BRPC 默认 |
 | `--server_max_concurrency` | int32 | 0 | 允许调整 | 最大并发请求数，0=不限制 |
 
-## RankMaster
+## Precalc-and-Rank-Master（合并服务）
 
-### 业务参数
+### RankMaster 业务参数
 
 | 参数 | 类型 | 默认值 | 配置级别 | 说明 |
 |------|------|--------|---------|------|

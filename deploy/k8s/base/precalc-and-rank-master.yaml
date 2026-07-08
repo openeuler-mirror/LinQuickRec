@@ -1,23 +1,21 @@
-# Precalc 前置计算服务
+# Precalc-and-Rank-Master 合并服务（PrecalcService :8003 + RankMasterService :8004）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: precalc-service
+  name: precalc-and-rank-master-service
   namespace: linquickrec
   labels:
-    app: precalc-service
+    app: precalc-and-rank-master-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: precalc-service
+      app: precalc-and-rank-master-service
   template:
     metadata:
       labels:
-        app: precalc-service
+        app: precalc-and-rank-master-service
     spec:
-      # datasystem KVClient 通过同节点共享内存与本地 kv-worker 通信，
-      # 需共享主机 IPC 命名空间并挂载宿主机 /dev/shm。
       hostIPC: true
       initContainers:
       - name: wait-for-etcd
@@ -38,19 +36,23 @@ spec:
           echo "etcd not ready after 60s" >&2
           exit 1
       containers:
-      - name: precalc
-        image: linquickrec/precalc:latest
+      - name: precalc-and-rank-master
+        image: linquickrec/precalc-and-rank-master:latest
         securityContext:
           privileged: true
         ports:
         - containerPort: 8003
-          name: rpc
+          name: precalc-rpc
+        - containerPort: 8004
+          name: rank-master-rpc
         envFrom:
         - configMapRef:
             name: linquickrec-config
         env:
         - name: SERVER_PORT
           value: "8003"
+        - name: RANK_MASTER_SERVER_PORT
+          value: "8004"
         - name: HOST_ID
           valueFrom:
             fieldRef:
@@ -87,13 +89,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: precalc-service
+  name: precalc-and-rank-master-service
   namespace: linquickrec
 spec:
   selector:
-    app: precalc-service
+    app: precalc-and-rank-master-service
   ports:
-  - name: rpc
+  - name: precalc
     port: 8003
     targetPort: 8003
+  - name: rank-master
+    port: 8004
+    targetPort: 8004
   type: ClusterIP

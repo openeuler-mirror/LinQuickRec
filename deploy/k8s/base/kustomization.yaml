@@ -11,6 +11,5 @@ resources:
   - kv-worker.yaml
   - feature.yaml
   - proxy.yaml
-  - precalc.yaml
-  - rank-master.yaml
+  - precalc-and-rank-master.yaml
   - rank-sub.yaml

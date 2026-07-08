@@ -133,14 +133,10 @@ data:
   KVCACHE_MISS_SLEEP_TIME_MS: "100"
 
   # ========================
-  # Precalc
+  # Precalc-and-Rank-Master（合并服务）
   # ========================
   TTL_SECONDS: "5"
   PRECALC_RESULT_SIZE_MB: "8.5"
-
-  # ========================
-  # RankMaster
-  # ========================
   TOP_K: "100"
   RANK_MASTER_PARALLELISM: "4"
   SUB_WORKER_PARALLELISM: "4"

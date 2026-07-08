@@ -18,8 +18,7 @@ deploy/k8s/
 │   ├── kv-worker.yaml                # DaemonSet + Service
 │   ├── feature.yaml                  # Deployment + Service (Mock)
 │   ├── proxy.yaml                    # Deployment + Service
-│   ├── precalc.yaml                  # Deployment + Service
-│   ├── rank-master.yaml              # Deployment + Service
+│   ├── precalc-and-rank-master.yaml    # Deployment + Service (Precalc :8003, RankMaster :8004)
 │   └── rank-sub.yaml                 # Deployment + Service (3 replicas)
 ├── components/                       # 可选 Component
 │   ├── discovery/                    # discovery-server, 由 --discovery-backend 控制
@@ -54,7 +53,7 @@ Proxy (:8080)
 
 | 文件/目录 | 资源 | 说明 |
 |-----------|------|------|
-| `base/` | Kustomize base (10 个 YAML) | 必部署资源：namespace, configmap, etcd, kv-worker, feature, proxy, precalc, rank-master, rank-sub |
+| `base/` | Kustomize base (9 个 YAML) | 必部署资源：namespace, configmap, etcd, kv-worker, feature, proxy, precalc-and-rank-master, rank-sub |
 | `components/discovery/` | Component | 可选：discovery-server, 由 `--discovery-backend` 控制 |
 | `components/recall-vllm/` | Component | 可选：vLLM 模式 recall，由 `--recall-mode` 控制 |
 | `components/recall-novllm/` | Component | 可选：novllm 模式 recall，由 `--recall-mode` 控制 |
@@ -130,7 +129,7 @@ kubectl scale deployment rank-sub-service --replicas=10 -n linquickrec
 
 # 调整其他服务（支持多副本的服务）
 kubectl scale deployment feature-service --replicas=3 -n linquickrec
-kubectl scale deployment precalc-service --replicas=3 -n linquickrec
+kubectl scale deployment precalc-and-rank-master-service --replicas=3 -n linquickrec
 
 # 如需压测 Proxy Service 入口的负载均衡，先扩容 Proxy
 kubectl scale deployment proxy-service --replicas=3 -n linquickrec

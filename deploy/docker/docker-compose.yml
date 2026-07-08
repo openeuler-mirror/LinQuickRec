@@ -32,23 +32,13 @@ services:
       dockerfile: deploy/docker/feature/Dockerfile
     image: linquickrec/feature:latest
 
-  precalc:
+  precalc-and-rank-master:
     build:
       context: ../..
-      dockerfile: deploy/docker/precalc/Dockerfile
-    image: linquickrec/precalc:latest
+      dockerfile: deploy/docker/precalc-and-rank-master/Dockerfile
+    image: linquickrec/precalc-and-rank-master:latest
 
   rank-sub:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/rank-sub/Dockerfile
-    image: linquickrec/rank-sub:latest
-
-  rank-master:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/rank-master/Dockerfile
-    image: linquickrec/rank-master:latest
 
   proxy:
     build:

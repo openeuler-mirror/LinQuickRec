@@ -16,9 +16,8 @@ SERVICES=(
     "kv-worker:linquickrec/kv-worker:latest"
     "feature:linquickrec/feature:latest"
     "recall:linquickrec/recall:latest"
-    "precalc:linquickrec/precalc:latest"
+    "precalc-and-rank-master:linquickrec/precalc-and-rank-master:latest"
     "rank-sub:linquickrec/rank-sub:latest"
-    "rank-master:linquickrec/rank-master:latest"
     "proxy:linquickrec/proxy:latest"
 )
 
@@ -28,11 +27,9 @@ ALIASES=(
     "kv:kv-worker"
     "feature-service:feature"
     "recall-service:recall"
-    "precalc-service:precalc"
+    "precalc-and-rank-master:precalc-and-rank-master"
     "rank_sub:rank-sub"
     "rank-sub-service:rank-sub"
-    "rank_master:rank-master"
-    "rank-master-service:rank-master"
     "proxy-service:proxy"
 )
 
@@ -53,7 +50,7 @@ Options:
 
 Images:
   all, base, etcd, discovery, kv-worker, feature, recall,
-  precalc, rank-sub, rank-master, proxy
+  precalc-and-rank-master, rank-sub, proxy
 
 Examples:
   $(basename "$0") -r 192.168.0.1:5000                   # push all images (default)
@@ -133,7 +130,7 @@ canonical_target() {
     done
 
     err "Unknown image target: ${target}"
-    echo "Available images: base etcd discovery kv-worker feature recall precalc rank-sub rank-master proxy" >&2
+    echo "Available images: base etcd discovery kv-worker feature recall precalc-and-rank-master rank-sub proxy" >&2
     exit 1
 }
 

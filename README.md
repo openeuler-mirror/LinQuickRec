@@ -160,10 +160,7 @@ make -j$(nproc)
 | `proxy_integration_test` | Proxy | 网关集成测试 |
 | `recall_server` | Recall | 召回服务 |
 | `recall_test_client` | Recall | 召回测试客户端 |
-| `precalc_server` | Precalc | 前置计算服务 |
-| `precalc_test_client` | Precalc | 前置计算测试客户端 |
-| `rank_master_server` | RankMaster | 精排主图服务 |
-| `rank_master_test_client` | RankMaster | 精排主图测试客户端 |
+| `precalc_and_rank_master` | PrecalcAndRankMaster | 前置计算 + 精排主图合并服务 |
 | `rank_sub_server` | RankSub | 精排子图服务 |
 | `rank_sub_client` | RankSub | 精排子图测试客户端 |
 | `pseudo_service` | Discovery/examples | 模拟业务服务 |
@@ -191,9 +188,8 @@ LinQuickRec-yh/
 │   ├── discovery/             # 服务发现中心
 │   ├── feature/               # 特征服务（模拟实现）
 │   ├── kv_worker/             # 元戎数据系统
-│   ├── precalc/               # 前置计算服务
+│   ├── precalc-and-rank-master/ # 前置计算 + 精排合并服务
 │   ├── proxy/                 # 网关服务
-│   ├── rank_master/           # 精排主图服务
 │   ├── rank_sub/              # 精排子图服务
 │   └── recall/                # 召回服务
 ```
