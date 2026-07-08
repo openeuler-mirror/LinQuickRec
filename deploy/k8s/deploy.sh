@@ -151,6 +151,7 @@ do_stop() {
     log "Stopping all workloads in ${NAMESPACE}..."
     kubectl scale deployment --all --replicas=0 -n "${NAMESPACE}" 2>/dev/null || true
     kubectl scale statefulset --all --replicas=0 -n "${NAMESPACE}" 2>/dev/null || true
+    kubectl delete daemonset --all -n "${NAMESPACE}" 2>/dev/null || true
     log "All workloads scaled to 0"
 }
 
