@@ -8,6 +8,8 @@
 #include "common/perf_handler.h"
 #include "common/perf_registry.h"
 #include "common/service_discovery.h"
+#include "api_handlers.h"
+#include "sqlite_store.h"
 
 DEFINE_int32(server_port, 8080, "Perf-collector HTTP server port");
 DEFINE_string(registry_backend, "etcd", "Registry backend: etcd or discovery_server");
@@ -16,12 +18,12 @@ DEFINE_string(etcd_endpoints, "etcd-client:2379", "etcd endpoints");
 DEFINE_int32(server_num_threads, 0, "Server bthread num_threads, 0=BRPC default");
 DEFINE_string(sqlite_db_path, "/var/lib/perf/perf.db", "SQLite database path");
 
-// Forward declarations from other modules
+// Forward declarations
 namespace perf {
 
 void StartPuller(
     std::shared_ptr<common::ServiceDiscovery> discovery,
-    const std::string& sqlite_db_path);
+    SqliteStore* sqlite);
 
 } // namespace perf
 
@@ -54,6 +56,17 @@ int main(int argc, char* argv[]) {
         LOG_ERROR << "Failed to add DebugPerfService";
     }
 
+    perf::SqliteStore sqlite;
+    if (!sqlite.Open(FLAGS_sqlite_db_path)) {
+        LOG_ERROR << "Cannot open database, exiting";
+        return -1;
+    }
+
+    if (server.AddService(new perf::ApiHandlerService(&sqlite),
+                          brpc::SERVER_OWNS_SERVICE) != 0) {
+        LOG_ERROR << "Failed to add ApiHandlerService";
+    }
+
     brpc::ServerOptions opts;
     if (FLAGS_server_num_threads > 0) opts.num_threads = FLAGS_server_num_threads;
 
@@ -63,7 +76,7 @@ int main(int argc, char* argv[]) {
     }
     LOG_INFO << "Perf-collector listening on port " << FLAGS_server_port;
 
-    perf::StartPuller(discovery, FLAGS_sqlite_db_path);
+    perf::StartPuller(discovery, &sqlite);
 
     LOG_INFO << "Perf-collector stopped";
     return 0;

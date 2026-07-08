@@ -84,16 +84,10 @@ bool PullService(const std::string& host, int port,
 
 void StartPuller(
     std::shared_ptr<common::ServiceDiscovery> discovery,
-    const std::string& sqlite_db_path) {
+    SqliteStore* sqlite) {
 
     LOG_INFO << "Puller started, pulling from " << kTargetServices.size()
              << " services every 1s";
-
-    SqliteStore sqlite;
-    if (!sqlite.Open(sqlite_db_path)) {
-        LOG_ERROR << "Fatal: cannot open SQLite database";
-        return;
-    }
 
     std::vector<common::perf::Span> batch;
 
@@ -124,9 +118,9 @@ void StartPuller(
         }
 
         if (!batch.empty()) {
-            sqlite.Flush(batch);
+            sqlite->Flush(batch);
         }
-        sqlite.Cleanup(30 * 24 * 3600);  // 30 days
+        sqlite->Cleanup(30 * 24 * 3600);  // 30 days
 
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start).count();
