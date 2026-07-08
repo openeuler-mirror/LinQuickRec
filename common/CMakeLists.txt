@@ -33,6 +33,8 @@ add_library(common_lib STATIC
     # 日志系统
     src/logger/config.cpp
     src/logger/logger.cpp
+    # 性能打点
+    src/perf/perf_registry.cpp
     src/logger/console_sink.cpp
     src/logger/file_sink.cpp
 )
