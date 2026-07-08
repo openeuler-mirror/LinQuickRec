@@ -98,6 +98,38 @@ void SqliteStore::Flush(std::vector<common::perf::Span>& batch) {
     batch.clear();
 }
 
+std::vector<common::perf::Span> SqliteStore::QueryTrace(const std::string& trace_id) {
+    std::vector<common::perf::Span> results;
+    if (!db_) return results;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    const char* sql = "SELECT ts_us, service, stage, metric, trace_id, "
+                      "duration_ms, status FROM spans "
+                      "WHERE trace_id = ? ORDER BY ts_us";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return results;
+    }
+
+    sqlite3_bind_text(stmt, 1, trace_id.c_str(), -1, SQLITE_TRANSIENT);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        common::perf::Span s;
+        s.ts_us = static_cast<uint64_t>(sqlite3_column_int64(stmt, 0));
+        s.SetService(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
+        s.SetStage(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)));
+        s.SetMetric(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)));
+        s.SetTraceId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4)));
+        s.duration_ms = static_cast<float>(sqlite3_column_double(stmt, 5));
+        s.SetStatus(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6)));
+        results.push_back(s);
+    }
+
+    sqlite3_finalize(stmt);
+    return results;
+}
+
 void SqliteStore::Cleanup(int64_t retention_seconds) {
     static int64_t last_cleanup_ts = 0;
     auto now = std::chrono::duration_cast<std::chrono::seconds>(

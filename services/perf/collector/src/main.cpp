@@ -1,9 +1,6 @@
 #include <brpc/server.h>
 #include <gflags/gflags.h>
 
-#include <csignal>
-#include <thread>
-
 #include "common/logger.h"
 #include "common/perf_handler.h"
 #include "common/perf_registry.h"
@@ -18,16 +15,10 @@ DEFINE_string(etcd_endpoints, "etcd-client:2379", "etcd endpoints");
 DEFINE_int32(server_num_threads, 0, "Server bthread num_threads, 0=BRPC default");
 DEFINE_string(sqlite_db_path, "/var/lib/perf/perf.db", "SQLite database path");
 
-// Forward declarations
 namespace perf {
-
-void StartPuller(
-    std::shared_ptr<common::ServiceDiscovery> discovery,
-    SqliteStore* sqlite);
-
+void StartPuller(std::shared_ptr<common::ServiceDiscovery> discovery,
+                 SqliteStore* sqlite);
 } // namespace perf
-
-static std::atomic<bool> g_running{true};
 
 int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);

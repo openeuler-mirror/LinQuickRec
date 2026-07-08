@@ -118,8 +118,20 @@ void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
     }
     std::string trace_id = uri.substr(pos + 1);
 
+    auto spans = sqlite_store_->QueryTrace(trace_id);
+
     std::ostringstream body;
-    body << R"({"trace_id":")" << trace_id << R"(","spans":[]})";
+    body << R"({"trace_id":")" << trace_id << R"(","spans":[)";
+    for (size_t i = 0; i < spans.size(); ++i) {
+        if (i > 0) body << ",";
+        auto& s = spans[i];
+        body << R"({"service":")" << s.service << "\""
+             << R"(,"stage":")" << s.stage << "\""
+             << R"(,"duration_ms":)" << s.duration_ms
+             << R"(,"ts_us":)" << s.ts_us
+             << R"(,"status":")" << s.status << "\"}";
+    }
+    body << "]}";
     JsonOk(cntl, body.str());
 }
 

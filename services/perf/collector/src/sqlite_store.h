@@ -24,6 +24,9 @@ public:
     // Clean up spans older than retention_seconds
     void Cleanup(int64_t retention_seconds);
 
+    // Query spans by trace_id, ordered by ts_us
+    std::vector<common::perf::Span> QueryTrace(const std::string& trace_id);
+
 private:
     void PrepareStatements();
     void FinalizeStatements();

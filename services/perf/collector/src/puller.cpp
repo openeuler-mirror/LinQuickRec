@@ -20,7 +20,7 @@ namespace perf {
 namespace {
 
 const std::vector<std::string> kTargetServices = {
-    "proxy_service",
+    "proxy",
     "feature_service",
     "recall_service",
     "precalc_service",
