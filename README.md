@@ -49,6 +49,7 @@
 | Feature | 8001 | FeatureService | ✅ 模拟实现 | Redis |
 | KVWorker | 31502 | — | 由元戎提供服务 | etcd (internal) |
 | vLLM | 8000 | — | 模型服务 | Qwen3-0.6B |
+| Perf-collector | 32000 (NodePort) | — | ✅ 已完成 | 各服务 /debug/perf endpoint |
 
 ## 对外接口
 
@@ -188,6 +189,7 @@ LinQuickRec-yh/
 │   ├── discovery/             # 服务发现中心
 │   ├── feature/               # 特征服务（模拟实现）
 │   ├── kv_worker/             # 元戎数据系统
+│   ├── perf/                    # 性能可观测性系统
 │   ├── precalc-and-rank-master/ # 前置计算 + 精排合并服务
 │   ├── proxy/                 # 网关服务
 │   ├── rank_sub/              # 精排子图服务
@@ -260,6 +262,6 @@ Proxy 作为网关入口，不配置任何下游服务的静态地址。每次�
 - [x] API 接口文档
 - [x] Feature 服务端和客户端（模拟实现）
 - [ ] Feature 对接真实数据源（KuaiRand / Redis）
-- [ ] 实现轻量级探针和数据采集
-- [ ] 构建监控可视化界面
+- [x] 实现轻量级探针和数据采集
+- [x] 构建监控可视化界面
 - [ ] 添加自动扩缩容支持

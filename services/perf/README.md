@@ -197,6 +197,30 @@ docker run -d --name perf-collector \
   linquickrec/perf-collector:latest
 ```
 
+## WebUI 访问方式
+
+Perf-collector 的 K8s Service 通过 NodePort 32000 暴露，可直接在浏览器中访问：
+
+```
+http://<任一节点IP>:32000
+```
+
+### Dashboard
+- 下拉选择监控的 stage（proxy_e2e、recall_total 等）
+- 实时显示 count / avg / p50 / p99 四个指标卡片 + 柱状图
+- 每 3 秒自动刷新
+
+### Series（请求系列）
+- **Start**：点击 + New Series 开始记录一个请求系列
+- **Stop**：点击 Stop Active 停止当前系列
+- 表格列出所有系列（名称、状态、span 数量）
+- 点击系列名查看统计值
+
+### Trace（链路追踪）
+- 输入 trace_id → 搜索
+- 瀑布图展示该请求跨所有服务的 Span 耗时分布
+- 每个 Span 显示 service / stage / duration（数值 + 横向柱）
+
 ## 测试方法
 
 ### 集成测试

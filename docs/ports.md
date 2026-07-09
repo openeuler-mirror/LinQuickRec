@@ -16,6 +16,7 @@
 | KVWorker (Recall) | 31501 | 元戎数据系统 Worker（远程） | 由元戎提供服务 |
 | KVWorker (Rank) | 31502 | 元戎数据系统 Worker（远程） | 由元戎提供服务 |
 | Redis | 6379 | 缓存服务 | 基础设施 |
+| Perf-collector | 32000 | 性能监控 WebUI + REST API（NodePort） | ✅ 已完成 |
 
 ## 端口分配原则
 
