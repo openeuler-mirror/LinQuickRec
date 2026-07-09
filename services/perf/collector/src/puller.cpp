@@ -28,7 +28,7 @@ const std::vector<std::string> kTargetServices = {
     "rank_sub",
 };
 
-common::perf::Span common::perf::SpanFromJson(const rapidjson::Value& v) {
+common::perf::Span SpanFromJson(const rapidjson::Value& v) {
     common::perf::Span s;
     s.ts_us = v["ts_us"].GetUint64();
     s.SetService(v["service"].GetString());
@@ -76,7 +76,7 @@ bool PullService(const std::string& host, int port,
 
     out_dropped = doc["dropped"].GetUint64();
     for (auto& s : doc["spans"].GetArray()) {
-        out_spans.push_back(common::perf::SpanFromJson(s));
+        out_spans.push_back(SpanFromJson(s));
     }
     return true;
 }
