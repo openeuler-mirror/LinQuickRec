@@ -1,16 +1,8 @@
 #ifndef COMMON_SERVICE_DISCOVERY_H
 #define COMMON_SERVICE_DISCOVERY_H
 
-#include <atomic>
-#include <chrono>
-#include <mutex>
+#include <memory>
 #include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
-
-#include "discovery.pb.h"
-#include "discovery_provider.h"
 
 namespace common {
 
@@ -33,26 +25,8 @@ private:
     void refresh_loop();
     void refresh_all();
 
-    struct InstanceState {
-        int consecutive_failures = 0;
-        std::chrono::steady_clock::time_point cooldown_until;
-
-        bool in_cooldown() const {
-            return std::chrono::steady_clock::now() < cooldown_until;
-        }
-    };
-
-    std::unique_ptr<discovery::IDiscoveryProvider> provider_;
-
-    mutable std::mutex mutex_;
-    std::unordered_map<std::string, std::vector<discovery::ServiceInstance>> cache_;
-    std::unordered_map<std::string, size_t> rr_index_;
-    std::unordered_map<std::string, InstanceState> instance_states_;
-    std::unordered_map<std::string, bool> first_refresh_;
-
-    int refresh_interval_ms_;
-    std::thread refresh_thread_;
-    std::atomic<bool> running_{true};
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace common
