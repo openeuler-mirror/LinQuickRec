@@ -4,6 +4,9 @@ project(perf_collector)
 if(NOT TARGET common_lib)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../common ${CMAKE_BINARY_DIR}/common)
 endif()
+if(NOT TARGET discovery_client_lib)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../discovery/client ${CMAKE_BINARY_DIR}/discovery_client_lib_perf)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +74,7 @@ target_link_libraries(perf_collector PRIVATE
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     ${SQLITE3_LIB}
+    discovery_client_lib
     Threads::Threads
 )
 
