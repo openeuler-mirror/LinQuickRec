@@ -59,6 +59,7 @@ add_executable(perf_collector
 
 target_include_directories(perf_collector PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../discovery/client/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${BRPC_INCLUDE_DIR}
 )
