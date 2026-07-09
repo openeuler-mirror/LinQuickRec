@@ -40,9 +40,9 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    if (server.AddService(new common::perf::DebugPerfService,
+    if (server.AddService(new common::perf::PerfService,
                           brpc::SERVER_OWNS_SERVICE) != 0) {
-        LOG_ERROR << "Failed to add DebugPerfService";
+        LOG_ERROR << "Failed to add PerfService";
     }
 
     brpc::ServerOptions server_options;

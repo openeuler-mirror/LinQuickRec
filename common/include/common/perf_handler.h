@@ -12,7 +12,7 @@
 namespace common {
 namespace perf {
 
-class DebugPerfService : public google::protobuf::Service {
+class PerfService : public google::protobuf::Service {
 public:
     const google::protobuf::ServiceDescriptor* GetDescriptor() override {
         return nullptr;

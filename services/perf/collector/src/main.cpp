@@ -44,9 +44,9 @@ int main(int argc, char* argv[]) {
         FLAGS_registry_backend, backend_addr, 5000);
 
     brpc::Server server;
-    if (server.AddService(new common::perf::DebugPerfService,
+    if (server.AddService(new common::perf::PerfService,
                           brpc::SERVER_OWNS_SERVICE) != 0) {
-        LOG_ERROR << "Failed to add DebugPerfService";
+        LOG_ERROR << "Failed to add PerfService";
     }
 
     perf::SqliteStore sqlite;

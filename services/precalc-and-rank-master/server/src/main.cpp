@@ -48,9 +48,9 @@ int main(int argc, char* argv[]) {
     ret = rank_master_svr.AddService(&rank_master_svc, brpc::SERVER_DOESNT_OWN_SERVICE);
     assert(ret == 0);
 
-    precalc_svr.AddService(new common::perf::DebugPerfService,
+    precalc_svr.AddService(new common::perf::PerfService,
                            brpc::SERVER_OWNS_SERVICE);
-    rank_master_svr.AddService(new common::perf::DebugPerfService,
+    rank_master_svr.AddService(new common::perf::PerfService,
                                brpc::SERVER_OWNS_SERVICE);
 
     brpc::ServerOptions precalc_opts;
