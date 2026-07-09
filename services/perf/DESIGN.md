@@ -11,10 +11,11 @@ Perf 系统的目标是：**以 \<1μs 的边际成本记录每条 span，提供
 ### 1.2 方式
 
 - **记录层**：在每个业务服务的进程内，`perf::Log()` 将 span 写入 lock-free ring buffer（CAS 原子操作），取代同步文件写入
-- **采集层**：独立的 `perf-collector` 服务通过 BRPC 定时拉取各服务的 span 数据
+- **采集层**：独立的 `perf-collector` 服务（将作为一个独立容器）通过 BRPC 定时拉取各服务的 span 数据
 - **聚合层**：Welford 增量算法实时计算 avg/stddev/p50/p99，不存储全量数据
-- **存储层**：SQLite WAL 模式批量持久化，30 天留存
+- **存储层**：SQLite WAL 模式批量持久化，30 天留存（留存时间可配置）
 - **服务发现**：perf-collector 通过 etcd 或 discovery_server 自动发现下游服务（proxy/feature/recall/precalc-and-rank-master/rank-sub），无需硬编码地址
+- **聚合依据**：单条请求通过trace_id追踪。另外，使用series（系列）来标识一个测试组内的若干条请求，根据series计算统计值。这意味着系统允许在不重启的情况下，打入多套不同的测试样例。
 
 ### 1.3 Architecture
 
