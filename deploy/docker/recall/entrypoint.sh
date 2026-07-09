@@ -9,7 +9,7 @@ fi
 REGISTRY_BACKEND="${REGISTRY_BACKEND:-discovery_server}"
 ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
-ENABLE_VLLM="${ENABLE_VLLM:-true}"
+ENABLE_VLLM="${ENABLE_VLLM:-false}"
 
 # 元戎 SDK 不接受 DNS hostname，需解析为 IP
 if [ "$REGISTRY_BACKEND" = "etcd" ]; then

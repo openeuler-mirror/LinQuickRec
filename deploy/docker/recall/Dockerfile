@@ -6,7 +6,7 @@ ARG PROXY_IP=""
 ARG PROXY_PORT="3128"
 
 # 是否启用 vLLM（false 时跳过所有 vLLM/模型安装和拷贝，镜像大幅缩小）
-ARG ENABLE_VLLM=true
+ARG ENABLE_VLLM=false
 
 RUN if [ "$ENABLE_VLLM" = "true" ] && [ -z "$PROXY_IP" ]; then \
         echo "ERROR: ENABLE_VLLM=true requires PROXY_IP to be set."; \
