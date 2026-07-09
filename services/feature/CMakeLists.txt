@@ -31,7 +31,7 @@ set(PROTO_HDR "${CMAKE_CURRENT_BINARY_DIR}/feature.pb.h")
 
 add_custom_command(
     OUTPUT ${PROTO_SRC} ${PROTO_HDR}
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    COMMAND protobuf::protoc
     ARGS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../../proto
          --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
          ${PROTO_FILE}

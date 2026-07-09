@@ -32,14 +32,16 @@ if(NOT YR_DATASYSTEM_LIB)
 endif()
 
 add_custom_command(OUTPUT ${PROTO_OUT_DIR}/precalc.pb.cc ${PROTO_OUT_DIR}/precalc.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/precalc.proto
+    COMMAND protobuf::protoc ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/precalc.proto
     DEPENDS ${PROTO_DIR}/precalc.proto)
 add_custom_command(OUTPUT ${PROTO_OUT_DIR}/rank_master.pb.cc ${PROTO_OUT_DIR}/rank_master.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_master.proto
+    COMMAND protobuf::protoc ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_master.proto
     DEPENDS ${PROTO_DIR}/rank_master.proto)
 add_custom_command(OUTPUT ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/rank_sub.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
+    COMMAND protobuf::protoc ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
     DEPENDS ${PROTO_DIR}/rank_sub.proto)
+    COMMAND protobuf::protoc ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
+    DEPENDS ${PROTO_DIR}/discovery.proto)
 
 if(NOT TARGET common_lib)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
