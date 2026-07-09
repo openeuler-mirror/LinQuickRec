@@ -124,16 +124,11 @@ common::error::Status RankSubServiceImpl::process_rank_request(const RankSubRequ
         ? FLAGS_rank_sub_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
     response->set_payload(common::generate_random_string(payload_size_kb * 1024));
-    common::perf::Log("rank_sub", "generate_payload", "processing", request->trace_id(),
-                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
-                      "ok", "payload_size=" + std::to_string(response->payload().size()));
 
     if (FLAGS_rank_sub_sleep_time_ms > 0) {
         LOG_INFO << "Simulating rank_sub sleep: " << FLAGS_rank_sub_sleep_time_ms << " ms";
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_rank_sub_sleep_time_ms));
-        common::perf::Log("rank_sub", "sleep", "processing", request->trace_id(),
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     int64_t server_send_us = butil::gettimeofday_us();

@@ -200,9 +200,6 @@ common::error::Status ProxyServiceImpl::call_feature_service(
         common::perf::Log("proxy", "feature_rpc", "processing", tls_trace_id,
                           common::perf::UsToMs(cost_us), "error",
                           "instance=" + instance_id);
-        common::perf::Log("proxy", "proxy_to_feature_brpc", "brpc", tls_trace_id,
-                          cntl.latency_us() / 1000.0, "error",
-                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0001,
@@ -212,9 +209,6 @@ common::error::Status ProxyServiceImpl::call_feature_service(
     service_discovery_->ReportSuccess(instance_id);
     common::perf::Log("proxy", "feature_rpc", "processing", tls_trace_id,
                       common::perf::UsToMs(cost_us), "ok",
-                      "instance=" + instance_id);
-    common::perf::Log("proxy", "proxy_to_feature_brpc", "brpc", tls_trace_id,
-                      cntl.latency_us() / 1000.0, "ok",
                       "instance=" + instance_id);
     LOG_INFO << "FeatureService success: user_id=" << request->user_id()
              << " user_logs=" << response->kr_feat_rsp().user_logs_size()
@@ -277,9 +271,6 @@ common::error::Status ProxyServiceImpl::call_recall_service(
         common::perf::Log("proxy", "recall_rpc", "processing", tls_trace_id,
                           common::perf::UsToMs(cost_us), "error",
                           "instance=" + instance_id);
-        common::perf::Log("proxy", "proxy_to_recall_brpc", "brpc", tls_trace_id,
-                          cntl.latency_us() / 1000.0, "error",
-                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0002,
@@ -289,9 +280,6 @@ common::error::Status ProxyServiceImpl::call_recall_service(
     service_discovery_->ReportSuccess(instance_id);
     common::perf::Log("proxy", "recall_rpc", "processing", tls_trace_id,
                       common::perf::UsToMs(cost_us), "ok",
-                      "instance=" + instance_id);
-    common::perf::Log("proxy", "proxy_to_recall_brpc", "brpc", tls_trace_id,
-                      cntl.latency_us() / 1000.0, "ok",
                       "instance=" + instance_id);
     LOG_INFO << "RecallService success: sku_ids=" << response->sku_ids_size()
              << " instance=" << instance_id;
@@ -347,9 +335,6 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
         common::perf::Log("proxy", "precalc_rpc", "processing", tls_trace_id,
                           common::perf::UsToMs(cost_us), "error",
                           "instance=" + instance_id);
-        common::perf::Log("proxy", "proxy_to_precalc_brpc", "brpc", tls_trace_id,
-                          cntl.latency_us() / 1000.0, "error",
-                          "instance=" + instance_id);
         return common::error::Status::Error(
             common::error::ModuleCode::GATEWAY,
             common::error::ErrorType::SERVICE_ERROR, 0x0003,
@@ -359,9 +344,6 @@ common::error::Status ProxyServiceImpl::call_precalc_service(
     service_discovery_->ReportSuccess(instance_id);
     common::perf::Log("proxy", "precalc_rpc", "processing", tls_trace_id,
                       common::perf::UsToMs(cost_us), "ok",
-                      "instance=" + instance_id);
-    common::perf::Log("proxy", "proxy_to_precalc_brpc", "brpc", tls_trace_id,
-                      cntl.latency_us() / 1000.0, "ok",
                       "instance=" + instance_id);
     LOG_INFO << "PrecalcService success: user_feat_key=" << response->user_feat_key()
              << " instance=" << instance_id;

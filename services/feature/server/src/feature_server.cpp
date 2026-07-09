@@ -135,9 +135,6 @@ common::error::Status FeatureServiceImpl::process_user_features_request(
     int payload_size_kb = FLAGS_feature_payload_size_kb > 0 ? FLAGS_feature_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
     std::string payload = common::generate_random_string(payload_size_kb * 1024);
-    common::perf::Log("feature", "generate_payload", "processing", tls_trace_id,
-                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
-                      "ok", "payload_size=" + std::to_string(payload.size()));
     kr_rsp->set_payload(payload);
     response->set_feature_type(KuaiRand);
 
@@ -145,8 +142,6 @@ common::error::Status FeatureServiceImpl::process_user_features_request(
         LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
-        common::perf::Log("feature", "sleep", "processing", tls_trace_id,
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     return common::error::Status::OK();
@@ -188,8 +183,6 @@ common::error::Status FeatureServiceImpl::process_sku_features_request(
         LOG_INFO << "Simulating feature sleep: " << FLAGS_feature_sleep_time_ms << " ms";
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_feature_sleep_time_ms));
-        common::perf::Log("feature", "sleep", "processing", tls_trace_id,
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     return common::error::Status::OK();

@@ -249,9 +249,6 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
     int payload_size_kb = FLAGS_payload_size_kb > 0 ? FLAGS_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
     std::string payload = common::generate_random_string(payload_size_kb * 1024);
-    common::perf::Log("precalc", "generate_payload", "processing", request->trace_id(),
-                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
-                      "ok", "payload_size=" + std::to_string(payload.size()));
     response->set_payload(payload);
     response->set_user_feat_key(user_feat_key);
 
@@ -259,8 +256,6 @@ common::error::Status PrecalcServiceImpl::process_precalc_request(const PrecalcR
         LOG_INFO << "Simulating precalc sleep: " << FLAGS_precalc_sleep_time_ms << " ms";
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_precalc_sleep_time_ms));
-        common::perf::Log("precalc", "sleep", "processing", request->trace_id(),
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;

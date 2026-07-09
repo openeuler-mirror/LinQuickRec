@@ -469,10 +469,6 @@ common::error::Status RecallServiceImpl::write_global_kvcache(
     datasystem::Status kv_status = kv_client.Create(
         KVCACHE_GLOBAL_KEY, value.size(), param, write_buffer);
     int64_t create_cost_us = butil::gettimeofday_us() - create_start_us;
-    common::perf::Log("recall", "kvcache_create", "processing", trace_id,
-                      common::perf::UsToMs(create_cost_us),
-                      kv_status.IsOk() ? "ok" : "error",
-                      "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",op=" + op_tag);
     if (!kv_status.IsOk()) {
         return common::error::Status(recall_errors::KVCLIENT_CREATE_FAILED,
             "KVClient Create failed: " + kv_status.ToString());
@@ -483,10 +479,6 @@ common::error::Status RecallServiceImpl::write_global_kvcache(
     int64_t set_start_us = butil::gettimeofday_us();
     kv_status = kv_client.Set(write_buffer);
     int64_t set_cost_us = butil::gettimeofday_us() - set_start_us;
-    common::perf::Log("recall", "kvcache_set", "processing", trace_id,
-                      common::perf::UsToMs(set_cost_us),
-                      kv_status.IsOk() ? "ok" : "error",
-                      "key=" + std::string(KVCACHE_GLOBAL_KEY) + ",op=" + op_tag);
     if (!kv_status.IsOk()) {
         return common::error::Status(recall_errors::KVCLIENT_SET_FAILED,
             "KVClient Set failed: " + kv_status.ToString());
@@ -652,17 +644,12 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
-    common::perf::Log("recall", "generate_payload", "processing", request->trace_id(),
-                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
-                      "ok", "payload_size=" + std::to_string(result.response.payload().size()));
 
     if (sleep_time_ms > 0) {
         LOG_INFO << "Simulating KVCache recall sleep: " << sleep_time_ms
                  << " ms, cache_hit=" << (cache_hit ? "true" : "false");
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
-        common::perf::Log("recall", "kvcache_sleep", "processing", request->trace_id(),
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us),
                           "ok", std::string("cache_hit=") + (cache_hit ? "true" : "false"));
     }
 
@@ -738,16 +725,11 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
     int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
-    common::perf::Log("recall", "generate_payload", "processing", request->trace_id(),
-                      common::perf::UsToMs(butil::gettimeofday_us() - payload_start_us),
-                      "ok", "payload_size=" + std::to_string(result.response.payload().size()));
 
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
         int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
-        common::perf::Log("recall", "sleep", "processing", request->trace_id(),
-                          common::perf::UsToMs(butil::gettimeofday_us() - sleep_start_us));
     }
 
     int64_t server_process_us = butil::gettimeofday_us() - server_receive_us;
