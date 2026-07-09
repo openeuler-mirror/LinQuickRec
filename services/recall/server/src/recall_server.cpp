@@ -642,15 +642,12 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_kvcache_recall(
     generate_random_skus(FLAGS_sku_count, &result.response);
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
-    int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
 
     if (sleep_time_ms > 0) {
         LOG_INFO << "Simulating KVCache recall sleep: " << sleep_time_ms
                  << " ms, cache_hit=" << (cache_hit ? "true" : "false");
-        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
-                          "ok", std::string("cache_hit=") + (cache_hit ? "true" : "false"));
     }
 
     int64_t total_cost_us = butil::gettimeofday_us() - start_us;
@@ -723,12 +720,10 @@ RecallServiceImpl::RecallResult RecallServiceImpl::process_recall_request(const 
                       common::perf::UsToMs(parse_cost_us), "ok");
 
     int payload_size_kb = FLAGS_recall_payload_size_kb > 0 ? FLAGS_recall_payload_size_kb : 0;
-    int64_t payload_start_us = butil::gettimeofday_us();
     result.response.set_payload(common::generate_random_string(payload_size_kb * 1024));
 
     if (FLAGS_recall_sleep_time_ms > 0) {
         LOG_INFO << "Simulating recall sleep: " << FLAGS_recall_sleep_time_ms << " ms";
-        int64_t sleep_start_us = butil::gettimeofday_us();
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_recall_sleep_time_ms));
     }
 
