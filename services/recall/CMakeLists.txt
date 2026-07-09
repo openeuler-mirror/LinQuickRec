@@ -61,7 +61,7 @@ endif()
 # Discovery proto（ServiceDiscovery 依赖）
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../proto)
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h
+
     COMMAND ${Protobuf_PROTOC_EXECUTABLE}
     ARGS --proto_path ${PROTO_DIR} --cpp_out ${CMAKE_CURRENT_BINARY_DIR} discovery.proto
     DEPENDS ${PROTO_DIR}/discovery.proto
@@ -128,7 +128,7 @@ add_executable(recall_server
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
     server/src/main.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+
 )
 target_include_directories(recall_server PRIVATE
     ${BRPC_INCLUDE_DIR}
@@ -208,7 +208,7 @@ add_executable(recall_integration_test
     tests/recall_integration_test.cpp
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+
 )
 target_include_directories(recall_integration_test PRIVATE
     ${BRPC_INCLUDE_DIR}

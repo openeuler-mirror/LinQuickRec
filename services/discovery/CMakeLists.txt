@@ -16,7 +16,7 @@ set(BRPC_LIBRARIES brpc gflags ssl crypto z pthread leveldb)
 link_directories(/usr/local/lib64)
 
 set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/discovery.proto)
-set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc)
+
 set(PROTO_HDR ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h)
 
 add_custom_command(
