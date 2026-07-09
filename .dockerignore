@@ -1,0 +1,36 @@
+# Git
+.git/
+
+# Build artifacts
+build/
+**/build/
+
+# Compiled objects
+*.o
+*.a
+*.so
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# K8s deployment (not needed for image builds)
+deploy/k8s/
+
+# Generated Kustomize files
+**/.overlay/
+**/.generated/
+
+# AI agent skills
+.agents/
+
+# Node modules
+**/node_modules/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
