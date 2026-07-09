@@ -79,4 +79,9 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 
     add_executable(thread_pool_example examples/thread_pool_example.cpp)
     target_link_libraries(thread_pool_example PRIVATE common_lib)
+
+    add_executable(test_perf_registry tests/test_perf_registry.cpp)
+    target_link_libraries(test_perf_registry PRIVATE common_lib)
+    set_target_properties(test_perf_registry PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endif()

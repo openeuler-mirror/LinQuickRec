@@ -19,6 +19,7 @@ SERVICES=(
     "precalc-and-rank-master:linquickrec/precalc-and-rank-master:latest"
     "rank-sub:linquickrec/rank-sub:latest"
     "proxy:linquickrec/proxy:latest"
+    "perf-collector:linquickrec/perf-collector:latest"
 )
 
 ALIASES=(
@@ -31,6 +32,7 @@ ALIASES=(
     "rank_sub:rank-sub"
     "rank-sub-service:rank-sub"
     "proxy-service:proxy"
+    "perf-collector-service:perf-collector"
 )
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }

@@ -62,3 +62,27 @@ target_link_libraries(perf_collector PRIVATE
 set_target_properties(perf_collector PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+
+# Integration test
+add_executable(perf_integration_test
+    tests/integration_test.cpp
+    src/stats_engine.cpp
+    src/sqlite_store.cpp
+    src/series_manager.cpp
+    src/span_tree.cpp
+)
+target_include_directories(perf_integration_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/include
+    ${BRPC_INCLUDE_DIR}
+    src
+)
+target_link_libraries(perf_integration_test PRIVATE
+    common_lib
+    ${BRPC_LIBRARIES}
+    ${ABSL_LIBS}
+    ${SQLITE3_LIB}
+    Threads::Threads
+)
+set_target_properties(perf_integration_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)

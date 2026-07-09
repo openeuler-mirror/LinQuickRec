@@ -60,6 +60,12 @@ services:
         PROXY_PORT: "${PROXY_PORT:-3128}"
     image: linquickrec/recall:latest
 
+  perf-collector:
+    build:
+      context: ../..
+      dockerfile: services/perf/collector/Dockerfile
+    image: linquickrec/perf-collector:latest
+
   # === --profile discovery-server 时构建 ===
   discovery-server:
     profiles:

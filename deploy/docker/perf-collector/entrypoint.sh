@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+if [ "$1" = "test" ]; then
+    shift
+    exec /app/build/bin/perf_integration_test "$@"
+fi
+
 REGISTRY_BACKEND="${REGISTRY_BACKEND:-etcd}"
 ETCD_ENDPOINTS="${ETCD_ENDPOINTS:-etcd-client:2379}"
 DISCOVERY_ADDR="${DISCOVERY_ADDR:-discovery-server:8100}"
