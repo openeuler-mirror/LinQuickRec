@@ -1,0 +1,87 @@
+# Perf-collector 性能监控服务
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-collector-service
+  namespace: linquickrec
+  labels:
+    app: perf-collector-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-collector-service
+  template:
+    metadata:
+      labels:
+        app: perf-collector-service
+    spec:
+      containers:
+      - name: perf-collector
+        image: linquickrec/perf-collector:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        envFrom:
+        - configMapRef:
+            name: linquickrec-config
+        env:
+        - name: SERVER_PORT
+          value: "8080"
+        - name: SQLITE_DB_PATH
+          value: "/var/lib/perf/perf.db"
+        - name: RETENTION_DAYS
+          value: "30"
+        resources:
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        volumeMounts:
+        - name: perf-data
+          mountPath: /var/lib/perf
+      volumes:
+      - name: perf-data
+        persistentVolumeClaim:
+          claimName: perf-collector-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: perf-collector-pvc
+  namespace: linquickrec
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-collector-service
+  namespace: linquickrec
+spec:
+  selector:
+    app: perf-collector-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    nodePort: 32000
+  type: NodePort

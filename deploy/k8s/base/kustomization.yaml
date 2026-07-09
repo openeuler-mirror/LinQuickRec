@@ -12,4 +12,5 @@ resources:
   - feature.yaml
   - proxy.yaml
   - precalc-and-rank-master.yaml
+  - perf-collector.yaml
   - rank-sub.yaml
