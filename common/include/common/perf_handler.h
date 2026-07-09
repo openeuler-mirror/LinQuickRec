@@ -4,31 +4,13 @@
 #include <brpc/controller.h>
 #include <brpc/server.h>
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/empty.pb.h>
 #include <google/protobuf/service.h>
 
 #include "common/perf_registry.h"
 
 namespace common {
 namespace perf {
-
-// Minimal BRPC service that handles /debug/perf requests.
-// Register via server.AddService(new DebugPerfService, brpc::SERVER_OWNS_SERVICE).
-// Dummy protobuf message for HTTP-only service that never serializes protos.
-// GetRequestPrototype/GetResponsePrototype are required by the Service
-// interface but never called in HTTP mode.
-class DummyMessage : public google::protobuf::Message {
-    google::protobuf::Message* New(google::protobuf::Arena*) const override { return nullptr; }
-    const google::protobuf::Descriptor* GetDescriptor() const override { return nullptr; }
-    const google::protobuf::Reflection* GetReflection() const override { return nullptr; }
-    void CopyFrom(const google::protobuf::Message&) override {}
-    void MergeFrom(const google::protobuf::Message&) override {}
-    void Clear() override {}
-    bool IsInitialized() const override { return true; }
-    void MergePartialFromCodedStream(google::protobuf::io::CodedInputStream*) override {}
-    size_t ByteSizeLong() const override { return 0; }
-    int GetCachedSize() const override { return 0; }
-    uint8_t* _InternalSerialize(uint8_t*, google::protobuf::io::EpsCopyOutputStream*) const override { return nullptr; }
-};
 
 class DebugPerfService : public google::protobuf::Service {
 public:
@@ -80,14 +62,12 @@ public:
 
     const google::protobuf::Message& GetRequestPrototype(
         const google::protobuf::MethodDescriptor*) const override {
-        static DummyMessage empty;
-        return empty;
+        return google::protobuf::Empty::default_instance();
     }
 
     const google::protobuf::Message& GetResponsePrototype(
         const google::protobuf::MethodDescriptor*) const override {
-        static DummyMessage empty;
-        return empty;
+        return google::protobuf::Empty::default_instance();
     }
 };
 
