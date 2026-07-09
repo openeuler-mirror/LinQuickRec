@@ -27,7 +27,7 @@ set(PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../proto")
 set(PROTO_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_custom_command(OUTPUT ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/rank_sub.pb.h
-    COMMAND protobuf::protoc ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
     DEPENDS ${PROTO_DIR}/rank_sub.proto)
 
 add_executable(rank_sub_server server/src/rank_sub_server.cpp server/src/main.cpp
