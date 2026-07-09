@@ -28,8 +28,8 @@ const std::vector<std::string> kTargetServices = {
     "rank_sub",
 };
 
-Span SpanFromJson(const rapidjson::Value& v) {
-    Span s;
+common::perf::Span common::perf::SpanFromJson(const rapidjson::Value& v) {
+    common::perf::Span s;
     s.ts_us = v["ts_us"].GetUint64();
     s.SetService(v["service"].GetString());
     s.SetStage(v["stage"].GetString());
@@ -41,7 +41,7 @@ Span SpanFromJson(const rapidjson::Value& v) {
 }
 
 bool PullService(const std::string& host, int port,
-                 std::vector<Span>& out_spans,
+                 std::vector<common::perf::Span>& out_spans,
                  uint64_t& out_dropped) {
     brpc::Channel channel;
     brpc::ChannelOptions opts;
@@ -76,7 +76,7 @@ bool PullService(const std::string& host, int port,
 
     out_dropped = doc["dropped"].GetUint64();
     for (auto& s : doc["spans"].GetArray()) {
-        out_spans.push_back(SpanFromJson(s));
+        out_spans.push_back(common::perf::SpanFromJson(s));
     }
     return true;
 }
@@ -104,7 +104,7 @@ void StartPuller(
                 continue;
             }
 
-            std::vector<Span> spans;
+            std::vector<common::perf::Span> spans;
             uint64_t dropped = 0;
             if (PullService(host, port, spans, dropped)) {
                 if (dropped > 0) {
