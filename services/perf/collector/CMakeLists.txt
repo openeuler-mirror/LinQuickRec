@@ -55,6 +55,7 @@ add_executable(perf_collector
     src/series_manager.cpp
     src/span_tree.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/src/discovery/service_discovery.cpp
 )
 
 target_include_directories(perf_collector PRIVATE
