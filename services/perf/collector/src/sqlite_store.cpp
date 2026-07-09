@@ -131,6 +131,8 @@ std::vector<common::perf::Span> SqliteStore::QueryTrace(const std::string& trace
 }
 
 void SqliteStore::Cleanup(int64_t retention_seconds) {
+    if (retention_seconds <= 0) return;  // unlimited retention
+
     static int64_t last_cleanup_ts = 0;
     auto now = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();

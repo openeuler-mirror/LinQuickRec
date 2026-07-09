@@ -18,4 +18,5 @@ cd /app/build
     --etcd_endpoints="${ETCD_ENDPOINTS}" \
     --discovery_addr="${DISCOVERY_ADDR}" \
     --sqlite_db_path="${SQLITE_DB_PATH:-/var/lib/perf/perf.db}" \
+    --retention_days=${RETENTION_DAYS:-30} \
     "$@"

@@ -14,10 +14,12 @@ DEFINE_string(discovery_addr, "127.0.0.1:8100", "Discovery server address");
 DEFINE_string(etcd_endpoints, "etcd-client:2379", "etcd endpoints");
 DEFINE_int32(server_num_threads, 0, "Server bthread num_threads, 0=BRPC default");
 DEFINE_string(sqlite_db_path, "/var/lib/perf/perf.db", "SQLite database path");
+DEFINE_int32(retention_days, 30, "Data retention days, 0 = unlimited");
 
 namespace perf {
 void StartPuller(std::shared_ptr<common::ServiceDiscovery> discovery,
-                 SqliteStore* sqlite);
+                 SqliteStore* sqlite,
+                 int retention_days);
 } // namespace perf
 
 int main(int argc, char* argv[]) {
@@ -67,7 +69,7 @@ int main(int argc, char* argv[]) {
     }
     LOG_INFO << "Perf-collector listening on port " << FLAGS_server_port;
 
-    perf::StartPuller(discovery, &sqlite);
+    perf::StartPuller(discovery, &sqlite, FLAGS_retention_days);
 
     LOG_INFO << "Perf-collector stopped";
     return 0;

@@ -85,7 +85,8 @@ bool PullService(const std::string& host, int port,
 
 void StartPuller(
     std::shared_ptr<common::ServiceDiscovery> discovery,
-    SqliteStore* sqlite) {
+    SqliteStore* sqlite,
+    int retention_days) {
 
     LOG_INFO << "Puller started, pulling from " << kTargetServices.size()
              << " services every 1s";
@@ -125,7 +126,7 @@ void StartPuller(
         if (!batch.empty()) {
             sqlite->Flush(batch);
         }
-        sqlite->Cleanup(30 * 24 * 3600);  // 30 days
+        sqlite->Cleanup(retention_days > 0 ? static_cast<int64_t>(retention_days) * 24 * 3600 : 0);
 
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start).count();
