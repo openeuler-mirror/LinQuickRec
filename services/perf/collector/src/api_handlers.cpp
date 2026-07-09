@@ -4,11 +4,13 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <sstream>
 
 #include "common/logger.h"
 #include "series_manager.h"
+#include "span_tree.h"
 #include "stats_engine.h"
 
 namespace perf {
@@ -120,18 +122,34 @@ void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
 
     auto spans = sqlite_store_->QueryTrace(trace_id);
 
+    auto tree = BuildSpanTree(spans);
+
+    // Serialize tree as JSON: recursive
+    std::function<void(const SpanTreeNode&, std::ostringstream&)> writeNode;
+    writeNode = [&](const SpanTreeNode& node, std::ostringstream& body) {
+        body << "{";
+        body << R"("service":")" << node.service << R"(",)";
+        body << R"("stage":")" << node.stage << R"(",)";
+        if (node.has_span) {
+            body << R"("trace_id":")" << node.span.trace_id << R"(",)";
+            body << R"("duration_ms":)" << node.span.duration_ms << ",";
+            body << R"("ts_us":)" << node.span.ts_us << ",";
+            body << R"("status":")" << node.span.status << R"(",)";
+        } else {
+            body << R"("virtual":true,)";
+        }
+        body << R"("children":[)";
+        for (size_t i = 0; i < node.children.size(); ++i) {
+            if (i > 0) body << ",";
+            writeNode(node.children[i], body);
+        }
+        body << "]}";
+    };
+
     std::ostringstream body;
-    body << R"({"trace_id":")" << trace_id << R"(","spans":[)";
-    for (size_t i = 0; i < spans.size(); ++i) {
-        if (i > 0) body << ",";
-        auto& s = spans[i];
-        body << R"({"service":")" << s.service << "\""
-             << R"(,"stage":")" << s.stage << "\""
-             << R"(,"duration_ms":)" << s.duration_ms
-             << R"(,"ts_us":)" << s.ts_us
-             << R"(,"status":")" << s.status << "\"}";
-    }
-    body << "]}";
+    body << R"({"trace_id":")" << trace_id << R"(","tree":)";
+    writeNode(tree, body);
+    body << "}";
     JsonOk(cntl, body.str());
 }
 

@@ -42,6 +42,7 @@ add_executable(perf_collector
     src/sqlite_store.cpp
     src/api_handlers.cpp
     src/series_manager.cpp
+    src/span_tree.cpp
 )
 
 target_include_directories(perf_collector PRIVATE
