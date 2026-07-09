@@ -35,6 +35,17 @@ set(ABSL_LIBS
 
 find_library(SQLITE3_LIB sqlite3 REQUIRED)
 
+# Discovery proto (required by common/service_discovery.h)
+set(DISCOVERY_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto/discovery.proto)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto
+         --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
+         discovery.proto
+    DEPENDS ${DISCOVERY_PROTO_FILE}
+)
+
 add_executable(perf_collector
     src/main.cpp
     src/puller.cpp
@@ -43,10 +54,12 @@ add_executable(perf_collector
     src/api_handlers.cpp
     src/series_manager.cpp
     src/span_tree.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
 )
 
 target_include_directories(perf_collector PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../discovery/client/include
     ${CMAKE_CURRENT_BINARY_DIR}
     ${BRPC_INCLUDE_DIR}
 )

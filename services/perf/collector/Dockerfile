@@ -13,11 +13,13 @@ ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/
 ARG PERF_SERVICE_DIR=services/perf/collector/
 ARG WEBUI_DIR=services/perf/webui/
+ARG DISCOVERY_DIR=services/discovery/
 
 COPY ${PROTO_DIR} /app/proto/
 COPY ${COMMON_DIR} /app/common/
 COPY ${PERF_SERVICE_DIR} /app/services/perf/collector/
 COPY ${WEBUI_DIR} /app/webui/
+COPY ${DISCOVERY_DIR} /app/services/discovery/
 
 RUN mkdir -p /app/build && cd /app/build && \
     cmake ../services/perf/collector -DCMAKE_BUILD_TYPE=Release && \

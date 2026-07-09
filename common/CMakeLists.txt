@@ -9,7 +9,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # 查找必要的包
 find_package(Threads REQUIRED)
 find_package(gflags REQUIRED)
-find_package(Protobuf REQUIRED)
 find_package(fmt QUIET)
 
 # 检查 fmt 是否找到
@@ -46,20 +45,7 @@ add_library(common_lib STATIC
 target_include_directories(common_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../services/discovery/client/include
-    ${CMAKE_CURRENT_BINARY_DIR}
 )
-
-# Discovery proto (required by service_discovery.cpp)
-set(DISCOVERY_PROTO ${CMAKE_CURRENT_SOURCE_DIR}/../proto/discovery.proto)
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-    ARGS --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../proto
-         --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
-         discovery.proto
-    DEPENDS ${DISCOVERY_PROTO}
-)
-target_sources(common_lib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc)
 
 # 链接必要的库
 target_link_libraries(common_lib PUBLIC
