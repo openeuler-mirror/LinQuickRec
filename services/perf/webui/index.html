@@ -7,59 +7,91 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/series.js"></script>
+    <script src="js/trace.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         h1 { margin: 0 0 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .card h2 { margin: 0 0 12px; font-size: 14px; color: #666; text-transform: uppercase; }
-        .metric { font-size: 32px; font-weight: bold; color: #333; }
-        .metric-label { font-size: 12px; color: #999; margin-top: 4px; }
-        .stage-select { margin-bottom: 16px; }
-        .stage-select select { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .tabs { display: flex; gap: 0; margin-bottom: 20px; }
+        .tab { padding: 8px 20px; border: 1px solid #ddd; background: #eee; cursor: pointer; border-radius: 4px 4px 0 0; }
+        .tab.active { background: white; border-bottom-color: white; font-weight: bold; }
+        .panel { display: none; background: white; border-radius: 0 8px 8px 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .panel.active { display: block; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .card { background: #f9f9f9; border-radius: 8px; padding: 12px; }
+        .card h3 { margin: 0 0 8px; font-size: 12px; color: #666; text-transform: uppercase; }
+        .metric { font-size: 28px; font-weight: bold; color: #333; }
+        .metric-label { font-size: 11px; color: #999; }
+        .stage-select { margin-bottom: 12px; }
+        .stage-select select, .stage-select button, input[type=text] { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        button { background: #2196f3; color: white; border: none; cursor: pointer; }
+        button:hover { background: #1976d2; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+        th { color: #666; font-weight: 600; }
+        pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
     </style>
 </head>
 <body>
     <h1>Perf Dashboard</h1>
-    <div class="stage-select">
-        <label>Stage:</label>
-        <select id="stageSelect" onchange="onStageChange()">
-            <option value="proxy|proxy_e2e">proxy_e2e</option>
-            <option value="proxy|recall_rpc">recall_rpc</option>
-            <option value="proxy|feature_rpc">feature_rpc</option>
-            <option value="proxy|precalc_rpc">precalc_rpc</option>
-            <option value="proxy|rank_rpc">rank_rpc</option>
-            <option value="recall|recall_total">recall_total</option>
-            <option value="precalc|precalc_total">precalc_total</option>
-            <option value="rank_master|rank_master_total">rank_master_total</option>
-            <option value="rank_sub|rank_sub_total">rank_sub_total</option>
-        </select>
-        <button onclick="refresh()">Refresh</button>
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="tab" onclick="switchTab('series')">Series</button>
+        <button class="tab" onclick="switchTab('trace')">Trace</button>
     </div>
-    <div class="grid">
-        <div class="card">
-            <h2>Request Count</h2>
-            <div id="count" class="metric">-</div>
-            <div class="metric-label">total spans</div>
+
+    <!-- Dashboard Panel -->
+    <div id="dashboard-panel" class="panel active">
+        <div class="stage-select">
+            <label>Stage:</label>
+            <select id="stageSelect" onchange="onStageChange()">
+                <option value="proxy|proxy_e2e">proxy_e2e</option>
+                <option value="proxy|recall_rpc">recall_rpc</option>
+                <option value="proxy|feature_rpc">feature_rpc</option>
+                <option value="proxy|precalc_rpc">precalc_rpc</option>
+                <option value="proxy|rank_rpc">rank_rpc</option>
+                <option value="recall|recall_total">recall_total</option>
+                <option value="precalc|precalc_total">precalc_total</option>
+                <option value="rank_master|rank_master_total">rank_master_total</option>
+                <option value="rank_sub|rank_sub_total">rank_sub_total</option>
+            </select>
+            <button onclick="refresh()">Refresh</button>
         </div>
-        <div class="card">
-            <h2>Average</h2>
-            <div id="avg" class="metric">-</div>
-            <div class="metric-label">ms</div>
+        <div class="grid">
+            <div class="card"><h3>Count</h3><div id="count" class="metric">-</div><div class="metric-label">total spans</div></div>
+            <div class="card"><h3>Average</h3><div id="avg" class="metric">-</div><div class="metric-label">ms</div></div>
+            <div class="card"><h3>P50</h3><div id="p50" class="metric">-</div><div class="metric-label">ms</div></div>
+            <div class="card"><h3>P99</h3><div id="p99" class="metric">-</div><div class="metric-label">ms</div></div>
         </div>
-        <div class="card">
-            <h2>P50</h2>
-            <div id="p50" class="metric">-</div>
-            <div class="metric-label">ms</div>
-        </div>
-        <div class="card">
-            <h2>P99</h2>
-            <div id="p99" class="metric">-</div>
-            <div class="metric-label">ms</div>
-        </div>
-    </div>
-    <div class="card" style="margin-top:20px">
         <canvas id="chart" height="100"></canvas>
+    </div>
+
+    <!-- Series Panel -->
+    <div id="series-panel" class="panel">
+        <div style="margin-bottom:12px">
+            <button onclick="startSeries()">+ New Series</button>
+            <button onclick="stopSeries()">Stop Active</button>
+            <button onclick="loadSeries()">Refresh</button>
+        </div>
+        <div id="series-list"></div>
+        <div id="series-detail" style="display:none; margin-top:20px; border-top:1px solid #ddd; padding-top:16px">
+            <h3 id="series-detail-title"></h3>
+            <div id="series-stats" class="grid"></div>
+            <button onclick="loadSeriesSpans()">Show Spans</button>
+            <table id="series-spans-table" style="display:none">
+                <thead><tr><th>ts_us</th><th>service</th><th>stage</th><th>duration_ms</th><th>trace_id</th><th>status</th></tr></thead>
+                <tbody id="series-spans-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Trace Panel -->
+    <div id="trace-panel" class="panel">
+        <div style="margin-bottom:12px">
+            <input type="text" id="traceIdInput" placeholder="Paste trace_id here" style="width:300px">
+            <button onclick="searchTrace()">Search</button>
+        </div>
+        <div id="trace-result"></div>
     </div>
 </body>
 </html>

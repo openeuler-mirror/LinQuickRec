@@ -50,3 +50,11 @@ function updateChart(service, stage, stats) {
 
 refresh();
 setInterval(refresh, 3000);
+
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(name + '-panel').classList.add('active');
+    if (name === 'series') loadSeries();
+}
