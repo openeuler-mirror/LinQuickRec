@@ -15,21 +15,20 @@
 
 namespace perf {
 
-using namespace rapidjson;
 
 namespace {
 
 void JsonOk(brpc::Controller* cntl, const std::string& body) {
     cntl->http_response().set_status_code(200);
     cntl->http_response().set_content_type("application/json");
-    cntl->http_response().body() = body;
+    cntl->response_attachment().append(body);
 }
 
 void JsonError(brpc::Controller* cntl, int code, const std::string& msg) {
     cntl->http_response().set_status_code(code);
     cntl->http_response().set_content_type("application/json");
     std::string body = R"({"error":")" + msg + R"("})";
-    cntl->http_response().body() = body;
+    cntl->response_attachment().append(body);
 }
 
 std::string StatsToJson(const WelfordRunningStats& st) {
@@ -66,7 +65,7 @@ void ApiHandlerService::CallMethod(
     google::protobuf::Closure* done) {
 
     auto* cntl = static_cast<brpc::Controller*>(controller);
-    const std::string& uri = cntl->http_request().uri();
+    const std::string& uri = cntl->http_request().uri().ToString();
 
     if (uri.find("/api/v1/health") != std::string::npos) {
         HandleHealth(cntl);
@@ -93,7 +92,7 @@ void ApiHandlerService::HandleHealth(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleStatsCurrent(brpc::Controller* cntl) {
-    const std::string& uri = cntl->http_request().uri();
+    const std::string& uri = cntl->http_request().uri().ToString();
     std::string service = ExtractParam(uri, "service");
     std::string stage = ExtractParam(uri, "stage");
 
@@ -112,7 +111,7 @@ void ApiHandlerService::HandleStatsCurrent(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
-    const std::string& uri = cntl->http_request().uri();
+    const std::string& uri = cntl->http_request().uri().ToString();
     size_t pos = uri.rfind('/');
     if (pos == std::string::npos) {
         JsonError(cntl, 400, "missing trace_id");
@@ -154,7 +153,7 @@ void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleSeries(brpc::Controller* cntl) {
-    const std::string& uri = cntl->http_request().uri();
+    const std::string& uri = cntl->http_request().uri().ToString();
 
     if (uri.find("/start") != std::string::npos) {
         std::string name = ExtractParam(uri, "name");
@@ -188,7 +187,7 @@ void ApiHandlerService::HandleSeries(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleOutliers(brpc::Controller* cntl) {
-    const std::string& uri = cntl->http_request().uri();
+    const std::string& uri = cntl->http_request().uri().ToString();
     std::string stage = ExtractParam(uri, "stage");
 
     auto* st = StatsEngine::Instance().Get(
@@ -212,7 +211,7 @@ void ApiHandlerService::HandleStatic(brpc::Controller* cntl, const std::string& 
     std::ifstream file(file_path);
     if (!file.is_open()) {
         cntl->http_response().set_status_code(404);
-        cntl->http_response().body() = "Not found";
+        cntl->response_attachment().append("Not found");
         return;
     }
 
@@ -227,7 +226,7 @@ void ApiHandlerService::HandleStatic(brpc::Controller* cntl, const std::string& 
     } else {
         cntl->http_response().set_content_type("text/plain");
     }
-    cntl->http_response().body() = content;
+    cntl->response_attachment().append(content);
 }
 
 void ApiHandlerService::HandleNotFound(brpc::Controller* cntl) {

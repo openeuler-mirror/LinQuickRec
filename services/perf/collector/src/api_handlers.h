@@ -4,6 +4,7 @@
 #include <brpc/controller.h>
 #include <brpc/server.h>
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/empty.pb.h>
 #include <google/protobuf/service.h>
 
 #include <sstream>
@@ -31,10 +32,14 @@ public:
                     google::protobuf::Message*,
                     google::protobuf::Closure* done) override;
 
-    const google::protobuf::Message* GetRequestPrototype(
-        const google::protobuf::MethodDescriptor*) override { return nullptr; }
-    const google::protobuf::Message* GetResponsePrototype(
-        const google::protobuf::MethodDescriptor*) override { return nullptr; }
+    const google::protobuf::Message& GetRequestPrototype(
+        const google::protobuf::MethodDescriptor*) const override {
+        return google::protobuf::Empty::default_instance();
+    }
+    const google::protobuf::Message& GetResponsePrototype(
+        const google::protobuf::MethodDescriptor*) const override {
+        return google::protobuf::Empty::default_instance();
+    }
 
 private:
     void HandleHealth(brpc::Controller* cntl);
