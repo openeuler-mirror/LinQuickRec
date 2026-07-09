@@ -65,8 +65,8 @@ void ApiHandlerService::CallMethod(
     google::protobuf::Closure* done) {
 
     auto* cntl = static_cast<brpc::Controller*>(controller);
-    std::string uri = cntl->http_request().uri().path().as_string();
-    std::string qs = cntl->http_request().uri().query().as_string();
+    std::string uri = cntl->http_request().uri().path();
+    std::string qs = cntl->http_request().uri().query();
     if (!qs.empty()) uri += "?" + qs;
 
     if (uri.find("/api/v1/health") != std::string::npos) {
@@ -94,8 +94,8 @@ void ApiHandlerService::HandleHealth(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleStatsCurrent(brpc::Controller* cntl) {
-    std::string uri = cntl->http_request().uri().path().as_string();
-    std::string qs = cntl->http_request().uri().query().as_string();
+    std::string uri = cntl->http_request().uri().path();
+    std::string qs = cntl->http_request().uri().query();
     if (!qs.empty()) uri += "?" + qs;
     std::string service = ExtractParam(uri, "service");
     std::string stage = ExtractParam(uri, "stage");
@@ -115,8 +115,8 @@ void ApiHandlerService::HandleStatsCurrent(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
-    std::string uri = cntl->http_request().uri().path().as_string();
-    std::string qs = cntl->http_request().uri().query().as_string();
+    std::string uri = cntl->http_request().uri().path();
+    std::string qs = cntl->http_request().uri().query();
     if (!qs.empty()) uri += "?" + qs;
     size_t pos = uri.rfind('/');
     if (pos == std::string::npos) {
@@ -159,8 +159,8 @@ void ApiHandlerService::HandleTrace(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleSeries(brpc::Controller* cntl) {
-    std::string uri = cntl->http_request().uri().path().as_string();
-    std::string qs = cntl->http_request().uri().query().as_string();
+    std::string uri = cntl->http_request().uri().path();
+    std::string qs = cntl->http_request().uri().query();
     if (!qs.empty()) uri += "?" + qs;
 
     if (uri.find("/start") != std::string::npos) {
@@ -195,8 +195,8 @@ void ApiHandlerService::HandleSeries(brpc::Controller* cntl) {
 }
 
 void ApiHandlerService::HandleOutliers(brpc::Controller* cntl) {
-    std::string uri = cntl->http_request().uri().path().as_string();
-    std::string qs = cntl->http_request().uri().query().as_string();
+    std::string uri = cntl->http_request().uri().path();
+    std::string qs = cntl->http_request().uri().query();
     if (!qs.empty()) uri += "?" + qs;
     std::string stage = ExtractParam(uri, "stage");
 
