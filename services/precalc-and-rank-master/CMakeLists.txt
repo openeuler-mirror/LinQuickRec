@@ -53,6 +53,7 @@ endif()
 
 add_executable(precalc_and_rank_master
     server/src/main.cpp server/src/precalc_server.cpp server/src/rank_master_server.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/precalc.pb.cc ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/discovery.pb.cc)
 

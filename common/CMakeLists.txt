@@ -35,8 +35,6 @@ add_library(common_lib STATIC
     src/logger/logger.cpp
     # 性能打点
     src/perf/perf_registry.cpp
-    # 服务发现
-    src/discovery/service_discovery.cpp
     src/logger/console_sink.cpp
     src/logger/file_sink.cpp
 )
