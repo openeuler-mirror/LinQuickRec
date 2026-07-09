@@ -1,6 +1,13 @@
 FROM linquickrec/base:latest
 
-RUN apt-get update && apt-get install -y libsqlite3-dev && rm -rf /var/lib/apt/lists/*
+ARG PROXY_IP=""
+ARG PROXY_PORT="3128"
+
+RUN if [ -n "$PROXY_IP" ]; then \
+        echo "proxy=http://${PROXY_IP}:${PROXY_PORT}" >> /etc/yum.conf; \
+    fi && \
+    yum install -y sqlite-devel && \
+    yum clean all
 
 ARG PROTO_DIR=proto/
 ARG COMMON_DIR=common/

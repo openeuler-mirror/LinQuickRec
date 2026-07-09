@@ -64,6 +64,9 @@ services:
     build:
       context: ../..
       dockerfile: services/perf/collector/Dockerfile
+      args:
+        PROXY_IP: "${PROXY_IP:-}"
+        PROXY_PORT: "${PROXY_PORT:-3128}"
     image: linquickrec/perf-collector:latest
 
   # === --profile discovery-server 时构建 ===
