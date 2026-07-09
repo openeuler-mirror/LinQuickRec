@@ -170,6 +170,13 @@ process_one() {
 
     IFS=: read -r name image <<<"$row"
 
+    if [[ "$name" == "discovery" ]]; then
+        if ! docker image inspect "$image" >/dev/null 2>&1; then
+            log "Skipping ${name}: image not built (optional)"
+            return 0
+        fi
+    fi
+
     log "===== ${name} ====="
     push_image "$image" || return 1
 }
