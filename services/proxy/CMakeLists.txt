@@ -66,6 +66,7 @@ set(PROTO_SRCS
     ${PROTO_OUT_DIR}/recall.pb.cc
     ${PROTO_OUT_DIR}/precalc.pb.cc
     ${PROTO_OUT_DIR}/rank_master.pb.cc
+    ${PROTO_OUT_DIR}/discovery.pb.cc
 )
 
 set(COMMON_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include)
