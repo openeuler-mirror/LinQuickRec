@@ -44,6 +44,7 @@ add_library(common_lib STATIC
 # 包含目录
 target_include_directories(common_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../services/discovery/client/include
 )
 
 # 链接必要的库
