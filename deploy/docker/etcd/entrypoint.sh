@@ -50,8 +50,8 @@ MY_IP=""
 while [ -z "$MY_IP" ]; do
     MY_IP=$(getent hosts "$MY_DNS" 2>/dev/null | head -1 | awk '{print $1}')
     RETRY=$((RETRY + 1))
-    if [ -z "$MY_IP" ] && [ $RETRY -ge 30 ]; then
-        echo "ERROR: DNS lookup failed for ${MY_DNS} after 30s, sleeping for manual debug"
+    if [ -z "$MY_IP" ] && [ $RETRY -ge 600 ]; then
+        echo "ERROR: DNS lookup failed for ${MY_DNS} after 10 min, sleeping for manual debug"
         exec sleep infinity
     fi
     [ -z "$MY_IP" ] && sleep 1
@@ -68,8 +68,8 @@ for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
     while [ -z "$PEER_IP" ]; do
         PEER_IP=$(getent hosts "$PEER" 2>/dev/null | head -1 | awk '{print $1}')
         RETRY=$((RETRY + 1))
-        if [ -z "$PEER_IP" ] && [ $RETRY -ge 30 ]; then
-            echo "ERROR: DNS lookup failed for ${PEER} after 30s, sleeping for manual debug"
+        if [ -z "$PEER_IP" ] && [ $RETRY -ge 600 ]; then
+            echo "ERROR: DNS lookup failed for ${PEER} after 10 min, sleeping for manual debug"
             exec sleep infinity
         fi
         [ -z "$PEER_IP" ] && sleep 1
