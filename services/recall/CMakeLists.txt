@@ -85,6 +85,18 @@ add_custom_command(
     COMMENT "Running protoc on recall.proto"
 )
 
+# perf_handler proto
+set(PERF_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../proto/perf_handler.proto)
+set(PERF_PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc)
+add_custom_command(
+    OUTPUT ${PERF_PROTO_SRC} ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../../proto
+         --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
+         perf_handler.proto
+    DEPENDS ${PERF_PROTO_FILE}
+)
+
 add_library(recall_proto STATIC ${PROTO_SRC})
 target_include_directories(recall_proto PUBLIC 
     ${CMAKE_CURRENT_BINARY_DIR}
@@ -129,6 +141,7 @@ add_executable(recall_server
     server/src/vllm_client.cpp
     server/src/main.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+    ${PERF_PROTO_SRC}
 )
 target_include_directories(recall_server PRIVATE
     ${BRPC_INCLUDE_DIR}
@@ -209,6 +222,7 @@ add_executable(recall_integration_test
     server/src/recall_server.cpp
     server/src/vllm_client.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+    ${PERF_PROTO_SRC}
 )
 target_include_directories(recall_integration_test PRIVATE
     ${BRPC_INCLUDE_DIR}

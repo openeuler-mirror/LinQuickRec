@@ -38,6 +38,19 @@ add_custom_command(
     DEPENDS ${PROTO_FILE}
 )
 
+# perf_handler proto (provides PerfService base class for /debug/perf)
+set(PERF_PROTO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../proto/perf_handler.proto")
+set(PERF_PROTO_SRC "${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc")
+
+add_custom_command(
+    OUTPUT ${PERF_PROTO_SRC} ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../../proto
+         --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
+         ${PERF_PROTO_FILE}
+    DEPENDS ${PERF_PROTO_FILE}
+)
+
 if(NOT TARGET common_lib)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
 endif()
@@ -46,6 +59,7 @@ add_executable(feature_server
     server/src/feature_server.cpp
     server/src/main.cpp
     ${PROTO_SRC}
+    ${PERF_PROTO_SRC}
 )
 
 target_include_directories(feature_server PRIVATE
@@ -73,6 +87,7 @@ set_target_properties(feature_server PROPERTIES
 add_executable(feature_test_client
     client/feature_test_client.cpp
     ${PROTO_SRC}
+    ${PERF_PROTO_SRC}
 )
 
 target_include_directories(feature_test_client PRIVATE

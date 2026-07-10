@@ -30,8 +30,14 @@ add_custom_command(OUTPUT ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/rank_
     COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/rank_sub.proto
     DEPENDS ${PROTO_DIR}/rank_sub.proto)
 
+set(PERF_PROTO_FILE "${PROTO_DIR}/perf_handler.proto")
+set(PERF_PROTO_SRC "${PROTO_OUT_DIR}/perf_handler.pb.cc")
+add_custom_command(OUTPUT ${PERF_PROTO_SRC} ${PROTO_OUT_DIR}/perf_handler.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PERF_PROTO_FILE}
+    DEPENDS ${PERF_PROTO_FILE})
+
 add_executable(rank_sub_server server/src/rank_sub_server.cpp server/src/main.cpp
-    ${PROTO_OUT_DIR}/rank_sub.pb.cc)
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PERF_PROTO_SRC})
 
 target_include_directories(rank_sub_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${PROTO_OUT_DIR} ${PROTO_DIR} ${PROTOBUF_INCLUDE_DIRS} ${BRPC_INCLUDE_DIR}

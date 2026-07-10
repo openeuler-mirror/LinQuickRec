@@ -49,6 +49,7 @@ add_proto(recall)
 add_proto(precalc)
 add_proto(rank_master)
 add_proto(discovery)
+add_proto(perf_handler)
 
 # ============================================================================
 # 编译 common 库（支持独立构建，如 Docker 单服务场景）
@@ -67,6 +68,7 @@ set(PROTO_SRCS
     ${PROTO_OUT_DIR}/precalc.pb.cc
     ${PROTO_OUT_DIR}/rank_master.pb.cc
     ${PROTO_OUT_DIR}/discovery.pb.cc
+    ${PROTO_OUT_DIR}/perf_handler.pb.cc
 )
 
 set(COMMON_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/include)

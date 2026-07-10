@@ -49,6 +49,17 @@ add_custom_command(
     DEPENDS ${DISCOVERY_PROTO_FILE}
 )
 
+set(PERF_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto/perf_handler.proto)
+set(PERF_PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc)
+add_custom_command(
+    OUTPUT ${PERF_PROTO_SRC} ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto
+         --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
+         perf_handler.proto
+    DEPENDS ${PERF_PROTO_FILE}
+)
+
 add_executable(perf_collector
     src/main.cpp
     src/puller.cpp
@@ -58,6 +69,7 @@ add_executable(perf_collector
     src/series_manager.cpp
     src/span_tree.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
+    ${PERF_PROTO_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/src/discovery/service_discovery.cpp
 )
 

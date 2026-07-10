@@ -44,6 +44,12 @@ add_custom_command(OUTPUT ${PROTO_OUT_DIR}/discovery.pb.cc ${PROTO_OUT_DIR}/disc
     COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PROTO_DIR}/discovery.proto
     DEPENDS ${PROTO_DIR}/discovery.proto)
 
+set(PERF_PROTO_FILE "${PROTO_DIR}/perf_handler.proto")
+set(PERF_PROTO_SRC "${PROTO_OUT_DIR}/perf_handler.pb.cc")
+add_custom_command(OUTPUT ${PERF_PROTO_SRC} ${PROTO_OUT_DIR}/perf_handler.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE} ARGS --cpp_out=${PROTO_OUT_DIR} --proto_path=${PROTO_DIR} ${PERF_PROTO_FILE}
+    DEPENDS ${PERF_PROTO_FILE})
+
 if(NOT TARGET common_lib)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../common ${CMAKE_BINARY_DIR}/common)
 endif()
@@ -55,7 +61,8 @@ add_executable(precalc_and_rank_master
     server/src/main.cpp server/src/precalc_server.cpp server/src/rank_master_server.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src/discovery/service_discovery.cpp
     ${PROTO_OUT_DIR}/precalc.pb.cc ${PROTO_OUT_DIR}/rank_master.pb.cc
-    ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/discovery.pb.cc)
+    ${PROTO_OUT_DIR}/rank_sub.pb.cc ${PROTO_OUT_DIR}/discovery.pb.cc
+    ${PERF_PROTO_SRC})
 
 target_include_directories(precalc_and_rank_master PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..

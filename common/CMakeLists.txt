@@ -9,7 +9,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # 查找必要的包
 find_package(Threads REQUIRED)
 find_package(gflags REQUIRED)
-find_package(Protobuf REQUIRED)
 find_package(fmt QUIET)
 
 # 检查 fmt 是否找到
@@ -40,21 +39,6 @@ add_library(common_lib STATIC
     src/logger/file_sink.cpp
 )
 
-# Proto for perf_handler (provides PerfService Dump RPC for /debug/perf)
-set(PERF_PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../proto")
-
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-    ARGS --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-         --proto_path=${PERF_PROTO_DIR}
-         ${PERF_PROTO_DIR}/perf_handler.proto
-    DEPENDS ${PERF_PROTO_DIR}/perf_handler.proto
-)
-
-target_sources(common_lib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc)
-target_include_directories(common_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-
 # 包含目录
 target_include_directories(common_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -64,7 +48,6 @@ target_include_directories(common_lib PUBLIC
 target_link_libraries(common_lib PUBLIC
     Threads::Threads
     gflags
-    ${Protobuf_LIBRARIES}
 )
 
 # 如果找到 fmt，链接它
