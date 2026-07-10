@@ -28,7 +28,7 @@ fi
 
 # DNS 解析验证（最多重试 3 次，失败后 sleep 等调试）
 RETRY=0
-while ! timeout 3 nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1; do
+while ! timeout 3 getent hosts kubernetes.default.svc.cluster.local >/dev/null 2>&1; do
     RETRY=$((RETRY + 1))
     if [ $RETRY -ge 30 ]; then
         echo "ERROR: CoreDNS not resolving after 60s, sleeping for manual debug"
