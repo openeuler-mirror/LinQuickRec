@@ -113,14 +113,20 @@ add_executable(perf_integration_test
     src/sqlite_store.cpp
     src/series_manager.cpp
     src/span_tree.cpp
+    src/api_handlers.cpp
+    ${PERF_PROTO_SRC}
+    ${API_PROTO_SRC}
 )
 target_include_directories(perf_integration_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/include
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${BRPC_INCLUDE_DIR}
     src
 )
 target_link_libraries(perf_integration_test PRIVATE
     common_lib
+    ${BRPC_LIBRARIES}
+    leveldb
     ${Protobuf_LIBRARIES}
     ${ABSL_LIBS}
     ${SQLITE3_LIB}
