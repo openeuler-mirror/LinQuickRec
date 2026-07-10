@@ -30,11 +30,11 @@ fi
 RETRY=0
 while ! timeout 3 nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1; do
     RETRY=$((RETRY + 1))
-    if [ $RETRY -ge 3 ]; then
-        echo "ERROR: CoreDNS not resolving after 3 attempts, sleeping for manual debug"
+    if [ $RETRY -ge 30 ]; then
+        echo "ERROR: CoreDNS not resolving after 60s, sleeping for manual debug"
         exec sleep infinity
     fi
-    echo "CoreDNS not resolving (${RETRY}/3), retrying..."
+    echo "CoreDNS not resolving (${RETRY}/30), retrying..."
     sleep 2
 done
 echo "CoreDNS is reachable"
