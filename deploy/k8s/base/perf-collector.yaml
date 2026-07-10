@@ -60,32 +60,6 @@ spec:
           claimName: perf-collector-pvc
 ---
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: perf-collector-pv
-  namespace: linquickrec
-  labels:
-    app: perf-collector-service
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  hostPath:
-    path: /data/perf
-    type: DirectoryOrCreate
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - master01
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: perf-collector-pvc
@@ -96,7 +70,6 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: ""
 ---
 apiVersion: v1
 kind: Service
