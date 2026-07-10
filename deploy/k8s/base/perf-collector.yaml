@@ -56,20 +56,7 @@ spec:
           mountPath: /var/lib/perf
       volumes:
       - name: perf-data
-        persistentVolumeClaim:
-          claimName: perf-collector-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: perf-collector-pvc
-  namespace: linquickrec
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
