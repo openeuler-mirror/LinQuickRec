@@ -9,37 +9,55 @@ RECALL_MODE="novllm"
 DISCOVERY_BACKEND="etcd"
 REGISTRY=""
 ACTION=""
+SERVICE=""
+REPLICAS=""
 IMAGE_TAG="latest"
 
 log()  { echo "[$(date +%H:%M:%S)] $*"; }
 err()  { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
 die()  { err "$@"; exit 1; }
 
+# service 映射: type:name:default_replicas
+declare -A SVC_TYPE SVC_NAME SVC_REPLICAS
+_svc() { local n=$1; SVC_TYPE[$n]=$2; SVC_NAME[$n]=$3; SVC_REPLICAS[$n]=$4; }
+_svc etcd     statefulset etcd                                  5
+_svc feature  deployment  feature-service                       1
+_svc proxy    deployment  proxy-service                         1
+_svc precalc  deployment  precalc-and-rank-master-service       3
+_svc recall   deployment  recall-service                        2
+_svc rank-sub deployment  rank-sub-service                      3
+_svc perf     deployment  perf-collector-service                1
+unset -f _svc
+
 usage() {
     cat <<EOF
-Usage: $(basename "$0") <start|stop|delete> [options]
+Usage: $(basename "$0") <start|stop|delete|restart> [service] [options]
 
 Actions:
-  start        Deploy all services to namespace ${NAMESPACE}
-  stop         Scale all deployments and statefulsets to 0 (preserve definitions)
-  restart      Stop then start (preserve data, apply latest YAML changes)
-  delete       Delete all resources in reverse order
+  start        Deploy all services / scale a service to its replicas
+  stop         Scale all workloads to 0 / scale a service to 0 (preserve definitions)
+  restart      Stop then start (--all) / rollout restart (single service)
+  delete       Delete all resources / a single service
+
+Service names: etcd feature proxy precalc recall rank-sub perf
 
 Options:
-  --recall-mode vllm|novllm              Recall deployment mode (default: novllm)
-  --discovery-backend etcd|discovery-server  Service discovery backend (default: etcd)
-  -r, --registry <host:port>               Private registry host:port (e.g. 192.168.0.1:5000)
-                                         Default: no registry, images pulled from local
-  -h, --help                             Show this help
+  --recall-mode vllm|novllm              Recall mode (default: novllm, --all only)
+  --discovery-backend etcd|discovery-server  Discovery backend (--all only)
+  --replicas <N>                         Override default replicas (start <service> only)
+  -r, --registry <host:port>             Private registry (--all only)
+  -h, --help
 
 Examples:
-  $(basename "$0") start
-  $(basename "$0") start -r 192.168.0.1:5000
-  $(basename "$0") start --recall-mode vllm -r 192.168.0.1:5000
-  $(basename "$0") start --discovery-backend discovery-server
-  $(basename "$0") stop
-  $(basename "$0") restart
-  $(basename "$0") delete
+  $(basename "$0") start                         # deploy everything
+  $(basename "$0") start -r 192.168.0.1:5000     # deploy with registry
+  $(basename "$0") stop                           # scale all to 0
+  $(basename "$0") stop feature                   # scale feature-service to 0
+  $(basename "$0") start feature                  # scale feature-service to 1
+  $(basename "$0") start recall --replicas 3      # scale recall-service to 3
+  $(basename "$0") restart perf                   # rollout restart perf-collector
+  $(basename "$0") delete proxy                   # delete proxy-service
+  $(basename "$0") delete                         # delete everything
 EOF
     exit 0
 }
@@ -69,13 +87,20 @@ parse_args() {
                     etcd|discovery-server) DISCOVERY_BACKEND="$2"; shift 2 ;;
                     *) die "Invalid discovery backend: $2 (expected etcd or discovery-server)" ;;
                 esac ;;
+            --replicas)
+                if [[ $# -lt 2 ]]; then die "Missing value for --replicas"; fi
+                if [[ ! "$2" =~ ^[0-9]+$ ]]; then die "Invalid replicas: $2 (must be a number)"; fi
+                REPLICAS="$2"; shift 2 ;;
             -r|--registry)
                 if [[ $# -lt 2 ]]; then die "Missing value for --registry"; fi
                 REGISTRY="${2%/}"; shift 2 ;;
+            etcd|feature|proxy|precalc|recall|rank-sub|perf)
+                if [[ -n "$SERVICE" ]]; then die "Only one service allowed, got '${SERVICE}' and '$1'"; fi
+                SERVICE="$1"; shift ;;
             *) die "Unknown option: $1" ;;
         esac
     done
-    if [[ -z "$ACTION" ]]; then die "Missing action (start|stop|delete)"; fi
+    if [[ -z "$ACTION" ]]; then die "Missing action (start|stop|delete|restart)"; fi
 }
 
 generate_kustomize_overlay() {
@@ -163,9 +188,56 @@ do_delete() {
     log "All resources deleted"
 }
 
+svc_action() {
+    local type="${SVC_TYPE[$SERVICE]}"
+    local name="${SVC_NAME[$SERVICE]}"
+    local replicas="${REPLICAS:-${SVC_REPLICAS[$SERVICE]}}"
+
+    [[ -n "$type" ]] || die "Unknown service: ${SERVICE}. Valid: ${!SVC_TYPE[*]}"
+
+    log "Action: ${ACTION}  Service: ${SERVICE} (${type}/${name})"
+
+    case "$ACTION" in
+        stop)
+            if [[ "$type" == "daemonset" ]]; then
+                kubectl delete daemonset "$name" -n "${NAMESPACE}" 2>/dev/null || true
+            else
+                kubectl scale "$type" "$name" --replicas=0 -n "${NAMESPACE}"
+            fi
+            log "${name} scaled to 0"
+            ;;
+        start)
+            if [[ "$type" == "daemonset" ]]; then
+                log "DaemonSet cannot be started via scale; use apply"
+                return 1
+            fi
+            kubectl scale "$type" "$name" --replicas="$replicas" -n "${NAMESPACE}"
+            log "${name} scaled to ${replicas}"
+            ;;
+        restart)
+            if [[ "$type" == "daemonset" ]]; then
+                kubectl delete daemonset "$name" -n "${NAMESPACE}" 2>/dev/null || true
+                log "${name} deleted (re-apply to recreate)"
+            else
+                kubectl rollout restart "$type" "$name" -n "${NAMESPACE}"
+                log "${name} rollout restarted"
+            fi
+            ;;
+        delete)
+            kubectl delete "$type" "$name" -n "${NAMESPACE}" --ignore-not-found
+            log "${name} deleted"
+            ;;
+    esac
+}
+
 main() {
     parse_args "$@"
     check_prereqs
+
+    if [[ -n "$SERVICE" ]]; then
+        svc_action
+        return
+    fi
 
     case "$ACTION" in
         start)  do_start ;;
