@@ -42,19 +42,18 @@ add_library(common_lib STATIC
 
 # Proto for perf_handler (provides PerfService Dump RPC for /debug/perf)
 set(PERF_PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../proto")
-set(PERF_PROTO_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/proto_gen")
 
 add_custom_command(
-    OUTPUT ${PERF_PROTO_GEN_DIR}/perf_handler.pb.cc ${PERF_PROTO_GEN_DIR}/perf_handler.pb.h
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.h
     COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-    ARGS --cpp_out=${PERF_PROTO_GEN_DIR}
+    ARGS --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
          --proto_path=${PERF_PROTO_DIR}
          ${PERF_PROTO_DIR}/perf_handler.proto
     DEPENDS ${PERF_PROTO_DIR}/perf_handler.proto
 )
 
-target_sources(common_lib PRIVATE ${PERF_PROTO_GEN_DIR}/perf_handler.pb.cc)
-target_include_directories(common_lib PUBLIC ${PERF_PROTO_GEN_DIR})
+target_sources(common_lib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/perf_handler.pb.cc)
+target_include_directories(common_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 # 包含目录
 target_include_directories(common_lib PUBLIC
