@@ -3,26 +3,19 @@
 
 #include <brpc/controller.h>
 #include <brpc/server.h>
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/empty.pb.h>
-#include <google/protobuf/service.h>
 
 #include "common/perf_registry.h"
+#include "perf_handler.pb.h"
 
 namespace common {
 namespace perf {
 
-class PerfService : public google::protobuf::Service {
+class PerfService : public Perf {
 public:
-    const google::protobuf::ServiceDescriptor* GetDescriptor() override {
-        return nullptr;
-    }
-
-    void CallMethod(const google::protobuf::MethodDescriptor*,
-                    google::protobuf::RpcController* controller,
-                    const google::protobuf::Message*,
-                    google::protobuf::Message*,
-                    google::protobuf::Closure* done) override {
+    void Dump(google::protobuf::RpcController* controller,
+              const PerfRequest*,
+              PerfResponse*,
+              google::protobuf::Closure* done) override {
         auto* cntl = static_cast<brpc::Controller*>(controller);
         auto& registry = PerfRingRegistry::Instance();
         if (!registry.Initialized()) {
@@ -58,16 +51,6 @@ public:
         cntl->response_attachment().append(body);
 
         done->Run();
-    }
-
-    const google::protobuf::Message& GetRequestPrototype(
-        const google::protobuf::MethodDescriptor*) const override {
-        return google::protobuf::Empty::default_instance();
-    }
-
-    const google::protobuf::Message& GetResponsePrototype(
-        const google::protobuf::MethodDescriptor*) const override {
-        return google::protobuf::Empty::default_instance();
     }
 };
 
