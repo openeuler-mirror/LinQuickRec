@@ -60,6 +60,17 @@ add_custom_command(
     DEPENDS ${PERF_PROTO_FILE}
 )
 
+set(API_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto/api_handlers.proto)
+set(API_PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/api_handlers.pb.cc)
+add_custom_command(
+    OUTPUT ${API_PROTO_SRC} ${CMAKE_CURRENT_BINARY_DIR}/api_handlers.pb.h
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+    ARGS --proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../../../proto
+         --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
+         api_handlers.proto
+    DEPENDS ${API_PROTO_FILE}
+)
+
 add_executable(perf_collector
     src/main.cpp
     src/puller.cpp
@@ -70,6 +81,7 @@ add_executable(perf_collector
     src/span_tree.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/discovery.pb.cc
     ${PERF_PROTO_SRC}
+    ${API_PROTO_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/src/discovery/service_discovery.cpp
 )
 

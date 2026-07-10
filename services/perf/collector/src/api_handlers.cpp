@@ -57,11 +57,10 @@ std::string ExtractParam(const std::string& uri, const std::string& key) {
 
 } // namespace
 
-void ApiHandlerService::CallMethod(
-    const google::protobuf::MethodDescriptor*,
+void ApiHandlerService::Handle(
     google::protobuf::RpcController* controller,
-    const google::protobuf::Message*,
-    google::protobuf::Message*,
+    const ApiRequest*,
+    ApiResponse*,
     google::protobuf::Closure* done) {
 
     auto* cntl = static_cast<brpc::Controller*>(controller);

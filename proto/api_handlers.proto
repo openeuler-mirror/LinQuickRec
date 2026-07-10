@@ -1,0 +1,10 @@
+syntax = "proto3";
+option cc_generic_services = true;
+package perf;
+
+message ApiRequest {}
+message ApiResponse {}
+
+service ApiHandler {
+  rpc Handle(ApiRequest) returns (ApiResponse);
+}
