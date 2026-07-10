@@ -82,21 +82,7 @@ done
 echo "Cluster: ${CLUSTER}"
 echo "State: ${STATE}"
 
-# Wait for all peers to be reachable before starting etcd
-echo "Waiting for all peers to be reachable..."
-for i in $(seq 0 $((CLUSTER_SIZE - 1))); do
-    PEER="etcd-${i}.${SERVICE}.${NS}.svc.cluster.local"
-    RETRY=0
-    while ! ping -W 2 -c 1 "$PEER" >/dev/null 2>&1; do
-        RETRY=$((RETRY + 1))
-        if [ $RETRY -ge 10 ]; then
-            echo "ERROR: ${PEER} not reachable after 10s, sleeping for manual debug"
-            exec sleep infinity
-        fi
-        sleep 1
-    done
-    echo "  ${PEER} reachable"
-done
+echo "All peers DNS-resolved, starting etcd (peer discovery handled by etcd)"
 
 exec etcd \
   --name "$HOSTNAME" \
