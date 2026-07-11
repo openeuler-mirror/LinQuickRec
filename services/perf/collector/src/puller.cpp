@@ -120,6 +120,9 @@ void StartPuller(
                 if (SeriesManager::Instance().ActiveSeriesId() != 0) {
                     SeriesManager::Instance().IncrementSpanCount();
                 }
+            } else {
+                LOG_ERROR << "Failed to pull /debug/perf from "
+                          << service_name << " at " << host << ":" << port;
             }
         }
 
